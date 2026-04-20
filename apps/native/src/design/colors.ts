@@ -1,33 +1,47 @@
-// Palette — ported from KataPalette.Light (sashafood/apps/swift/Qook/Theme/KataPalette.swift).
+// Palette — baseline "A" (Paper: Tonight — Populated + Recipe Modal — Light).
+// Cream ground, deep forest ink, sage mono, rust accent. Warm, pastoral, candlelit.
 // Source of truth for all surface, text, accent, and wash colors.
 
 export const palette = {
-  background: '#FAF5EC',
-  surface: '#FEFBF3',
-  surfaceTranslucent: 'rgba(255, 252, 246, 0.82)',
+  // Grounds
+  background: '#F6F0E6',
+  surface: '#FFFCF6',
+  surfaceTranslucent: 'rgba(255, 252, 246, 0.85)',
+  surfaceTranslucentSoft: 'rgba(255, 252, 246, 0.78)',
+  surfaceTranslucentFirm: 'rgba(255, 252, 246, 0.82)',
 
-  text: '#26241C',
-  textSecondary: '#5F7057',
-  textTertiary: 'rgba(95, 112, 87, 0.6)',
+  // Ink family — display/body text
+  ink: '#2C2418',
+  text: '#2C2418',
+  textSecondary: '#7A8568',
+  textTertiary: 'rgba(122, 133, 104, 0.65)',
 
-  primary: '#2A3A26',
-  primaryMuted: '#5F7057',
+  // Forest family — primary accent / CTA ground
+  primary: '#3F5238',
+  primaryMuted: '#7A8568',
 
+  // Rust family — decorative accent / kicker
   accent: '#C36A48',
   accentDeep: '#A85539',
 
+  // Secondary accent — reserved for palette C pivot (prussian blue, unused in baseline)
   utility: '#3D5469',
   utilityMuted: 'rgba(61, 84, 105, 0.6)',
 
-  glassBorder: 'rgba(42, 58, 38, 0.08)',
-  haloRing: 'rgba(195, 106, 72, 0.06)',
+  // Borders / rings
+  glassBorder: 'rgba(63, 82, 56, 0.10)',
+  haloRing: 'rgba(195, 106, 72, 0.08)',
+  ingredientRowBorder: 'rgba(63, 82, 56, 0.10)',
+  statRuleColor: 'rgba(63, 82, 56, 0.18)',
 
-  shadowWarm: 'rgba(168, 85, 57, 0.10)',
-  shadowCool: 'rgba(42, 58, 38, 0.10)',
+  // Shadows (tinted)
+  shadowWarm: 'rgba(168, 85, 57, 0.12)',
+  shadowCool: 'rgba(63, 82, 56, 0.12)',
 
+  // Washes / atmosphere
   washSage: 'rgba(154, 174, 128, 0.22)',
   washRust: 'rgba(195, 106, 72, 0.14)',
-  washAmber: 'rgba(226, 186, 124, 0.10)',
+  washAmber: 'rgba(226, 186, 124, 0.12)',
 
   destructive: '#B33939',
 } as const;
