@@ -1,6 +1,7 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import type { Recipe } from '@qook/shared';
 import { ScreenShell } from '../../components/ScreenShell';
 import { PaperCard } from '../../components/PaperCard';
@@ -10,13 +11,21 @@ import { EnergyBadge } from '../../components/EnergyBadge';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
+import { useHaptics } from '../../hooks/useHaptics';
 import type { SeedMealKey } from '../../lib/assets';
 
 export function TonightScreen() {
+  const router = useRouter();
+  const { press } = useHaptics();
   const { data: recipes = [], isLoading } = useQuery({
     queryKey: ['tonight'],
     queryFn: () => api.getTonightPlan(),
   });
+
+  const openRecipe = (id: string) => {
+    press();
+    router.push({ pathname: '/(modals)/recipe/[id]', params: { id } });
+  };
 
   return (
     <ScreenShell>
@@ -36,7 +45,13 @@ export function TonightScreen() {
         recipes.map((recipe, idx) => (
           <View key={recipe.id}>
             {idx > 0 && <View style={{ height: spacing.md }} />}
-            <TonightCard recipe={recipe} />
+            <Pressable onPress={() => openRecipe(recipe.id)}>
+              {({ pressed }) => (
+                <View style={{ opacity: pressed ? 0.92 : 1 }}>
+                  <TonightCard recipe={recipe} />
+                </View>
+              )}
+            </Pressable>
           </View>
         ))
       )}

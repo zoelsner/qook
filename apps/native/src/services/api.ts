@@ -27,6 +27,20 @@ export async function getTonightPlan(): Promise<Recipe[]> {
   return (data as unknown as { recipe: Recipe }[]).map((row) => row.recipe);
 }
 
+export async function getRecipeById(id: string): Promise<Recipe | null> {
+  if (mode === 'mock') {
+    await lag(150);
+    return mockRecipes.find((r) => r.id === id) ?? null;
+  }
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Recipe | null) ?? null;
+}
+
 export async function getCurrentDeck(): Promise<CohortDeck | null> {
   if (mode === 'mock') {
     await lag();
@@ -93,6 +107,7 @@ export async function generateRecipesForEnergy(_tier: string): Promise<Recipe[]>
 
 export const api = {
   getTonightPlan,
+  getRecipeById,
   getCurrentDeck,
   recordSwipe,
   getGroceries,

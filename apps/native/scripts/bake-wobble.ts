@@ -27,7 +27,7 @@ const fmt = (n: number) => Math.round(n * 100) / 100;
 function bake(seed: number): string {
   const noise = createNoise2D(seededRandom(seed));
 
-  const points: Array<[number, number]> = [];
+  const points: [number, number][] = [];
   for (let i = 0; i < SAMPLES; i++) {
     const t = i / (SAMPLES - 1);
     const baseX = 2 + t * (VIEWBOX_W - 4);
