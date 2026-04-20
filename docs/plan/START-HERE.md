@@ -4,10 +4,10 @@
 **First build day:** 2026-04-21 (Monday)
 **Ship:** 2026-05-24 — 32 days
 
-## Status: Day 0 scaffold complete, ready for Day 1
+## Status: Day 0 + full autonomous Day-1 slice complete
 
 Five architects produced ~6500 lines of planning → unified plan at [PLAN.md](./PLAN.md).
-Day 0 (2026-04-20) shipped the autonomous-scaffold slice. Day 1 externals (Apple Dev / Supabase / EAS / domain) still pending — see below.
+Day 0 (2026-04-20) shipped the initial scaffold. A Day-1 autonomous slice landed 5 more commits — entire app skeleton routes, stub screens render on mock fixtures, `@qook/shared` domain package is live. Day 1 externals (Apple Dev / Supabase / EAS / domain) still pending — see below.
 
 ## What's done (as of 2026-04-20 EOD)
 
@@ -38,7 +38,23 @@ Three commits on `main` (3fefc43 latest — partially pushed; see §Publish):
 - [x] Installed `react-native-worklets` (Reanimated 4 peer dep; without it app crashes on device)
 - [x] Downgraded `eslint-config-expo` 55 → 10 (Expo 54 compat)
 - [x] Split typography tokens (`src/design/typography.ts`) from React components (`src/components/Text.tsx`) — keeps design barrel React-free so scripts/packages/shared/edge-fns can import tokens without pulling React
-- [x] Verified: `expo-doctor` 17/17, `tsc --noEmit` clean, Metro bundle builds
+- [x] Verified: `tsc --noEmit` clean, Metro bundle builds
+
+**Day-1 autonomous slice (commits `eb50211` → `23ec380`)**
+- [x] Remaining primitives: `FoodHeroImage`, `RingSpinner`, `StepDots`, `EnergyBadge`, `EnergyPicker`, `FloatingTabBar` + `useHaptics` + `src/lib/assets.ts` (24-key seedMeals require map)
+- [x] `scripts/bake-wobble.ts` + regenerated real simplex-noise paths in `BrushstrokeUnderline.tsx`
+- [x] Monorepo workspace: root `package.json` with bun workspaces, `packages/shared/` live
+- [x] `@qook/shared` full type set (`primitives`, `recipe`, `deck`, `grocery`, `user`, `generation`) + domain (`energyTier`, `recipeTaxonomy`, `recipeNormalize`, `signature`) — `recipeNormalize` + `recipeTaxonomy` ported from sashafood
+- [x] `metro.config.js` monorepo-aware; `apps/native/tsconfig.json` path alias `@qook/shared`
+- [x] `src/services/{supabase,api}.ts` + TS fixtures (3 recipes, 1 deck padded to 12, 9 groceries)
+- [x] Expo Router migration: `app/_layout.tsx` + `app/index.tsx` + `app/(tabs)/_layout.tsx` + 5 tab routes + `app/(modals)/recipe/[id].tsx`; `App.tsx` + `index.ts` removed
+- [x] 5 stub feature screens (Tonight/Swipe Night/Shop/Saved/More) rendering real mock fixtures through `useQuery`
+- [x] `eslint.config.js` (flat) added — lint now runs clean
+- [x] Verified: `tsc --noEmit` clean both workspaces, `eslint` clean, `expo-doctor` 16/17, `bunx expo export --platform ios` succeeds (4.8MB hbc bundle, all 24 seed PNGs + expo-router assets)
+
+**Intentionally deferred:** `src/services/auth.tsx` + SessionProvider (blocked on Supabase project); `groceryNormalize.ts`, `deckVariety.ts`, `dietaryTags.ts` (Week 2-3 per section-domain §10).
+
+**Known issue:** `expo-doctor` flags "duplicate native module dependencies" — cosmetic bun workspace symlink artifacts (same-version copies under `node_modules/.bun/`). Metro resolver uses top-level `node_modules/` first, so the iOS bundle is fine. Can revisit if it causes EAS Build issues.
 
 ## Still pending (Day 1 externals — you drive these)
 
@@ -69,19 +85,22 @@ Order doesn't strictly matter; Apple + Supabase should come first since they unb
 
 ## Pick up here next session (autonomous track)
 
-Ranked by dependency chain — front-of-queue is unblocked:
+Original Day-1 items 1-5 are done. Remaining queue:
 
-1. **FloatingTabBar + remaining D3-4 primitives** (FoodHeroImage, RingSpinner, StepDots, EnergyBadge, EnergyPicker). All pure code; blocks nothing.
-2. **Expo Router migration**: convert `App.tsx` into `app/_layout.tsx` + `app/(tabs)/{tonight,swipe-night,shop,saved,more}.tsx` + `app/(modals)/recipe/[id].tsx`. Plan §2 has the full route tree.
-3. **Domain types in `packages/shared/`** + port `recipeNormalize.ts` + `recipeTaxonomy.ts` from sashafood (`/Users/zach/Projects/sashafood/packages/convex/convex/lib/`).
-4. **`src/services/{supabase,auth,api}.ts`** — mock/live toggle wired to `Constants.expoConfig?.extra?.apiMode`.
-5. **`scripts/bake-wobble.ts`** — port from spec §6; regenerate 3 real simplex-noise paths to replace BrushstrokeUnderline's hand-written stubs.
-6. **Generate `assets/paper-grain.png`** (one-time ~$0.04 Seedream call — needs user approval + OPENROUTER_API_KEY first). Re-enables WashBackground grain overlay.
-7. **Edge functions** (`_shared/openrouter.ts`, `_shared/supabase.ts`, then the 4 live fns) — blocks on Supabase link + OPENROUTER_API_KEY.
+1. **Week 2 work — if user wants to keep pushing on mock**:
+   - Full `RecipeDetailModal` in `(modals)/recipe/[id].tsx` — ingredients + steps + timeline + hero image (currently a stub)
+   - `SwipeCard` + `useSwipeGesture` (Gesture Handler Pan + Reanimated) per section-frontend.md §10.3 — still pure code, no backend needed
+   - `stores/swipeDeck.ts` (Zustand) to back the card stack
+   - `EnergyPickerScreen` + `GenerationLoadingScreen` + `ReviewRecipesScreen` under `src/features/eat/` — plan §2.2 flow
+2. **`src/services/auth.tsx` + `(auth)/sign-in.tsx` + `(auth)/sign-up.tsx`** — blocked on Supabase project existing (ref + anon key)
+3. **Generate `assets/paper-grain.png`** (one-time ~$0.04 Seedream call — needs OPENROUTER_API_KEY). Re-enables `WashBackground` grain overlay.
+4. **Edge functions** (`_shared/openrouter.ts`, `_shared/supabase.ts`, then the 4 live fns) — blocks on Supabase link + OPENROUTER_API_KEY.
+5. **`packages/shared/src/domain/{groceryNormalize,deckVariety,dietaryTags}.ts`** — port/write when first consumer needs them (Week 2-3 per section-domain §10).
+6. **`supabase gen types typescript --linked > packages/shared/src/database.ts`** — after Supabase link; regenerates the DB row types that domain mappers consume.
 
 ## Publish state (as of this file)
 
-Initial scaffold (`1f112e3`) is on GitHub. Frontend foundation (`cd2ec12`) + review fixes (`3fefc43`) are **local only**. Push when ready:
+All commits through `23ec380` (Day-1 autonomous slice) are on `main` locally. Confirm with Zach before pushing:
 
 ```bash
 git push origin main
