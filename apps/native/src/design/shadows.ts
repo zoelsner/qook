@@ -20,7 +20,7 @@ export const shadowHalo: ShadowStyle = Platform.select({
 // Close contact shadow — sharpens the bottom edge of cards
 export const shadowContact: ShadowStyle = Platform.select({
   ios: {
-    shadowColor: '#3F5238',
+    shadowColor: '#2A3A26',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -32,7 +32,7 @@ export const shadowContact: ShadowStyle = Platform.select({
 // Icon pill on hero — 40×40 close / bookmark / share buttons
 export const shadowIconPill: ShadowStyle = Platform.select({
   ios: {
-    shadowColor: '#3F5238',
+    shadowColor: '#2A3A26',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.10,
     shadowRadius: 14,
@@ -44,7 +44,7 @@ export const shadowIconPill: ShadowStyle = Platform.select({
 // Save pill in the cook dock — 60×60
 export const shadowSavePill: ShadowStyle = Platform.select({
   ios: {
-    shadowColor: '#3F5238',
+    shadowColor: '#2A3A26',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.10,
     shadowRadius: 20,
@@ -68,7 +68,7 @@ export const shadowCtaPrimary: ShadowStyle = Platform.select({
 // Smaller filled forest CTA — "Cook tonight" inside spotlight card row
 export const shadowCtaInline: ShadowStyle = Platform.select({
   ios: {
-    shadowColor: '#3F5238',
+    shadowColor: '#2A3A26',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.22,
     shadowRadius: 18,
@@ -80,7 +80,7 @@ export const shadowCtaInline: ShadowStyle = Platform.select({
 // Floating tab bar at bottom of tabs
 export const shadowTabBar: ShadowStyle = Platform.select({
   ios: {
-    shadowColor: '#3F5238',
+    shadowColor: '#2A3A26',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.12,
     shadowRadius: 40,

@@ -1,42 +1,47 @@
-// Palette — baseline "A" (Paper: Tonight — Populated + Recipe Modal — Light).
-// Cream ground, deep forest ink, sage mono, rust accent. Warm, pastoral, candlelit.
+// Palette — B (primary) + selected C highlights.
+// Cream ground, deep forest ink, sage mono, rust accent. Blue + ochre reserved
+// for small highlights (tier chips, status dots, secondary badges).
 // Source of truth for all surface, text, accent, and wash colors.
 
 export const palette = {
   // Grounds
-  background: '#F6F0E6',
-  surface: '#FFFCF6',
-  surfaceTranslucent: 'rgba(255, 252, 246, 0.85)',
-  surfaceTranslucentSoft: 'rgba(255, 252, 246, 0.78)',
-  surfaceTranslucentFirm: 'rgba(255, 252, 246, 0.82)',
+  background: '#FAF5EC',
+  surface: '#FEFBF3',
+  surfaceTranslucent: 'rgba(254, 251, 243, 0.85)',
+  surfaceTranslucentSoft: 'rgba(254, 251, 243, 0.78)',
+  surfaceTranslucentFirm: 'rgba(254, 251, 243, 0.82)',
 
-  // Ink family — display/body text
-  ink: '#2C2418',
-  text: '#2C2418',
-  textSecondary: '#7A8568',
-  textTertiary: 'rgba(122, 133, 104, 0.65)',
+  // Ink family — display/body text (deep forest doubles as ink in palette B)
+  ink: '#2A3A26',
+  text: '#2A3A26',
+  textSecondary: '#5F7057',
+  textTertiary: 'rgba(95, 112, 87, 0.65)',
 
   // Forest family — primary accent / CTA ground
-  primary: '#3F5238',
-  primaryMuted: '#7A8568',
+  primary: '#2A3A26',
+  primaryMuted: '#5F7057',
 
   // Rust family — decorative accent / kicker
   accent: '#C36A48',
   accentDeep: '#A85539',
 
-  // Secondary accent — reserved for palette C pivot (prussian blue, unused in baseline)
+  // Blue — palette C highlight (prussian). Use sparingly for secondary status or
+  // category chips. NOT a replacement for the forest primary.
   utility: '#3D5469',
-  utilityMuted: 'rgba(61, 84, 105, 0.6)',
+  utilityMuted: 'rgba(61, 84, 105, 0.55)',
+
+  // Ochre — palette C highlight. Rare; reserved for warm-side callouts.
+  highlight: '#E2BA7C',
 
   // Borders / rings
-  glassBorder: 'rgba(63, 82, 56, 0.10)',
+  glassBorder: 'rgba(42, 58, 38, 0.10)',
   haloRing: 'rgba(195, 106, 72, 0.08)',
-  ingredientRowBorder: 'rgba(63, 82, 56, 0.10)',
-  statRuleColor: 'rgba(63, 82, 56, 0.18)',
+  ingredientRowBorder: 'rgba(42, 58, 38, 0.10)',
+  statRuleColor: 'rgba(42, 58, 38, 0.18)',
 
   // Shadows (tinted)
   shadowWarm: 'rgba(168, 85, 57, 0.12)',
-  shadowCool: 'rgba(63, 82, 56, 0.12)',
+  shadowCool: 'rgba(42, 58, 38, 0.12)',
 
   // Washes / atmosphere
   washSage: 'rgba(154, 174, 128, 0.22)',
