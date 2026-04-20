@@ -4,9 +4,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
-import { PaperCard } from '../../components/PaperCard';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { palette, spacing, radius } from '../../design';
+import {
+  PaintedButton,
+  PaintedDivider,
+  IconHeart,
+} from '../../components/painted';
+import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
 import { selectCurrent, selectNext, useSwipeDeck } from '../../stores/swipeDeck';
@@ -56,23 +60,34 @@ export function SwipeNightScreen() {
   }, [reset, success]);
 
   return (
-    <ScreenShell>
-      <Mono>swipe night</Mono>
-      <View style={{ height: spacing.sm }} />
-      <DisplayText>Build your week.</DisplayText>
-      <BrushstrokeUnderline
-        width={240}
-        color={palette.utility}
-        pathVariant="v2"
-        style={{ marginTop: -4 }}
-      />
-      <View style={{ height: spacing.md }} />
-      <Mono>
-        {total > 0
-          ? `${Math.min(index + 1, total)} of ${total} · ${likedCount} saved`
-          : '…'}
-      </Mono>
-      <View style={{ height: spacing.lg }} />
+    <ScreenShell horizontalPadding={24}>
+      <View style={styles.header}>
+        <View style={styles.kickerRow}>
+          <Mono size={10} bold color={palette.accentDeep}>
+            swipe night
+          </Mono>
+          <View style={styles.kickerDot} />
+          <Mono size={10} color={palette.textSecondary}>
+            {total > 0
+              ? `${Math.min(index + 1, total)} of ${total} · ${likedCount} saved`
+              : 'loading deck'}
+          </Mono>
+        </View>
+        <View style={styles.displayTitleWrap}>
+          <DisplayText size={44} color={palette.primary} style={styles.displayTitle}>
+            Build your week
+          </DisplayText>
+          <BrushstrokeUnderline
+            width={220}
+            color={palette.utility}
+            pathVariant="v2"
+            strokeWidth={2.4}
+            style={styles.displayUnderline}
+          />
+        </View>
+      </View>
+
+      <View style={{ height: spacing.lg + spacing.sm }} />
 
       {isLoading ? (
         <Mono>loading deck</Mono>
@@ -98,8 +113,31 @@ export function SwipeNightScreen() {
 
       {current ? (
         <View style={styles.actions}>
-          <ActionButton label="skip" onPress={() => { select(); handlePass(); }} tone="utility" />
-          <ActionButton label="save" onPress={() => { select(); handleLike(); }} tone="accent" />
+          <Pressable
+            onPress={() => {
+              select();
+              handlePass();
+            }}
+            style={({ pressed }) => [
+              styles.skipButton,
+              pressed ? { opacity: 0.85, transform: [{ scale: 0.97 }] } : null,
+            ]}
+          >
+            <Mono size={11} bold color={palette.utility}>
+              skip
+            </Mono>
+          </Pressable>
+          <PaintedButton
+            label="Save"
+            size="md"
+            tone="rust"
+            onPress={() => {
+              select();
+              handleLike();
+            }}
+            leadingIcon={<IconHeart size={14} color={palette.surface} filled />}
+            style={{ flex: 1 }}
+          />
         </View>
       ) : null}
     </ScreenShell>
@@ -114,45 +152,60 @@ function EmptyState({
   onReset: () => void;
 }) {
   return (
-    <PaperCard padding={spacing.lg}>
-      <Mono>deck complete</Mono>
+    <View style={styles.empty}>
+      <Mono size={10} bold color={palette.accentDeep}>
+        deck complete
+      </Mono>
       <View style={{ height: spacing.xs }} />
-      <DisplayText size={26}>You saved {likedCount}.</DisplayText>
+      <DisplayText size={28} color={palette.ink} style={styles.emptyTitle}>
+        You saved {likedCount}.
+      </DisplayText>
       <View style={{ height: spacing.sm }} />
-      <BodyText size={14} color={palette.textSecondary}>
+      <BodyText size={14} color={palette.textSecondary} weight="medium">
         Your picks will show up in Tonight and the shopping list. A fresh deck
         lands every Saturday.
       </BodyText>
       <View style={{ height: spacing.md }} />
-      <Pressable onPress={onReset} style={styles.resetButton}>
-        <Mono bold color={palette.accent}>
-          shuffle again
-        </Mono>
-      </Pressable>
-    </PaperCard>
-  );
-}
-
-function ActionButton({
-  label,
-  onPress,
-  tone,
-}: {
-  label: string;
-  onPress: () => void;
-  tone: 'utility' | 'accent';
-}) {
-  const color = tone === 'accent' ? palette.accent : palette.utility;
-  return (
-    <Pressable onPress={onPress} style={[styles.actionButton, { borderColor: color }]}>
-      <Mono bold color={color}>
-        {label}
-      </Mono>
-    </Pressable>
+      <PaintedDivider />
+      <View style={{ height: spacing.md }} />
+      <PaintedButton
+        label="Shuffle again"
+        size="md"
+        tone="rust"
+        onPress={onReset}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    gap: 6,
+  },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  kickerDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.textSecondary,
+  },
+  displayTitleWrap: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+  },
+  displayTitle: {
+    letterSpacing: -1.2,
+    lineHeight: 48,
+  },
+  displayUnderline: {
+    position: 'absolute',
+    left: -6,
+    bottom: -8,
+  },
   stack: {
     minHeight: 420,
     position: 'relative',
@@ -172,23 +225,27 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     flexDirection: 'row',
     gap: spacing.md,
-    justifyContent: 'center',
-  },
-  actionButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    backgroundColor: palette.surfaceTranslucent,
-    minWidth: 96,
     alignItems: 'center',
   },
-  resetButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
+  skipButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: palette.accent,
+    borderColor: palette.utilityMuted,
+    backgroundColor: palette.surfaceTranslucent,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  empty: {
+    borderRadius: 22,
+    padding: spacing.lg,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.haloRing,
+  },
+  emptyTitle: {
+    letterSpacing: -0.6,
+    lineHeight: 32,
   },
 });
