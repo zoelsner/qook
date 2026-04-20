@@ -56,6 +56,29 @@ export async function getCurrentDeck(): Promise<CohortDeck | null> {
   return (data as CohortDeck | null) ?? null;
 }
 
+export async function getSwipeFeed(): Promise<Recipe[]> {
+  if (mode === 'mock') {
+    await lag();
+    const byId = new Map(mockRecipes.map((r) => [r.id, r]));
+    return mockDeck.recipeIds
+      .map((id) => byId.get(id))
+      .filter((r): r is Recipe => Boolean(r));
+  }
+  const deck = await getCurrentDeck();
+  if (!deck || deck.recipeIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .in('id', deck.recipeIds);
+  if (error) throw error;
+  const order = new Map(deck.recipeIds.map((id, i) => [id, i]));
+  return (data as Recipe[]).slice().sort((a, b) => {
+    const ai = order.get(a.id) ?? 0;
+    const bi = order.get(b.id) ?? 0;
+    return ai - bi;
+  });
+}
+
 export async function recordSwipe(
   recipeId: string,
   direction: 'like' | 'pass'
@@ -109,6 +132,7 @@ export const api = {
   getTonightPlan,
   getRecipeById,
   getCurrentDeck,
+  getSwipeFeed,
   recordSwipe,
   getGroceries,
   toggleGrocery,
