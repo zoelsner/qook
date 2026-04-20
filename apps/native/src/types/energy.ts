@@ -1,22 +1,10 @@
-// Temporary local energy-tier type + palette bridge.
-// Batch 3 replaces this with `import { EnergyTier } from '@qook/shared'`.
-// The runtime palette keys in `src/design/colors.ts` are camelCase; this map
-// translates the canonical dashed form used throughout the domain layer.
+// Client-side bridge between the canonical domain EnergyTier (dashed form,
+// in @qook/shared) and the palette.energyTier camelCase keys in src/design/colors.ts.
 
 import { energyTier, type EnergyTierKey } from '../design/colors';
+import { ENERGY_TIERS, type EnergyTier } from '@qook/shared';
 
-export type EnergyTier =
-  | 'brain-is-fried'
-  | 'after-work'
-  | 'got-energy'
-  | 'weekend-project';
-
-export const ENERGY_TIER_KEYS: EnergyTier[] = [
-  'brain-is-fried',
-  'after-work',
-  'got-energy',
-  'weekend-project',
-];
+export { ENERGY_TIERS, type EnergyTier };
 
 const PALETTE_KEY: Record<EnergyTier, EnergyTierKey> = {
   'brain-is-fried': 'brainIsFried',

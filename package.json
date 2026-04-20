@@ -1,0 +1,8 @@
+{
+  "name": "qook",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

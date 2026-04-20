@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { palette, radius, spacing } from '../design';
 import {
   energyTierColors,
-  ENERGY_TIER_KEYS,
+  ENERGY_TIERS,
   ENERGY_TIER_LABEL,
   ENERGY_TIER_SUBTITLE,
   type EnergyTier,
@@ -21,7 +21,7 @@ export function EnergyPicker({ value, onChange }: EnergyPickerProps) {
 
   return (
     <View style={styles.row}>
-      {ENERGY_TIER_KEYS.map((tier) => {
+      {ENERGY_TIERS.map((tier) => {
         const active = value === tier;
         const colors = energyTierColors(tier);
         return (

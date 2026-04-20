@@ -12,6 +12,7 @@
     "bake-wobble": "bun run scripts/bake-wobble.ts"
   },
   "dependencies": {
+    "@qook/shared": "workspace:*",
     "@expo-google-fonts/dm-sans": "^0.4.2",
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",
