@@ -1,28 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   View,
-  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import type {
   IngredientGroup,
+  Ingredient,
   Recipe,
-  RecipeSection,
-  RecipeTimelineItem,
 } from '@qook/shared';
 
 import { FoodHeroImage } from '../../components/FoodHeroImage';
-import { EnergyBadge } from '../../components/EnergyBadge';
-import { PaperCard } from '../../components/PaperCard';
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { WashBackground } from '../../components/WashBackground';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { palette, radius, spacing, screen, typeScale } from '../../design';
+import {
+  PaintedButton,
+  PaintedCheckbox,
+  PaintedDivider,
+  IconPill,
+  GlassChip,
+  IconClose,
+  IconBookmark,
+  IconShare,
+  IconHeart,
+  IconCookingSteam,
+} from '../../components/painted';
+import { palette, spacing } from '../../design';
+import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
 import type { SeedMealKey } from '../../lib/assets';
@@ -33,11 +41,15 @@ export interface RecipeDetailModalProps {
 
 export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const router = useRouter();
-  const { tap } = useHaptics();
+  const { tap, press, select } = useHaptics();
+  const insets = useSafeAreaInsets();
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['recipe', recipeId],
     queryFn: () => api.getRecipeById(recipeId),
   });
+
+  const [saved, setSaved] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
 
   const close = () => {
     tap();
@@ -47,279 +59,471 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   return (
     <View style={styles.root}>
       <WashBackground />
-      <SafeAreaView edges={['top']} style={styles.safe}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
-        >
-          {isLoading || !recipe ? (
-            <LoadingState />
-          ) : (
-            <RecipeBody recipe={recipe} />
-          )}
-        </ScrollView>
-        <CloseButton onPress={close} />
-      </SafeAreaView>
-    </View>
-  );
-}
-
-function RecipeBody({ recipe }: { recipe: Recipe }) {
-  return (
-    <>
-      <FoodHeroImage
-        localKey={recipe.localImageKey as SeedMealKey | undefined}
-        remoteUrl={recipe.heroImageUrl}
-        blurhash={recipe.blurhash}
-        height={280}
-        cornerRadius={radius.sheet}
-        style={styles.hero}
-      />
-
-      <View style={styles.hPad}>
-        <View style={{ height: spacing.lg }} />
-        <EnergyBadge tier={recipe.tier} />
-        <View style={{ height: spacing.sm }} />
-        <DisplayText size={typeScale.displayM}>{recipe.title}</DisplayText>
-        <BrushstrokeUnderline
-          width={180}
-          color={palette.accent}
-          style={{ marginTop: -2 }}
-        />
-        <View style={{ height: spacing.md }} />
-        <Mono>
-          {recipe.cuisine} · {recipe.timeMinutes} min · serves {recipe.servings} ·{' '}
-          {recipe.difficulty}
-        </Mono>
-
-        {recipe.notes ? (
-          <>
-            <View style={{ height: spacing.md }} />
-            <BodyText
-              size={typeScale.bodyLG}
-              weight="medium"
-              color={palette.primary}
-            >
-              {recipe.notes}
-            </BodyText>
-          </>
-        ) : null}
-
-        <SectionHeader kicker="what you need" label="Ingredients" />
-        {recipe.ingredients.map((group, idx) => (
-          <IngredientGroupCard key={`${group.title}-${idx}`} group={group} />
-        ))}
-
-        <SectionHeader kicker="how to cook" label="Steps" />
-        {recipe.steps.map((section, idx) => (
-          <StepSectionCard
-            key={`${section.title}-${idx}`}
-            index={idx + 1}
-            section={section}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: 96 + insets.bottom + spacing.lg,
+        }}
+      >
+        {isLoading || !recipe ? (
+          <LoadingState />
+        ) : (
+          <RecipeBody
+            recipe={recipe}
+            checkedIds={checkedIds}
+            onToggleIngredient={(id) => {
+              select();
+              setCheckedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+            }}
           />
-        ))}
+        )}
+      </ScrollView>
 
-        {recipe.timeline.length > 0 ? (
-          <>
-            <SectionHeader kicker="timeline" label="When to do what" />
-            <TimelineCard items={recipe.timeline} />
-          </>
-        ) : null}
+      <SafeAreaView edges={['top']} style={styles.heroNav} pointerEvents="box-none">
+        <View style={styles.heroNavInner}>
+          <IconPill onPress={close} accessibilityLabel="Close">
+            <IconClose />
+          </IconPill>
+          <View style={styles.heroNavRight}>
+            <IconPill
+              onPress={() => {
+                press();
+                setSaved((s) => !s);
+              }}
+              accessibilityLabel="Save recipe"
+            >
+              <IconBookmark filled={saved} />
+            </IconPill>
+            <IconPill onPress={() => tap()} accessibilityLabel="Share recipe">
+              <IconShare />
+            </IconPill>
+          </View>
+        </View>
+      </SafeAreaView>
 
-        {recipe.dietaryTags.length > 0 ? (
-          <>
-            <View style={{ height: spacing.lg }} />
-            <Mono color={palette.textSecondary}>tags</Mono>
-            <View style={{ height: spacing.sm }} />
-            <View style={styles.tagRow}>
-              {recipe.dietaryTags.map((t) => (
-                <View key={t} style={styles.tagChip}>
-                  <Mono size={9} color={palette.utility}>
-                    {t}
-                  </Mono>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : null}
-      </View>
-    </>
-  );
-}
-
-function SectionHeader({ kicker, label }: { kicker: string; label: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Mono>{kicker}</Mono>
-      <View style={{ height: spacing.xs }} />
-      <DisplayText size={typeScale.displayS}>{label}</DisplayText>
+      {recipe ? (
+        <CookDock
+          bottomInset={insets.bottom}
+          saved={saved}
+          onToggleSaved={() => {
+            press();
+            setSaved((s) => !s);
+          }}
+          onCook={() => {
+            press();
+          }}
+        />
+      ) : null}
     </View>
   );
 }
 
-function IngredientGroupCard({ group }: { group: IngredientGroup }) {
-  return (
-    <PaperCard padding={spacing.md} style={styles.card}>
-      <Mono color={palette.textSecondary}>{group.title}</Mono>
-      <View style={{ height: spacing.sm }} />
-      {group.items.map((ing, i) => (
-        <View key={`${ing.item}-${i}`} style={styles.ingredientRow}>
-          <BodyText size={typeScale.bodyMD} style={styles.ingredientItem}>
-            {ing.item}
-          </BodyText>
-          {ing.quantity ? (
-            <BodyText
-              size={typeScale.bodySM}
-              color={palette.textSecondary}
-              style={styles.ingredientQty}
-            >
-              {ing.quantity}
-            </BodyText>
-          ) : null}
-        </View>
-      ))}
-    </PaperCard>
-  );
-}
-
-function StepSectionCard({
-  index,
-  section,
+function RecipeBody({
+  recipe,
+  checkedIds,
+  onToggleIngredient,
 }: {
-  index: number;
-  section: RecipeSection;
+  recipe: Recipe;
+  checkedIds: Record<string, boolean>;
+  onToggleIngredient: (id: string) => void;
 }) {
+  const ingredientCount = recipe.ingredients.reduce(
+    (acc, group) => acc + group.items.length,
+    0
+  );
+
   return (
-    <PaperCard padding={spacing.md} style={styles.card}>
-      <View style={styles.stepTitleRow}>
-        <View style={styles.stepIndex}>
-          <Mono bold color={palette.accent}>
-            {String(index).padStart(2, '0')}
-          </Mono>
+    <View>
+      <View style={styles.hero}>
+        <FoodHeroImage
+          localKey={recipe.localImageKey as SeedMealKey | undefined}
+          remoteUrl={recipe.heroImageUrl}
+          blurhash={recipe.blurhash}
+          height={340}
+          cornerRadius={0}
+          style={styles.heroImage}
+        />
+      </View>
+
+      <View style={styles.titleBlock}>
+        <View style={styles.chipRow}>
+          <GlassChip>
+            <View style={styles.tierDot} />
+            <Mono size={10} bold color={palette.accentDeep}>
+              {ENERGY_TIER_LABEL[recipe.tier].toUpperCase()}
+            </Mono>
+          </GlassChip>
+          <GlassChip>
+            <Mono size={10} color={palette.textSecondary}>
+              {recipe.cuisine.toUpperCase()}
+            </Mono>
+          </GlassChip>
         </View>
-        <DisplayText size={typeScale.displayS} style={styles.stepTitle}>
-          {section.title}
+        <DisplayText size={34} style={styles.title}>
+          {recipe.title}
         </DisplayText>
       </View>
-      <View style={{ height: spacing.xs }} />
-      <BodyText size={typeScale.bodySM} color={palette.textSecondary}>
-        {section.objective}
-      </BodyText>
-      <View style={{ height: spacing.md }} />
-      {section.steps.map((step, i) => (
-        <View key={i} style={styles.substepRow}>
-          <View style={styles.substepDot} />
-          <View style={styles.substepBody}>
-            <BodyText size={typeScale.bodyMD}>{step.instruction}</BodyText>
-            {step.durationMin ? (
-              <>
-                <View style={{ height: 2 }} />
-                <Mono size={9} color={palette.utility}>
-                  {step.durationMin} min
+
+      <View style={styles.statsRow}>
+        <Stat value={String(recipe.timeMinutes)} label="minutes" />
+        <View style={styles.statRule} />
+        <Stat value={String(recipe.servings)} label="serves" />
+        <View style={styles.statRule} />
+        <Stat value={String(ingredientCount)} label="ingredients" />
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Mono size={10} bold color={palette.accentDeep}>
+            ingredients
+          </Mono>
+          <Pressable hitSlop={6}>
+            <BodyText
+              size={12}
+              weight="semi"
+              color={palette.primary}
+              style={styles.sectionAction}
+            >
+              Add all to list
+            </BodyText>
+          </Pressable>
+        </View>
+        <View>
+          {recipe.ingredients.flatMap((group, gIdx) =>
+            group.items.map((ing, iIdx) => {
+              const rowId = rowKeyFor(group, ing, gIdx, iIdx);
+              return (
+                <IngredientRow
+                  key={rowId}
+                  id={rowId}
+                  ingredient={ing}
+                  checked={!!checkedIds[rowId]}
+                  onToggle={onToggleIngredient}
+                />
+              );
+            })
+          )}
+        </View>
+      </View>
+
+      {recipe.steps.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Mono size={10} bold color={palette.accentDeep}>
+              steps
+            </Mono>
+            <Mono size={10} color={palette.textSecondary}>
+              {recipe.steps.length} sections · {recipe.timeMinutes} min
+            </Mono>
+          </View>
+          <View style={{ height: spacing.sm }} />
+          {recipe.steps.map((section, idx) => (
+            <View
+              key={`${section.title}-${idx}`}
+              style={[styles.stepSection, idx > 0 ? { marginTop: spacing.md } : null]}
+            >
+              <View style={styles.stepHeaderRow}>
+                <Mono size={11} bold color={palette.accent}>
+                  {String(idx + 1).padStart(2, '0')}
                 </Mono>
-              </>
-            ) : null}
+                <DisplayText size={20} style={styles.stepTitle}>
+                  {section.title}
+                </DisplayText>
+              </View>
+              <View style={{ height: spacing.xs }} />
+              <BodyText size={13} color={palette.textSecondary}>
+                {section.objective}
+              </BodyText>
+              <View style={{ height: spacing.sm }} />
+              {section.steps.map((step, si) => (
+                <View key={si} style={styles.substepRow}>
+                  <View style={styles.substepDot} />
+                  <View style={styles.substepBody}>
+                    <BodyText size={14} color={palette.ink}>
+                      {step.instruction}
+                    </BodyText>
+                    {step.durationMin ? (
+                      <Mono size={9} color={palette.textSecondary}>
+                        {step.durationMin} min
+                      </Mono>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+              {idx < recipe.steps.length - 1 ? (
+                <View style={{ marginTop: spacing.sm }}>
+                  <PaintedDivider />
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {recipe.timeline.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Mono size={10} bold color={palette.accentDeep}>
+              timeline
+            </Mono>
+          </View>
+          <View style={{ height: spacing.sm }} />
+          <View>
+            {recipe.timeline.map((item, idx) => (
+              <View key={idx} style={styles.timelineRow}>
+                <View style={styles.timelineTick}>
+                  <Mono size={11} bold color={palette.primary}>
+                    {String(Math.floor(item.atMin)).padStart(2, '0')}:00
+                  </Mono>
+                </View>
+                <View style={styles.timelineBody}>
+                  <BodyText size={14} color={palette.ink}>
+                    {item.instruction}
+                  </BodyText>
+                  <Mono size={9} color={palette.textTertiary}>
+                    {item.sectionTitle}
+                  </Mono>
+                </View>
+              </View>
+            ))}
           </View>
         </View>
-      ))}
-    </PaperCard>
+      ) : null}
+
+      {recipe.notes ? (
+        <View style={[styles.section, { marginTop: spacing.lg }]}>
+          <Mono size={10} bold color={palette.accentDeep}>
+            notes
+          </Mono>
+          <View style={{ height: spacing.xs }} />
+          <BodyText size={14} color={palette.textSecondary} weight="medium">
+            {recipe.notes}
+          </BodyText>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
-function TimelineCard({ items }: { items: RecipeTimelineItem[] }) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <PaperCard padding={spacing.md} style={styles.card}>
-      {items.map((item, i) => (
-        <View key={i} style={styles.timelineRow}>
-          <View style={styles.timelineTick}>
-            <Mono bold color={palette.primary}>
-              {formatTick(item.atMin)}
-            </Mono>
-          </View>
-          <View style={styles.timelineBody}>
-            <BodyText size={typeScale.bodyMD}>{item.instruction}</BodyText>
-            <Mono size={9} color={palette.textTertiary}>
-              {item.sectionTitle}
-            </Mono>
-          </View>
-        </View>
-      ))}
-    </PaperCard>
+    <View style={styles.stat}>
+      <DisplayText size={26} color={palette.primary} style={styles.statValue}>
+        {value}
+      </DisplayText>
+      <Mono size={9} bold color={palette.textSecondary} style={styles.statLabel}>
+        {label.toUpperCase()}
+      </Mono>
+    </View>
   );
 }
 
-function formatTick(minutes: number): string {
-  const m = Math.floor(minutes);
-  return `${String(m).padStart(2, '0')}:00`;
+function IngredientRow({
+  id,
+  ingredient,
+  checked,
+  onToggle,
+}: {
+  id: string;
+  ingredient: Ingredient;
+  checked: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onToggle(id)}
+      style={({ pressed }) => [
+        styles.ingredientRow,
+        pressed ? { opacity: 0.78 } : null,
+      ]}
+    >
+      <PaintedCheckbox checked={checked} size={22} />
+      <BodyText
+        size={16}
+        weight="semi"
+        color={checked ? palette.textSecondary : palette.ink}
+        style={[
+          styles.ingredientName,
+          checked ? { textDecorationLine: 'line-through' } : null,
+        ]}
+      >
+        {ingredient.item}
+      </BodyText>
+      {ingredient.quantity ? (
+        <Mono size={12} color={palette.textSecondary} style={styles.ingredientQty}>
+          {ingredient.quantity}
+        </Mono>
+      ) : null}
+    </Pressable>
+  );
 }
 
 function LoadingState() {
   return (
-    <View style={[styles.hPad, { paddingTop: spacing.xxl }]}>
+    <View style={{ paddingTop: spacing.xxl * 2, paddingHorizontal: spacing.lg }}>
       <Mono>loading recipe</Mono>
     </View>
   );
 }
 
-function CloseButton({ onPress }: { onPress: () => void }) {
-  const insets = useSafeAreaInsets();
+function CookDock({
+  bottomInset,
+  saved,
+  onToggleSaved,
+  onCook,
+}: {
+  bottomInset: number;
+  saved: boolean;
+  onToggleSaved: () => void;
+  onCook: () => void;
+}) {
   return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={12}
-      style={[styles.close, { top: insets.top + spacing.sm }]}
+    <View
+      style={[
+        styles.cookDock,
+        { bottom: Math.max(bottomInset, spacing.sm) + spacing.sm },
+      ]}
     >
-      <Mono size={10} bold color={palette.primary}>
-        done
-      </Mono>
-    </Pressable>
+      <IconPill size="lg" onPress={onToggleSaved} accessibilityLabel="Save">
+        <IconHeart
+          size={22}
+          color={palette.accent}
+          strokeColor={palette.accentDeep}
+          filled={saved}
+        />
+      </IconPill>
+      <PaintedButton
+        label="Cook tonight"
+        size="lg"
+        tone="forest"
+        onPress={onCook}
+        leadingIcon={<IconCookingSteam />}
+        style={styles.cookCta}
+      />
+    </View>
   );
 }
 
-const cardStyle: ViewStyle = {
-  marginTop: spacing.sm,
-};
+function rowKeyFor(group: IngredientGroup, ing: Ingredient, gIdx: number, iIdx: number): string {
+  return `${group.role}-${gIdx}-${iIdx}-${ing.item}`;
+}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.background },
-  safe: { flex: 1 },
-  scroll: {
-    paddingBottom: screen.bottom,
-  },
   hero: {
-    marginHorizontal: screen.horizontal,
-    marginTop: spacing.xs,
+    width: '100%',
+    height: 340,
   },
-  hPad: {
-    paddingHorizontal: screen.horizontal,
+  heroImage: {
+    width: '100%',
+    height: 340,
   },
-  sectionHeader: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
+  heroNav: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
-  card: cardStyle,
-  ingredientRow: {
+  heroNavInner: {
     flexDirection: 'row',
-    alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.glassBorder,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: spacing.sm,
   },
-  ingredientItem: { flex: 1, paddingRight: spacing.sm },
-  ingredientQty: { textAlign: 'right' },
-  stepTitleRow: {
+  heroNavRight: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  titleBlock: {
+    marginTop: -18,
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: spacing.xs + 2,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  tierDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: palette.accent,
+  },
+  title: {
+    letterSpacing: -1,
+    lineHeight: 38,
+  },
+  statsRow: {
+    marginTop: spacing.lg,
+    marginHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 14,
   },
-  stepIndex: {
-    width: 28,
-    marginRight: spacing.sm,
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
   },
-  stepTitle: { flex: 1 },
+  statValue: {
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    letterSpacing: 1.8,
+  },
+  statRule: {
+    width: 1,
+    height: 36,
+    backgroundColor: palette.statRuleColor,
+  },
+  section: {
+    marginTop: spacing.lg,
+    paddingHorizontal: 24,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingHorizontal: 4,
+    marginBottom: 12,
+  },
+  sectionAction: {
+    fontStyle: 'italic',
+  },
+  ingredientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.ingredientRowBorder,
+  },
+  ingredientName: {
+    flex: 1,
+    letterSpacing: -0.15,
+    lineHeight: 20,
+  },
+  ingredientQty: {
+    letterSpacing: 1.2,
+  },
+  stepSection: {},
+  stepHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  stepTitle: {
+    flex: 1,
+    lineHeight: 22,
+  },
   substepRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    gap: spacing.sm,
     paddingVertical: 6,
   },
   substepDot: {
@@ -328,38 +532,28 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: palette.accent,
     marginTop: 9,
-    marginRight: spacing.sm,
   },
   substepBody: { flex: 1 },
   timelineRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    gap: spacing.sm,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.glassBorder,
+    borderBottomColor: palette.ingredientRowBorder,
   },
   timelineTick: {
     width: 56,
-    marginRight: spacing.sm,
   },
   timelineBody: { flex: 1 },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  tagChip: {
-    borderRadius: radius.tiny,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(61, 84, 105, 0.08)',
-  },
-  close: {
+  cookDock: {
     position: 'absolute',
-    right: screen.horizontal,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: palette.surfaceTranslucent,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cookCta: {
+    flex: 1,
   },
 });
