@@ -3,10 +3,32 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { palette, radius, screen, spacing } from '../design';
+import Svg, { Path } from 'react-native-svg';
+import { palette, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
 import { useHaptics } from '../hooks/useHaptics';
-import { Mono } from './Text';
+import { BodyText } from './Text';
+import {
+  IconTabTonight,
+  IconTabSwipe,
+  IconTabShop,
+  IconTabSaved,
+  IconTabMore,
+} from './painted';
+
+type TabName = 'tonight' | 'swipe-night' | 'shop' | 'saved' | 'more';
+
+const LABELS: Record<TabName, string> = {
+  tonight: 'Tonight',
+  'swipe-night': 'Swipe',
+  shop: 'Shop',
+  saved: 'Saved',
+  more: 'More',
+};
+
+// Baked wobbly underline for the active tab (150×6 viewBox — from Paper).
+const TAB_UNDERLINE_PATH =
+  'M6 3 C 20 1, 40 5, 60 3 S 100 5, 130 2 S 144 4, 148 3';
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -20,11 +42,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         shadowTabBar,
       ]}
     >
-      <BlurView intensity={35} tint="light" style={styles.bar}>
+      <BlurView intensity={24} tint="light" style={styles.bar}>
         {state.routes.map((route, idx) => {
           const focused = state.index === idx;
           const { options } = descriptors[route.key];
-          const label = (options.title ?? route.name) as string;
+          const name = route.name as TabName;
+          const label = LABELS[name] ?? (options.title ?? route.name);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -47,13 +70,29 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
               accessibilityState={focused ? { selected: true } : undefined}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             >
-              <Mono
+              {focused ? (
+                <View pointerEvents="none" style={styles.underline}>
+                  <Svg width="100%" height="6" viewBox="0 0 150 6" fill="none">
+                    <Path
+                      d={TAB_UNDERLINE_PATH}
+                      stroke={palette.accent}
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      opacity={0.85}
+                      fill="none"
+                    />
+                  </Svg>
+                </View>
+              ) : null}
+              <TabIcon name={name} focused={focused} />
+              <BodyText
                 size={10}
-                bold={focused}
-                color={focused ? palette.accent : palette.textSecondary}
+                weight={focused ? 'semi' : 'medium'}
+                color={focused ? palette.accentDeep : palette.textSecondary}
+                style={styles.tabLabel}
               >
                 {label}
-              </Mono>
+              </BodyText>
             </Pressable>
           );
         })}
@@ -62,24 +101,57 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   );
 }
 
+function TabIcon({ name, focused }: { name: TabName; focused: boolean }) {
+  const tint = focused ? palette.accent : palette.textSecondary;
+  switch (name) {
+    case 'tonight':
+      return <IconTabTonight color={focused ? palette.accent : palette.textSecondary} />;
+    case 'swipe-night':
+      return <IconTabSwipe color={tint} />;
+    case 'shop':
+      return <IconTabShop color={tint} />;
+    case 'saved':
+      return <IconTabSaved color={tint} />;
+    case 'more':
+      return <IconTabMore color={tint} />;
+    default:
+      return null;
+  }
+}
+
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    borderRadius: radius.pill,
+    left: 12,
+    right: 12,
+    borderRadius: 22,
     overflow: 'hidden',
     backgroundColor: palette.surfaceTranslucent,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.haloRing,
   },
   bar: {
     flexDirection: 'row',
-    height: screen.tabBarHeight,
+    height: 68,
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
   },
   tab: {
-    flex: 1,
+    width: 56,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+  },
+  tabLabel: {
+    letterSpacing: 0.2,
+    lineHeight: 12,
+  },
+  underline: {
+    position: 'absolute',
+    top: -16,
+    left: '50%',
+    width: 150,
+    transform: [{ translateX: -75 }],
   },
 });
