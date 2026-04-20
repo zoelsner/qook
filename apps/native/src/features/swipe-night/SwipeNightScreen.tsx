@@ -130,7 +130,7 @@ export function SwipeNightScreen() {
           <PaintedButton
             label="Save"
             size="md"
-            tone="rust"
+            tone="forest"
             onPress={() => {
               select();
               handleLike();
