@@ -26,9 +26,54 @@ export function PaintedCheckbox({
   style,
   disabled,
 }: PaintedCheckboxProps) {
+  const svg = (
+    <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {checked ? (
+        <>
+          <Path
+            d={BOX_PATH}
+            fill="rgba(154, 174, 128, 0.85)"
+            stroke={palette.primary}
+            strokeWidth={1.4}
+            strokeLinejoin="round"
+          />
+          <Path
+            d={CHECK_PATH}
+            stroke={palette.primary}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            fill="none"
+          />
+        </>
+      ) : (
+        <Path
+          d={BOX_PATH}
+          fill="none"
+          stroke={palette.primary}
+          strokeWidth={1.8}
+          strokeLinejoin="round"
+          opacity={0.85}
+        />
+      )}
+    </Svg>
+  );
+
+  // When onChange isn't provided, assume a parent Pressable owns the tap — render
+  // as pointerEvents-none View so taps on the square bubble to the row handler.
+  if (!onChange) {
+    return (
+      <View
+        pointerEvents="none"
+        style={[{ width: size, height: size, opacity: disabled ? 0.5 : 1 }, style]}
+      >
+        {svg}
+      </View>
+    );
+  }
+
   const handle = () => {
     if (disabled) return;
-    onChange?.(!checked);
+    onChange(!checked);
   };
 
   return (
@@ -41,35 +86,7 @@ export function PaintedCheckbox({
         style,
       ]}
     >
-      <Svg width={size} height={size} viewBox="0 0 28 28" fill="none">
-        {checked ? (
-          <>
-            <Path
-              d={BOX_PATH}
-              fill="rgba(154, 174, 128, 0.85)"
-              stroke={palette.primary}
-              strokeWidth={1.4}
-              strokeLinejoin="round"
-            />
-            <Path
-              d={CHECK_PATH}
-              stroke={palette.primary}
-              strokeWidth={2.2}
-              strokeLinecap="round"
-              fill="none"
-            />
-          </>
-        ) : (
-          <Path
-            d={BOX_PATH}
-            fill="none"
-            stroke={palette.primary}
-            strokeWidth={1.8}
-            strokeLinejoin="round"
-            opacity={0.85}
-          />
-        )}
-      </Svg>
+      {svg}
     </Pressable>
   );
 }
