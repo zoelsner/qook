@@ -19,11 +19,7 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 
 import { palette, spacing, typeScale } from './src/design';
-import {
-  BodyText,
-  DisplayText,
-  Mono,
-} from './src/design/typography';
+import { BodyText, DisplayText, Mono } from './src/components/Text';
 import { BrushstrokeUnderline } from './src/components/BrushstrokeUnderline';
 import { PaperCard } from './src/components/PaperCard';
 import { ScreenShell } from './src/components/ScreenShell';
