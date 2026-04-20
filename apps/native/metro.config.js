@@ -7,23 +7,15 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// #1 — Watch all files in the monorepo so Metro picks up workspace deps.
-config.watchFolders = [workspaceRoot];
+// Watch workspace root in addition to Expo's defaults so Metro picks up
+// @qook/shared changes without a full rebuild.
+config.watchFolders = [...(config.watchFolders ?? []), workspaceRoot];
 
-// #2 — Resolve modules from both project and workspace root node_modules.
+// Resolve modules from both project and workspace root node_modules so bun's
+// hoisted workspace deps remain discoverable.
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
-
-// #3 — Explicit workspace alias (bun's workspace link creates a symlink,
-// but an alias keeps resolution deterministic across platforms).
-config.resolver.extraNodeModules = {
-  ...(config.resolver.extraNodeModules ?? {}),
-  '@qook/shared': path.resolve(workspaceRoot, 'packages/shared/src'),
-};
-
-// #4 — Disable hierarchical lookup so Metro doesn't walk out of the monorepo.
-config.resolver.disableHierarchicalLookup = true;
 
 module.exports = config;
