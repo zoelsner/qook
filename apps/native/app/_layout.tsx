@@ -57,6 +57,7 @@ export default function RootLayout() {
           >
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="(eat)" options={{ presentation: 'modal' }} />
           </Stack>
           <StatusBar style="dark" />
         </QueryClientProvider>
