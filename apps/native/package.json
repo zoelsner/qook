@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint 'src/**/*.{ts,tsx}' 'app/**/*.{ts,tsx}'",
+    "bake-wobble": "bun run scripts/bake-wobble.ts"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
