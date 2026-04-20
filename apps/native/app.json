@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "native",
-    "slug": "native",
-    "version": "1.0.0",
+    "name": "Qook",
+    "slug": "qook",
+    "scheme": "qook",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,15 +11,20 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAF5EC"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.kata.qook",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.kata.qook",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FAF5EC"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -26,9 +32,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "experiments": {
+      "typedRoutes": true
+    },
     "plugins": [
       "expo-router",
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-splash-screen"
+    ],
+    "extra": {
+      "supabaseUrl": "https://YOUR_PROJECT.supabase.co",
+      "supabaseAnonKey": "PUBLIC_ANON_KEY",
+      "apiMode": "mock"
+    }
   }
 }
