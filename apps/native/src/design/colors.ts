@@ -4,12 +4,12 @@
 // Source of truth for all surface, text, accent, and wash colors.
 
 export const palette = {
-  // Grounds
-  background: '#FAF5EC',
-  surface: '#FEFBF3',
-  surfaceTranslucent: 'rgba(254, 251, 243, 0.85)',
-  surfaceTranslucentSoft: 'rgba(254, 251, 243, 0.78)',
-  surfaceTranslucentFirm: 'rgba(254, 251, 243, 0.82)',
+  // Grounds — lightened ~20% toward white for a quieter / airier feel
+  background: '#FCF9F1',
+  surface: '#FFFCF6',
+  surfaceTranslucent: 'rgba(255, 252, 246, 0.85)',
+  surfaceTranslucentSoft: 'rgba(255, 252, 246, 0.78)',
+  surfaceTranslucentFirm: 'rgba(255, 252, 246, 0.82)',
 
   // Ink family — display/body text (deep forest doubles as ink in palette B)
   ink: '#2A3A26',
@@ -43,10 +43,10 @@ export const palette = {
   shadowWarm: 'rgba(168, 85, 57, 0.12)',
   shadowCool: 'rgba(42, 58, 38, 0.12)',
 
-  // Washes / atmosphere
-  washSage: 'rgba(154, 174, 128, 0.22)',
-  washRust: 'rgba(195, 106, 72, 0.14)',
-  washAmber: 'rgba(226, 186, 124, 0.12)',
+  // Washes / atmosphere — pulled down ~20% so the cream reads as the hero
+  washSage: 'rgba(154, 174, 128, 0.16)',
+  washRust: 'rgba(195, 106, 72, 0.10)',
+  washAmber: 'rgba(226, 186, 124, 0.09)',
 
   destructive: '#B33939',
 } as const;
