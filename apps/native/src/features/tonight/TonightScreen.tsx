@@ -32,15 +32,15 @@ interface SpotlightState {
 export function TonightScreen() {
   const router = useRouter();
   const { press, tap } = useHaptics();
-  const {
-    data: recipes = [],
-    isLoading,
-    refetch,
-    isRefetching,
-  } = useQuery({
+  const { data: recipes = [], isLoading } = useQuery({
     queryKey: ['tonight'],
     queryFn: () => api.getTonightPlan(),
   });
+
+  const openEatFlow = () => {
+    press();
+    router.push('/(eat)/energy');
+  };
 
   const [localSpotlight, setLocalSpotlight] = useState<string | null>(null);
 
@@ -97,12 +97,8 @@ export function TonightScreen() {
           </View>
         </View>
         <IconPill
-          onPress={() => {
-            tap();
-            void refetch();
-          }}
-          accessibilityLabel="Refresh tonight plan"
-          disabled={isRefetching}
+          onPress={openEatFlow}
+          accessibilityLabel="Draft fresh recipes"
         >
           <IconRefresh />
         </IconPill>
