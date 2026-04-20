@@ -4,10 +4,11 @@
 **First build day:** 2026-04-21 (Monday)
 **Ship:** 2026-05-24 — 32 days
 
-## Status: Day 0 + full autonomous Day-1 slice complete
+## Status: Day 0 + Day-1 slice + painted-aesthetic design pivot
 
-Five architects produced ~6500 lines of planning → unified plan at [PLAN.md](./PLAN.md).
-Day 0 (2026-04-20) shipped the initial scaffold. A Day-1 autonomous slice landed 5 more commits — entire app skeleton routes, stub screens render on mock fixtures, `@qook/shared` domain package is live. Day 1 externals (Apple Dev / Supabase / EAS / domain) still pending — see below.
+Day 0 shipped the initial scaffold. Day-1 autonomous slice landed primitives + Expo Router + mock services + 5 stub screens + modal + swipe deck. **Late Day 1: full design pivot to "painted" hand-drawn aesthetic from Paper file.** 8 commits past initial push are local-only, waiting on Zach's push approval.
+
+**Paper is the design source of truth.** File has 16 artboards (light + dark variants of every screen, plus Hand-drawn UI Study, Palette + Wobble Study, Tier Icons). Port new UI from there — use `mcp__paper__*` tools to pull computed styles and SVG JSX exactly, don't eyeball from screenshots.
 
 ## What's done (as of 2026-04-20 EOD)
 
@@ -56,6 +57,21 @@ Three commits on `main` (3fefc43 latest — partially pushed; see §Publish):
 
 **Known issue:** `expo-doctor` flags "duplicate native module dependencies" — cosmetic bun workspace symlink artifacts (same-version copies under `node_modules/.bun/`). Metro resolver uses top-level `node_modules/` first, so the iOS bundle is fine. Can revisit if it causes EAS Build issues.
 
+**Design pivot (commits `ccfe3dd` → `3073b74`):**
+- [x] `RecipeDetailModal` full rebuild per Paper `Recipe Modal — Light` — hero image, IconPill close/bookmark/share, chip row, 22/2/8 stat trio, checkable ingredient rows, numbered step sections, timeline, notes, fixed Cook Dock (Heart save pill + filled-forest "Cook tonight" CTA with cooking-steam glyph).
+- [x] Swipe Night gesture stack (Reanimated Pan + spring snap-back + throw threshold, Zustand `swipeDeck` store, save/skip overlay interpolation, keyed card remount to avoid shared-value leak). Action buttons now `PaintedButton(rust)` + painted skip pill.
+- [x] **Palette:** B primary (cream `#FAF5EC` / forest `#2A3A26` / sage `#5F7057` / rust `#C36A48` / deep rust `#A85539`) with selected C highlights — prussian `#3D5469` + ochre `#E2BA7C` reserved for secondary callouts. Paper file is palette A; code is B per CLAUDE.md lock + user call.
+- [x] **Painted primitives** (`src/components/painted/`) — `PaintedButton`, `PaintedCheckbox` + `PaintedRadio`, `PaintedDivider`, `PaintedArcSpinner`, `IconPill` + `GlassChip`, 13-glyph Icon set (Close, Bookmark, Share, Heart, PaintedHeart, Refresh, ArrowRight, CookingSteam, Tab{Tonight/Swipe/Shop/Saved/More}). All SVG paths ported verbatim from Paper's `Hand-drawn UI Study`. Known divergence: Paper uses `feTurbulence`+`feDisplacementMap` which react-native-svg doesn't support; base hand-coded curves stand in (already wobbly enough at medium intensity).
+- [x] **Tonight** spotlight + more-picks layout — "TONIGHT · SPOTLIGHT 1/3 READY" kicker, 56/56 Fraunces title with brushstroke, refresh `IconPill`, 218-tall watercolor hero with Glass badges, "READY TO COOK" status + inline Cook button, 2 mini cards that swap into the spotlight slot on tap.
+- [x] **FloatingTabBar** — 5 tabs with painted SVG icons + label; focused tab renders a baked wobbly underline (150×6 path from Paper). 68h · 22r · tinted hairline border + forest drop shadow.
+- [x] **Shop (Grocery List)** — kicker + brushstroke display + add `IconPill`, section headers with hairline rule, `PaintedCheckbox` rows with optimistic toggle, Shop Dock (Ready to shop + EST price + Instacart `PaintedButton` + Copy list · Share · AmazonFresh fallback row).
+- [x] **Saved / More** headers regularized to match (kicker · display · brushstroke).
+- [x] **Eat flow** — `app/(eat)/energy|loading|review` modal stack. Uses `PaintedArcSpinner` for generation state; Review shows 3 recipe cards with tap-to-open + inline heart-toggle save. Entry wiring left for next session (direct nav to `/(eat)/energy` works today).
+
+**Design fidelity notes:**
+- Paper paths include `feTurbulence` displacement filters for live wobble; we use static hand-coded bezier curves (still visually imperfect at "medium" intensity). If we ever want the extra jitter, run an offline baking script that applies displacement and writes the mutated path string.
+- RN supports a single shadow per view — Paper's layered `box-shadow` stacks are approximated by the dominant layer; nesting Views gives the stacked halo/contact effect where needed (see `PaperCard`).
+
 ## Still pending (Day 1 externals — you drive these)
 
 Order doesn't strictly matter; Apple + Supabase should come first since they unblock everything else.
@@ -85,22 +101,33 @@ Order doesn't strictly matter; Apple + Supabase should come first since they unb
 
 ## Pick up here next session (autonomous track)
 
-Original Day-1 items 1-5 are done. Remaining queue:
+Original Day-1 items 1-5 are done. Design pivot chunk is done. Remaining queue:
 
-1. **Week 2 work — if user wants to keep pushing on mock**:
-   - Full `RecipeDetailModal` in `(modals)/recipe/[id].tsx` — ingredients + steps + timeline + hero image (currently a stub)
-   - `SwipeCard` + `useSwipeGesture` (Gesture Handler Pan + Reanimated) per section-frontend.md §10.3 — still pure code, no backend needed
-   - `stores/swipeDeck.ts` (Zustand) to back the card stack
-   - `EnergyPickerScreen` + `GenerationLoadingScreen` + `ReviewRecipesScreen` under `src/features/eat/` — plan §2.2 flow
-2. **`src/services/auth.tsx` + `(auth)/sign-in.tsx` + `(auth)/sign-up.tsx`** — blocked on Supabase project existing (ref + anon key)
-3. **Generate `assets/paper-grain.png`** (one-time ~$0.04 Seedream call — needs OPENROUTER_API_KEY). Re-enables `WashBackground` grain overlay.
-4. **Edge functions** (`_shared/openrouter.ts`, `_shared/supabase.ts`, then the 4 live fns) — blocks on Supabase link + OPENROUTER_API_KEY.
-5. **`packages/shared/src/domain/{groceryNormalize,deckVariety,dietaryTags}.ts`** — port/write when first consumer needs them (Week 2-3 per section-domain §10).
-6. **`supabase gen types typescript --linked > packages/shared/src/database.ts`** — after Supabase link; regenerates the DB row types that domain mappers consume.
+1. **Eat-flow entry wiring** — decide where users enter `/(eat)/energy` from. Candidates: Tonight refresh button (long-press vs tap — already used for refetch), SwipeNight empty state "shuffle again", Saved empty state "generate some", or a dedicated FAB. Needs product decision before wiring.
+2. **Paper import polish** — the light artboards for Sign In, Swipe Night, Energy Picker are all in Paper with specific chrome that's worth porting at some point. Lower-priority than the 5-tab happy path which is now done.
+3. **`src/services/auth.tsx` + `(auth)/sign-in.tsx` + `(auth)/sign-up.tsx`** — blocked on Supabase project existing (ref + anon key). Sign In artboard exists in Paper.
+4. **Generate `assets/paper-grain.png`** (one-time ~$0.04 Seedream call — needs OPENROUTER_API_KEY). Re-enables `WashBackground` grain overlay.
+5. **Edge functions** (`_shared/openrouter.ts`, `_shared/supabase.ts`, then the 4 live fns) — blocks on Supabase link + OPENROUTER_API_KEY.
+6. **`packages/shared/src/domain/{groceryNormalize,deckVariety,dietaryTags}.ts`** — port/write when first consumer needs them (Week 2-3 per section-domain §10).
+7. **`supabase gen types typescript --linked > packages/shared/src/database.ts`** — after Supabase link; regenerates the DB row types that domain mappers consume.
+8. **Wobble baking script** (nice-to-have) — extend `scripts/bake-wobble.ts` to output displaced variants of the painted-shape paths so they read more "turbulence-y" without running filters at runtime. Only worth it if current "medium" wobble feels too tame in-device.
 
 ## Publish state (as of this file)
 
-All commits through `23ec380` (Day-1 autonomous slice) are on `main` locally. Confirm with Zach before pushing:
+**8 commits unpushed** on `main` local, waiting on Zach's approval before `git push`. In order:
+
+```
+ccfe3dd  feat(frontend): RecipeDetailModal — ingredients, steps, timeline
+925c160  feat(frontend): Swipe Night — gesture-driven deck with Zustand store
+5905151  feat(design): pivot palette to Paper baseline (A) [reverted in next commit]
+594b3ee  feat(design): painted primitives ported from Paper hand-drawn UI study
+449794c  feat(frontend): rebuild RecipeDetailModal to match Paper Recipe Modal — Light
+26b983f  feat(frontend): TonightScreen + FloatingTabBar rebuilt to Paper spec
+8de91e5  feat(frontend): port Shop, Saved, More, Swipe Night to painted aesthetic
+3073b74  feat(frontend): Eat flow (Energy → Loading → Review) in painted aesthetic
+```
+
+Ask before pushing:
 
 ```bash
 git push origin main
