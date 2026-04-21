@@ -1,7 +1,7 @@
 # Next Pass — Friends-Feedback Ship Plan
 
 **Created:** 2026-04-20 (end of Day 1)
-**Updated:** 2026-04-20 — Tier-1 fixes §7 A.1–A.5 landed in 5 commits
+**Updated:** 2026-04-20 (late) — Tier-B/C/D all landed, pushed to origin
 **Handoff from:** Claude Opus 4.7 after live demo on iPhone 17 Pro Simulator
 **Target:** ship to a few friends for feedback within the next couple sessions
 
@@ -9,21 +9,33 @@
 
 ## 0. Progress since plan was written
 
-**Already landed on `main` (as of this update):**
+**All Tier-1 through Tier-4 work landed on `origin/main`.**
 
 | Commit | Item | Note |
 |---|---|---|
-| `5c4891a` | §3.7 — lighten background + quieter washes | Applied before plan exited — cream bumped to `#FCF9F1`, wash alphas pulled ~20% |
-| `b8b92af` | (plan doc itself) | |
+| `5c4891a` | §3.7 — lighten background + quieter washes | cream → `#FCF9F1`, wash alphas pulled ~20% |
 | `ce7be50` | §7 A.1 — PaintedCheckbox tap propagation | Renders View when no `onChange`; parent row captures tap |
 | `cc5f928` | §7 A.2 — Swipe Save rust → forest | |
 | `09432e0` | §7 A.3 — Tonight refresh → `/(eat)/energy` | |
 | `6bfbda0` | §7 A.4 — Tonight Sunday-reset empty state | |
 | `048187c` | §7 A.5 — Shop dock sticky-bottom | Floats above tab bar, forest-tinted layered shadow |
+| `e9053cf` | §7 B.7 — Sign-in stub (§4.5) | `/(auth)/sign-in` + AsyncStorage gate; Continue with Apple (stub) + guest |
+| `c4c2cc4` | §7 B.8 — Onboarding 3-slide carousel (§4.4) | brand → tiers → loop; PolishedButton introduced for shell surfaces |
+| `ae36f14` | style(auth) — button iteration | gradient + sage frame experiment (later flattened) |
+| `7dd982f` | §7 C.10 — Context step (§4.2) | `/(eat)/context` between Energy + Loading; generationSession gains `context` + `setContext` + `beginGeneration`; api signature is `(tier, context?)` |
+| `b44b943` | §7 D.11 — Instacart + fallback (§4.1) | Dock wired to `openInstacart`, `openAmazonFresh`, `copyList` (expo-clipboard), `shareList` (iOS share sheet). Empty-list disables all four. |
+| `5cf2669` | style(eat) — vertical energy stack | 4 full-width rows replace truncated chips; "Haiku 4.5 · about 8 seconds" → "Fresh picks in about 10 seconds" |
 
-**Tier-1 is DONE.** All verified tsc + eslint (`--max-warnings=0`) + live in iPhone 17 Pro Simulator. §7 A.6 (tsconfig.json) was bundled into `5c4891a`.
+**All seven shell/flow items DONE.** Every commit verified `tsc + eslint --max-warnings=0` and lived in the iPhone 17 Pro Simulator during the session. Pushed to `origin/main` end of pass.
 
-**Pick up at §7 B onward:** Sign-in stub → Onboarding carousel → Context step → Instacart fallback. Full sequence and ask-points below. Simulator + Metro should still be running in the background when you resume — if not, `cd apps/native && bunx expo start --ios`.
+**User's live-reactions during this pass (captured for context):**
+- Rejected painted hand-drawn button on auth screens — flat solid forest fill with hairline border is the landing pattern for shell CTAs (PaintedButton stays for in-product actions).
+- Rejected the cutout-paper-edge button experiment — "getting too caught up, I want this actually working."
+- Asked for vertical energy stack so labels aren't truncated — done.
+- Dropped "Haiku 4.5" from the screen — users shouldn't see model names.
+- **Business model insight** (worth capturing, see §11): free tier = cohort deck access (no marginal cost), paid tier = night-of custom generation, 1–2 week trial of paid. Cohort rotation cadence + paywall placement are the next design decisions this implies.
+- Swipe count feels vague (only 3 cards cycle through 12 deck slots). Either per-card stamp or a more present top counter. **Filed, not yet touched.**
+- Energy concept is the pitch — keep it. No changes to the framing.
 
 ---
 
@@ -379,3 +391,95 @@ Zach can hand his phone to a friend with Expo Go installed, share the dev URL, a
 8. Report back: *"Is this something you'd use? What's missing? What's odd?"*
 
 That feedback loop is the actual goal of this pass — not perfect code, not real AI. Get 3 real reactions, adjust.
+
+---
+
+## 11. Handoff for next session (2026-04-20 late)
+
+Context is about to be cleared. Everything from §7 A/B/C/D is done and pushed.
+Pick up with these in roughly this priority order:
+
+### A. Visual debt from this session
+
+1. **Button styling is still unsettled.** `PolishedButton` landed as a flat
+   forest fill + hairline border (tone `forest` | `cream` | `apple`). User
+   reaction ranged from "fine" to "not loving it." The honest read: they
+   want something that feels *crafted* (matches the watercolor voice) but
+   not fussy (rejected the painted wobble AND the cutout paper edge AND
+   the dark-center gradient with sage frame). Two paths worth trying next:
+   - **A1.** Go the other way — a flat forest fill with a slightly warm
+     cream shadow instead of a border. No gradient, no border embellishment.
+     Rely on shadow + crisp radius alone.
+   - **A2.** Revisit the cutout concept but render it physically — one
+     SVG `<Path>` with an honest torn-paper outer boundary (not stretched
+     with preserveAspectRatio="none"). Needs `onLayout` to size the SVG
+     exactly to the button width. More work, might actually feel right.
+
+   Don't open the button can of worms first-thing. Wait until something
+   concrete (real device demo, friend's reaction) forces a decision.
+
+2. **Swipe counter.** Filed in §2. The 9/12 · 5 SAVED counter feels abstract
+   because only 3 cards cycle. Two proposals:
+   - **B1.** Add a small "4 / 12" stamp in the top-left corner of each
+     painted card, in mono-bold accentDeep. Makes progress tangible per card.
+   - **B2.** Bump the existing top counter to a bigger kicker with a
+     brushstroke underline (matching other tab headers).
+
+   B1 is more novel and reads better; default to that unless Zach pushes back.
+
+### B. Business-model gate (from user thinking in §0)
+
+User floated: **free = cohort deck only, paid = night-of generation, 1–2 week
+trial of paid.** This is directionally correct (the cohort batch is shared
+cost; night-of is where OpenRouter spend happens). Next design steps:
+
+1. **Paywall placement.** Clean spot is EnergyPicker CTA: "Draft three recipes"
+   becomes the paywall trigger for non-paid users. Free users can still
+   swipe, save, shop from the cohort. Don't let them tap into Context +
+   Loading and then hit a wall — gate at EnergyPicker entry.
+2. **Trial state.** Track `paid_until` on the user profile (or a local
+   AsyncStorage `trial_started_at` until Supabase lands). Show remaining
+   trial days in More tab + a subtle banner on EnergyPicker during trial.
+3. **Cohort rotation.** PLAN.md calls for weekly `pg_cron` at Sat 22:00 UTC.
+   If free users feel the deck goes stale, bump to **twice-weekly** (Tues +
+   Sat) or do themed drops (holiday, seasonal, regional). Not urgent pre-TestFlight.
+4. **Copy for the gate.** Don't call it "paywall" — call it "Unlock
+   tonight's custom picks." Lead with the value ("tuned to your energy + the
+   fridge + what you said") not the restriction.
+
+**This is v1.1 territory** — RevenueCat isn't wired yet and there's no
+Supabase project. For now: just gate the UI with a local flag. Real IAP
+lands in v1.1 per CLAUDE.md.
+
+### C. Flow polish
+
+1. **Energy kicker copy.** Currently reads "generate · draft 3 recipes · 1 of
+   10 today" — implies 10 drafts/day rate limit which is future state. Strip
+   the rate-limit bit until Supabase lands. Leave the "step 1 of 2" kicker.
+2. **Context step kicker.** Reads "step 2 of 2 · optional · 10 seconds."
+   Good, leave as-is.
+3. **Loading subtitle.** Currently rotates through static stages. Could
+   echo the context string if present: "cooking up ideas with 'leftover
+   rice'…". Small personalization, 5-line change in GenerationLoadingScreen.
+4. **Share-sheet preview.** The clipboard text has "Tonight's grocery list — Qook"
+   header. Nice. Could add a qook.app link at the bottom once domain is live.
+
+### D. Still external-blocked (Zach must drive)
+
+Unchanged from earlier sessions. Nothing in this pass moved these:
+
+- Apple Developer approval — friends demo fine with the stub; TestFlight
+  gate (D7)
+- Supabase project create + link + `supabase db push` — mock mode still
+  covers the demo
+- `OPENROUTER_API_KEY` secret in Edge Function env — gates live Eat flow
+- `qook.app` domain — not user-facing yet
+
+### Resume checklist for next session
+
+1. `git pull origin main` — everything from this pass is pushed
+2. `cd apps/native && bunx expo start --ios` — Metro; sim opens iPhone 17 Pro
+3. Check `/Users/zach/.claude/projects/-Users-zach-Projects-qook/memory/MEMORY.md` for auto-memory
+4. Read this §11 for what the last session shipped + what's next
+5. Don't re-litigate the button. Pick up on flow polish (§C) or business-model gate
+   spike (§B1–B2) unless Zach directs otherwise.
