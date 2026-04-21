@@ -26,7 +26,7 @@ export function EnergyPickerScreen() {
   const handleContinue = () => {
     press();
     start(tier);
-    router.push('/(eat)/loading');
+    router.push('/(eat)/context');
   };
 
   const handleCancel = () => {

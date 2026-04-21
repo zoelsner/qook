@@ -7,12 +7,11 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { palette, typeScale } from '../design';
 import { shadowCtaPrimary } from '../design/shadows';
 import { BodyText } from './Text';
 
-export type PolishedButtonTone = 'forest' | 'cream';
+export type PolishedButtonTone = 'forest' | 'cream' | 'apple';
 
 export interface PolishedButtonProps
   extends Omit<PressableProps, 'style' | 'children'> {
@@ -23,9 +22,9 @@ export interface PolishedButtonProps
   style?: StyleProp<ViewStyle>;
 }
 
-// Clean rounded-14 CTA with a subtle vertical gradient + hairline border.
-// Used in shell surfaces (auth, onboarding) where PaintedButton's hand-drawn
-// wobble feels out of place. Product action buttons still use PaintedButton.
+// Flat rounded CTA for shell surfaces (auth, onboarding). Solid fill,
+// hairline border, ios-like. In-app product CTAs still use PaintedButton
+// so the hand-drawn voice stays tied to recipe content.
 export function PolishedButton({
   label,
   tone = 'forest',
@@ -35,17 +34,11 @@ export function PolishedButton({
   disabled,
   ...pressable
 }: PolishedButtonProps) {
-  const isForest = tone === 'forest';
-  // Darker center, lighter edges — subtle "rolled" depth instead of top-to-bottom sheen.
-  const gradient = isForest
-    ? ['#3F5238', '#1F2C1C', '#3F5238']
-    : [palette.surface, '#E8E0C9', palette.surface];
-  const gradientStops = [0, 0.5, 1] as const;
-  // Light, desaturated sage-gray frame — reads as a matted cutout edge.
-  const borderColor = isForest
-    ? 'rgba(185, 195, 170, 0.55)'
-    : 'rgba(42, 58, 38, 0.18)';
-  const textColor = isForest ? palette.surface : palette.primary;
+  const fill =
+    tone === 'apple' ? '#000000' : tone === 'cream' ? palette.surface : palette.primary;
+  const textColor = tone === 'cream' ? palette.primary : palette.surface;
+  const borderColor =
+    tone === 'cream' ? 'rgba(42, 58, 38, 0.10)' : 'rgba(255, 252, 246, 0.08)';
 
   return (
     <View
@@ -61,29 +54,20 @@ export function PolishedButton({
         {...pressable}
         style={({ pressed }) => [
           styles.pressable,
-          { borderColor },
-          pressed ? { transform: [{ scale: 0.985 }] } : null,
+          { backgroundColor: fill, borderColor },
+          pressed ? { transform: [{ scale: 0.985 }], opacity: 0.92 } : null,
         ]}
       >
-        <LinearGradient
-          colors={gradient as [string, string, string]}
-          locations={gradientStops as unknown as [number, number, number]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.row}>
-          {leadingIcon ? <View style={styles.slot}>{leadingIcon}</View> : null}
-          <BodyText
-            weight="semi"
-            size={typeScale.bodyLG}
-            color={textColor}
-            style={styles.label}
-          >
-            {label}
-          </BodyText>
-          {trailingIcon ? <View style={styles.slot}>{trailingIcon}</View> : null}
-        </View>
+        {leadingIcon ? <View style={styles.slot}>{leadingIcon}</View> : null}
+        <BodyText
+          weight="semi"
+          size={typeScale.bodyLG}
+          color={textColor}
+          style={styles.label}
+        >
+          {label}
+        </BodyText>
+        {trailingIcon ? <View style={styles.slot}>{trailingIcon}</View> : null}
       </Pressable>
     </View>
   );
@@ -95,20 +79,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   pressable: {
-    height: 60,
+    height: 54,
     borderRadius: 14,
-    overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
-    borderWidth: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   slot: {
     flexShrink: 0,

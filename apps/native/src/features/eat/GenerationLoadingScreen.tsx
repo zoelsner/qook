@@ -22,6 +22,7 @@ export function GenerationLoadingScreen() {
   const router = useRouter();
   const { success, error } = useHaptics();
   const tier = useGenerationSession((s) => s.tier);
+  const context = useGenerationSession((s) => s.context);
   const finish = useGenerationSession((s) => s.finish);
   const fail = useGenerationSession((s) => s.fail);
   const [stage, setStage] = useState(0);
@@ -42,7 +43,7 @@ export function GenerationLoadingScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const recipes = await api.generateRecipesForEnergy(tier);
+        const recipes = await api.generateRecipesForEnergy(tier, context);
         if (cancelled) return;
         finish(recipes);
         success();
@@ -59,7 +60,7 @@ export function GenerationLoadingScreen() {
       cancelled = true;
       clearInterval(tick);
     };
-  }, [tier, finish, fail, router, success, error]);
+  }, [tier, context, finish, fail, router, success, error]);
 
   return (
     <ScreenShell scrollable={false} horizontalPadding={24}>

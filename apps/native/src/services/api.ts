@@ -116,13 +116,16 @@ export async function toggleGrocery(id: string, checked: boolean) {
   if (error) throw error;
 }
 
-export async function generateRecipesForEnergy(_tier: string): Promise<Recipe[]> {
+export async function generateRecipesForEnergy(
+  _tier: string,
+  _context?: string
+): Promise<Recipe[]> {
   if (mode === 'mock') {
     await lag(1500);
     return mockRecipes.slice(0, 3);
   }
   const { data, error } = await supabase.functions.invoke('generate-recipes', {
-    body: { tier: _tier },
+    body: { tier: _tier, context: _context?.trim() || undefined },
   });
   if (error) throw error;
   return (data as { recipes: Recipe[] }).recipes;
