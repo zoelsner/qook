@@ -98,7 +98,7 @@ export function EnergyPickerScreen() {
         weight="medium"
         style={{ textAlign: 'center' }}
       >
-        Haiku 4.5 · about 8 seconds
+        Fresh picks in about 10 seconds.
       </BodyText>
     </ScreenShell>
   );

@@ -20,7 +20,7 @@ export function EnergyPicker({ value, onChange }: EnergyPickerProps) {
   const { select } = useHaptics();
 
   return (
-    <View style={styles.row}>
+    <View style={styles.stack}>
       {ENERGY_TIERS.map((tier) => {
         const active = value === tier;
         const colors = energyTierColors(tier);
@@ -34,27 +34,39 @@ export function EnergyPicker({ value, onChange }: EnergyPickerProps) {
               }
             }}
             style={[
-              styles.pill,
+              styles.row,
               active
                 ? { backgroundColor: colors.bg, borderColor: colors.text }
-                : styles.pillInactive,
+                : styles.rowInactive,
             ]}
           >
-            <BodyText
-              size={13}
-              weight="semi"
-              color={active ? colors.text : palette.textSecondary}
-              numberOfLines={1}
+            <View style={[styles.dot, { backgroundColor: colors.text }]} />
+            <View style={styles.labels}>
+              <BodyText
+                size={15}
+                weight="semi"
+                color={active ? colors.text : palette.ink}
+              >
+                {ENERGY_TIER_LABEL[tier]}
+              </BodyText>
+              <Mono
+                size={10}
+                color={active ? colors.text : palette.textTertiary}
+                style={styles.subtitle}
+              >
+                {ENERGY_TIER_SUBTITLE[tier]}
+              </Mono>
+            </View>
+            <View
+              style={[
+                styles.radio,
+                active
+                  ? { borderColor: colors.text, backgroundColor: colors.text }
+                  : { borderColor: palette.glassBorder },
+              ]}
             >
-              {ENERGY_TIER_LABEL[tier]}
-            </BodyText>
-            <Mono
-              size={9}
-              color={active ? colors.text : palette.textTertiary}
-              numberOfLines={1}
-            >
-              {ENERGY_TIER_SUBTITLE[tier]}
-            </Mono>
+              {active ? <View style={styles.radioInner} /> : null}
+            </View>
           </Pressable>
         );
       })}
@@ -63,21 +75,46 @@ export function EnergyPicker({ value, onChange }: EnergyPickerProps) {
 }
 
 const styles = StyleSheet.create({
+  stack: {
+    gap: spacing.sm + 2,
+  },
   row: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  pill: {
-    flex: 1,
-    borderRadius: radius.nested,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 3,
     alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  pillInactive: {
+  rowInactive: {
     backgroundColor: palette.surfaceTranslucent,
     borderColor: palette.glassBorder,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  labels: {
+    flex: 1,
+    gap: 2,
+  },
+  subtitle: {
+    letterSpacing: 1,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.surface,
   },
 });
