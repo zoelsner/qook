@@ -36,12 +36,15 @@ export function PolishedButton({
   ...pressable
 }: PolishedButtonProps) {
   const isForest = tone === 'forest';
+  // Darker center, lighter edges — subtle "rolled" depth instead of top-to-bottom sheen.
   const gradient = isForest
-    ? ['#3F5238', palette.primary]
-    : [palette.surface, '#F4EFDE'];
+    ? ['#3F5238', '#1F2C1C', '#3F5238']
+    : [palette.surface, '#E8E0C9', palette.surface];
+  const gradientStops = [0, 0.5, 1] as const;
+  // Light, desaturated sage-gray frame — reads as a matted cutout edge.
   const borderColor = isForest
-    ? 'rgba(255, 252, 246, 0.16)'
-    : 'rgba(42, 58, 38, 0.10)';
+    ? 'rgba(185, 195, 170, 0.55)'
+    : 'rgba(42, 58, 38, 0.18)';
   const textColor = isForest ? palette.surface : palette.primary;
 
   return (
@@ -63,7 +66,8 @@ export function PolishedButton({
         ]}
       >
         <LinearGradient
-          colors={gradient as [string, string]}
+          colors={gradient as [string, string, string]}
+          locations={gradientStops as unknown as [number, number, number]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -91,14 +95,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   pressable: {
-    height: 56,
+    height: 60,
     borderRadius: 14,
     overflow: 'hidden',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 22,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 4,
   },
   row: {
     flexDirection: 'row',
