@@ -6,12 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WashBackground } from '../../components/WashBackground';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  IconApple,
-  PaintedButton,
-} from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { IconApple } from '../../components/painted';
 import { palette, spacing, typeScale } from '../../design';
-import { shadowCtaPrimary } from '../../design/shadows';
 import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
 import { StorageKeys, writeFlag, writeString } from '../../lib/storage';
@@ -97,15 +94,14 @@ export function SignInScreen() {
 
           <View style={styles.flexSpacer} />
 
-          <PaintedButton
+          <PolishedButton
             label="Continue with Apple"
-            size="lg"
             tone="forest"
             onPress={handleApple}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Apple"
             leadingIcon={<IconApple size={18} color={palette.surface} />}
-            fullWidth
-            style={shadowCtaPrimary}
           />
 
           <View style={{ height: spacing.md }} />

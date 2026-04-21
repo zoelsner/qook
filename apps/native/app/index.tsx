@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import { palette } from '../src/design';
 import { readFlag, StorageKeys } from '../src/lib/storage';
 
-type Gate = 'loading' | 'signed-in' | 'signed-out';
+type Gate = 'loading' | 'onboarding' | 'signed-in' | 'signed-out';
 
 export default function Index() {
   const [gate, setGate] = useState<Gate>('loading');
@@ -12,9 +12,18 @@ export default function Index() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const signedIn = await readFlag(StorageKeys.signedIn);
+      const [onboardingShown, signedIn] = await Promise.all([
+        readFlag(StorageKeys.onboardingShown),
+        readFlag(StorageKeys.signedIn),
+      ]);
       if (cancelled) return;
-      setGate(signedIn ? 'signed-in' : 'signed-out');
+      if (!onboardingShown) {
+        setGate('onboarding');
+      } else if (signedIn) {
+        setGate('signed-in');
+      } else {
+        setGate('signed-out');
+      }
     })();
     return () => {
       cancelled = true;
@@ -23,6 +32,10 @@ export default function Index() {
 
   if (gate === 'loading') {
     return <View style={{ flex: 1, backgroundColor: palette.background }} />;
+  }
+
+  if (gate === 'onboarding') {
+    return <Redirect href="/(onboarding)" />;
   }
 
   if (gate === 'signed-out') {
