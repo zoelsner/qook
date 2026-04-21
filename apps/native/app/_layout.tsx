@@ -55,6 +55,7 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: palette.background },
             }}
           >
+            <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
             <Stack.Screen name="(eat)" options={{ presentation: 'modal' }} />

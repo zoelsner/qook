@@ -237,3 +237,15 @@ export function IconTabMore({ size = 22, color = palette.textSecondary }: IconPr
     </Svg>
   );
 }
+
+// Apple logo — solid mark, leads the Sign in with Apple CTA
+export function IconApple({ size = 18, color = palette.surface }: IconProps) {
+  return (
+    <Svg width={size} height={(size / 18) * 20} viewBox="0 0 18 20" fill="none">
+      <Path
+        d="M13.5 0c-.1 1.5-.7 2.9-1.7 3.9-1 1-2.4 1.8-3.9 1.7-.1-1.5.7-3 1.6-3.9C10.5.8 12 0 13.5 0Zm3.3 14.6c-.6 1.4-.9 2-1.7 3.2-1.1 1.7-2.7 3.9-4.7 3.9-1.7 0-2.2-1.1-4.5-1.1-2.4 0-2.9 1.1-4.6 1.1-2 0-3.5-2-4.7-3.7-2.5-3.8-2.7-8.3-1.2-10.7C1.4 5.6 3.2 4.6 5 4.6c1.8 0 2.9 1 4.4 1 1.4 0 2.2-1 4.3-1 1.6 0 3.2.8 4.4 2.3-3.8 2.1-3.2 7.7-1.3 7.7Z"
+        fill={color}
+      />
+    </Svg>
+  );
+}

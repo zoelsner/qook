@@ -27,5 +27,6 @@ export {
   IconTabShop,
   IconTabSaved,
   IconTabMore,
+  IconApple,
 } from './Icon';
 export type { IconProps } from './Icon';
