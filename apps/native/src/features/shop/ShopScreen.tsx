@@ -17,6 +17,12 @@ import {
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
+import {
+  copyList,
+  openAmazonFresh,
+  openInstacart,
+  shareList,
+} from '../../lib/shoppingShare';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
   'Produce',
@@ -38,6 +44,7 @@ export function ShopScreen() {
   });
 
   const [optimistic, setOptimistic] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState(false);
 
   const grouped = useMemo(() => {
     const map = new Map<GroceryCategory, GroceryItem[]>();
@@ -53,10 +60,11 @@ export function ShopScreen() {
   }, [items]);
 
   const totalItems = items.length;
-  const checkedCount = items.filter(
-    (i) => optimistic[i.id] ?? i.checked
-  ).length;
-  const remaining = totalItems - checkedCount;
+  const uncheckedItems = useMemo(
+    () => items.filter((i) => !(optimistic[i.id] ?? i.checked)),
+    [items, optimistic]
+  );
+  const remaining = uncheckedItems.length;
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, checked }: { id: string; checked: boolean }) =>
@@ -144,7 +152,29 @@ export function ShopScreen() {
       </ScreenShell>
 
       <View style={[styles.stickyDockWrap, { bottom: dockBottom }]} pointerEvents="box-none">
-        <ShopDock remaining={remaining} onShop={() => press()} />
+        <ShopDock
+          remaining={remaining}
+          uncheckedItems={uncheckedItems}
+          onShop={() => {
+            press();
+            openInstacart(uncheckedItems);
+          }}
+          onCopy={async () => {
+            select();
+            const ok = await copyList(uncheckedItems);
+            if (ok) setCopied(true);
+          }}
+          onShare={async () => {
+            select();
+            await shareList(uncheckedItems);
+          }}
+          onAmazonFresh={() => {
+            press();
+            openAmazonFresh(uncheckedItems);
+          }}
+          copied={copied}
+          onCopiedExpire={() => setCopied(false)}
+        />
       </View>
     </View>
   );
@@ -211,12 +241,33 @@ function GroceryRow({
 
 function ShopDock({
   remaining,
+  uncheckedItems,
   onShop,
+  onCopy,
+  onShare,
+  onAmazonFresh,
+  copied,
+  onCopiedExpire,
 }: {
   remaining: number;
+  uncheckedItems: GroceryItem[];
   onShop: () => void;
+  onCopy: () => void;
+  onShare: () => void;
+  onAmazonFresh: () => void;
+  copied: boolean;
+  onCopiedExpire: () => void;
 }) {
   const estimatedDollars = Math.max(8, remaining * 3.5).toFixed(0);
+  const disabled = uncheckedItems.length === 0;
+
+  // Auto-expire the "Copied" confirmation after 1.6s.
+  React.useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(onCopiedExpire, 1600);
+    return () => clearTimeout(id);
+  }, [copied, onCopiedExpire]);
+
   return (
     <View style={styles.dock}>
       <View style={styles.dockHeader}>
@@ -244,24 +295,29 @@ function ShopDock({
         size="lg"
         tone="forest"
         onPress={onShop}
+        disabled={disabled}
         trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
         fullWidth
       />
       <View style={{ height: spacing.sm + 2 }} />
       <View style={styles.fallbackRow}>
-        <Pressable hitSlop={6}>
-          <BodyText size={12} weight="semi" color={palette.textSecondary}>
-            Copy list
+        <Pressable hitSlop={6} onPress={onCopy} disabled={disabled}>
+          <BodyText
+            size={12}
+            weight="semi"
+            color={copied ? palette.accentDeep : palette.textSecondary}
+          >
+            {copied ? 'Copied ✓' : 'Copy list'}
           </BodyText>
         </Pressable>
         <View style={styles.fallbackDot} />
-        <Pressable hitSlop={6}>
+        <Pressable hitSlop={6} onPress={onShare} disabled={disabled}>
           <BodyText size={12} weight="semi" color={palette.textSecondary}>
             Share
           </BodyText>
         </Pressable>
         <View style={styles.fallbackDot} />
-        <Pressable hitSlop={6}>
+        <Pressable hitSlop={6} onPress={onAmazonFresh} disabled={disabled}>
           <BodyText size={12} weight="semi" color={palette.textSecondary}>
             AmazonFresh
           </BodyText>
