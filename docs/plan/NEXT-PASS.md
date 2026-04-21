@@ -1,8 +1,31 @@
 # Next Pass — Friends-Feedback Ship Plan
 
 **Created:** 2026-04-20 (end of Day 1)
+**Updated:** 2026-04-20 — Tier-1 fixes §7 A.1–A.5 landed in 5 commits
 **Handoff from:** Claude Opus 4.7 after live demo on iPhone 17 Pro Simulator
 **Target:** ship to a few friends for feedback within the next couple sessions
+
+---
+
+## 0. Progress since plan was written
+
+**Already landed on `main` (as of this update):**
+
+| Commit | Item | Note |
+|---|---|---|
+| `5c4891a` | §3.7 — lighten background + quieter washes | Applied before plan exited — cream bumped to `#FCF9F1`, wash alphas pulled ~20% |
+| `b8b92af` | (plan doc itself) | |
+| `ce7be50` | §7 A.1 — PaintedCheckbox tap propagation | Renders View when no `onChange`; parent row captures tap |
+| `cc5f928` | §7 A.2 — Swipe Save rust → forest | |
+| `09432e0` | §7 A.3 — Tonight refresh → `/(eat)/energy` | |
+| `6bfbda0` | §7 A.4 — Tonight Sunday-reset empty state | |
+| `048187c` | §7 A.5 — Shop dock sticky-bottom | Floats above tab bar, forest-tinted layered shadow |
+
+**Tier-1 is DONE.** All verified tsc + eslint (`--max-warnings=0`) + live in iPhone 17 Pro Simulator. §7 A.6 (tsconfig.json) was bundled into `5c4891a`.
+
+**Pick up at §7 B onward:** Sign-in stub → Onboarding carousel → Context step → Instacart fallback. Full sequence and ask-points below. Simulator + Metro should still be running in the background when you resume — if not, `cd apps/native && bunx expo start --ios`.
+
+---
 
 ---
 
@@ -281,14 +304,14 @@ We already have "Sign In" + "Sign In — Light" artboards in Paper. Good — use
 
 Do in this order. Each numbered item is one commit. Verify tsc + eslint --max-warnings=0 + `bunx expo export --platform ios` clean before each commit. Test in Simulator (which is already running; Metro auto-reloads).
 
-### A. Tier-1 fixes — ship to friends
+### A. Tier-1 fixes — ship to friends — ✅ DONE
 
-1. Fix `PaintedCheckbox` tap propagation (§3.1). Commit: `fix(painted): PaintedCheckbox doesn't swallow row taps`.
-2. Change Swipe Save to forest (§3.2). Commit: `style(swipe): Save button forest tone matches primary CTA`.
-3. Wire Tonight refresh → `/(eat)/energy` (§3.3). Commit: `feat(tonight): refresh routes to Eat flow`.
-4. Tonight empty state CTA (§3.4). Commit: `feat(tonight): Sunday-reset empty state with Draft CTA`.
-5. Shop dock sticky-bottom treatment (§3.5). Commit: `style(shop): sticky ShopDock for prominence`.
-6. Handle `apps/native/tsconfig.json` (§3.6). Commit if committing: `chore: accept tsc include update from expo cli`.
+1. ✅ `ce7be50` — Fix `PaintedCheckbox` tap propagation (§3.1).
+2. ✅ `cc5f928` — Change Swipe Save to forest (§3.2).
+3. ✅ `09432e0` — Wire Tonight refresh → `/(eat)/energy` (§3.3).
+4. ✅ `6bfbda0` — Tonight empty state CTA (§3.4).
+5. ✅ `048187c` — Shop dock sticky-bottom treatment (§3.5).
+6. ✅ `5c4891a` — tsconfig.json (§3.6, bundled with background commit).
 
 ### B. Onboarding + sign-in stub (Tier-2 quick wins)
 
