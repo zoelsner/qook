@@ -14,6 +14,7 @@ import {
   IconRefresh,
   IconCookingSteam,
   IconArrowRight,
+  PaintedButton,
 } from '../../components/painted';
 import { palette, spacing } from '../../design';
 import { shadowCtaInline } from '../../design/shadows';
@@ -141,9 +142,37 @@ export function TonightScreen() {
           ) : null}
         </>
       ) : (
-        <Mono>no plan yet</Mono>
+        <EmptyTonightCard onDraft={openEatFlow} />
       )}
     </ScreenShell>
+  );
+}
+
+function EmptyTonightCard({ onDraft }: { onDraft: () => void }) {
+  return (
+    <View style={styles.empty}>
+      <Mono size={10} bold color={palette.accentDeep}>
+        sunday reset
+      </Mono>
+      <View style={{ height: spacing.xs }} />
+      <DisplayText size={28} color={palette.ink} style={styles.emptyTitle}>
+        No plan yet.
+      </DisplayText>
+      <View style={{ height: spacing.sm }} />
+      <BodyText size={14} color={palette.textSecondary} weight="medium">
+        Cook up fresh picks for tonight — tell us your energy and we&apos;ll
+        draft three dinners in about ten seconds.
+      </BodyText>
+      <View style={{ height: spacing.md }} />
+      <PaintedButton
+        label="Draft tonight"
+        size="lg"
+        tone="forest"
+        onPress={onDraft}
+        leadingIcon={<IconCookingSteam />}
+        fullWidth
+      />
+    </View>
   );
 }
 
@@ -280,9 +309,6 @@ function MiniCard({
     </Pressable>
   );
 }
-
-// suppress unused-import warnings for icon that may be reserved for later
-void IconCookingSteam;
 
 const styles = StyleSheet.create({
   header: {
@@ -441,5 +467,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginTop: 4,
+  },
+  empty: {
+    borderRadius: 22,
+    padding: spacing.lg,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.haloRing,
+  },
+  emptyTitle: {
+    letterSpacing: -0.6,
+    lineHeight: 32,
   },
 });
