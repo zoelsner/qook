@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import type { GroceryCategory, GroceryItem } from '@qook/shared';
@@ -29,6 +30,7 @@ const CATEGORY_ORDER: GroceryCategory[] = [
 
 export function ShopScreen() {
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const { select, press } = useHaptics();
   const { data: items = [] } = useQuery({
     queryKey: ['groceries'],
@@ -78,8 +80,13 @@ export function ShopScreen() {
     return titles.size;
   }, [items]);
 
+  // Tab bar floats at bottom (height 68, gap from bottom insets ≈ 16). Dock
+  // sits above the tab bar with a small breathing gap.
+  const dockBottom = insets.bottom + 68 + 24;
+
   return (
-    <ScreenShell horizontalPadding={24}>
+    <View style={{ flex: 1 }}>
+      <ScreenShell horizontalPadding={24}>
       <View style={styles.header}>
         <View style={styles.headerTitleGroup}>
           <View style={styles.kickerRow}>
@@ -133,10 +140,13 @@ export function ShopScreen() {
         </View>
       ))}
 
-      <View style={{ height: spacing.lg }} />
+        <View style={{ height: 200 }} />
+      </ScreenShell>
 
-      <ShopDock remaining={remaining} onShop={() => press()} />
-    </ScreenShell>
+      <View style={[styles.stickyDockWrap, { bottom: dockBottom }]} pointerEvents="box-none">
+        <ShopDock remaining={remaining} onShop={() => press()} />
+      </View>
+    </View>
   );
 }
 
@@ -359,6 +369,11 @@ const styles = StyleSheet.create({
   rowQty: {
     letterSpacing: 1.2,
   },
+  stickyDockWrap: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+  },
   dock: {
     borderRadius: 22,
     paddingHorizontal: spacing.lg,
@@ -366,6 +381,11 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
+    shadowColor: '#2A3A26',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 10,
   },
   dockHeader: {
     flexDirection: 'row',
