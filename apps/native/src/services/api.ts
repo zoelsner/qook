@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import type {
   CohortDeck,
+  EnergyTier,
   GroceryItem,
   Recipe,
 } from '@qook/shared';
@@ -14,10 +15,30 @@ type ApiMode = 'mock' | 'live';
 const mode = (Constants.expoConfig?.extra?.apiMode ?? 'mock') as ApiMode;
 const lag = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
+// Fisher-Yates shuffle (pure; no mutation of input).
+function shuffle<T>(arr: readonly T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// Pick N recipes matching the requested tier. Falls back to adjacent tiers
+// if the pool is too thin (shouldn't happen with 24 seed recipes, but safe).
+function pickForTier(tier: EnergyTier, count = 3): Recipe[] {
+  const primary = mockRecipes.filter((r) => r.tier === tier);
+  if (primary.length >= count) return shuffle(primary).slice(0, count);
+  const rest = mockRecipes.filter((r) => r.tier !== tier);
+  return [...shuffle(primary), ...shuffle(rest)].slice(0, count);
+}
+
 export async function getTonightPlan(): Promise<Recipe[]> {
   if (mode === 'mock') {
     await lag();
-    return mockRecipes.slice(0, 3);
+    // Pick 3 varied meals across tiers for the generic "tonight" preview.
+    return shuffle(mockRecipes).slice(0, 3);
   }
   const { data, error } = await supabase
     .from('meal_plan_entries')
@@ -117,15 +138,15 @@ export async function toggleGrocery(id: string, checked: boolean) {
 }
 
 export async function generateRecipesForEnergy(
-  _tier: string,
-  _context?: string
+  tier: EnergyTier,
+  context?: string
 ): Promise<Recipe[]> {
   if (mode === 'mock') {
     await lag(1500);
-    return mockRecipes.slice(0, 3);
+    return pickForTier(tier, 3);
   }
-  const { data, error } = await supabase.functions.invoke('generate-recipes', {
-    body: { tier: _tier, context: _context?.trim() || undefined },
+  const { data, error } = await supabase.functions.invoke('generate-recipe', {
+    body: { tier, context: context?.trim() || undefined },
   });
   if (error) throw error;
   return (data as { recipes: Recipe[] }).recipes;

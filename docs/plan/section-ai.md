@@ -400,8 +400,12 @@ Locked template. Called per recipe after text lands.
 // supabase/functions/_shared/prompts/image.ts
 import type { Recipe } from "../schema.ts";
 
+// Palette: restrained watercolor, editorial cookbook — not maximalist.
+// Zach tuned this down 2026-04-23: sage + rust as accents (not wash zones),
+// cream dominates, prussian used sparingly. Want the food itself to read
+// first, watercolor as texture-and-edges rather than surround.
 const PALETTE_DIRECTIVE =
-  "Cream paper background with bold asymmetric sage green and rust orange watercolor wash zones. Prussian blue shadow accents. Occasional gold-leaf detail. Visible paper texture and brush-stroke edges where water meets pigment.";
+  "Soft cream paper background with restrained sage and rust watercolor accents around the plate. Prussian blue for shadow only, used sparingly. Visible paper texture; brush-stroke edges kept light so the food reads as the subject. Avoid bold color blocks or heavy wash zones.";
 
 function pickSubjectIngredients(recipe: Recipe, limit = 5): string[] {
   const scored: Array<{ item: string; score: number }> = [];
