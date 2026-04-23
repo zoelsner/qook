@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   useFonts as useFrauncesFonts,
   Fraunces_700Bold,
+  Fraunces_500Medium_Italic,
 } from '@expo-google-fonts/fraunces';
 import {
   DMSans_400Regular,
@@ -32,6 +33,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const [loaded, error] = useFrauncesFonts({
     Fraunces_700Bold,
+    Fraunces_500Medium_Italic,
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_600SemiBold,

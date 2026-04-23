@@ -17,6 +17,7 @@ import {
   recentSelectedDays,
   type DayPlan,
 } from '../../stores/weekPlan';
+import { fontFamily } from '../../design/typography';
 import {
   todayISO,
   upcomingDays,
@@ -30,7 +31,7 @@ export function TonightScreen() {
   const { press, select } = useHaptics();
   const plan = useWeekPlan((s) => s.plan);
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
-  const swapPick = useWeekPlan((s) => s.swapPick);
+  const setPickIndex = useWeekPlan((s) => s.setPickIndex);
 
   const today = todayISO();
   const todayPlan = plan[today];
@@ -48,10 +49,9 @@ export function TonightScreen() {
     router.push({ pathname: '/(modals)/recipe/[id]', params: { id: recipeId } });
   };
 
-  const onSwapToday = () => {
-    if (!todayPlan?.recipes?.length) return;
+  const onSpotlight = (idx: number) => {
     select();
-    swapPick(today);
+    setPickIndex(today, idx);
   };
 
   const onOpenWeek = () => {
@@ -65,18 +65,34 @@ export function TonightScreen() {
     return <ScreenShell horizontalPadding={24} />;
   }
 
+  const pickIndex = todayPlan?.pickIndex ?? 0;
+  const recipes = todayPlan?.recipes ?? [];
+  const morePicks = recipes
+    .map((r, i) => ({ recipe: r, idx: i }))
+    .filter(({ idx }) => idx !== pickIndex);
+
   return (
     <ScreenShell horizontalPadding={24}>
+      <TonightHeader
+        pickIndex={pickIndex}
+        totalPicks={recipes.length}
+      />
+
       {todayPick ? (
         <HeroPopulated
           pick={todayPick}
-          todayIso={today}
           onOpen={() => onOpenRecipe(todayPick.id)}
-          onSwap={onSwapToday}
         />
       ) : (
         <HeroEmpty onFind={onFindDinner} />
       )}
+
+      {morePicks.length > 0 ? (
+        <MorePicks
+          picks={morePicks}
+          onSpotlight={onSpotlight}
+        />
+      ) : null}
 
       <UpcomingStrip
         days={upcoming}
@@ -90,59 +106,77 @@ export function TonightScreen() {
   );
 }
 
-function HeroEmpty({ onFind }: { onFind: () => void }) {
+function TonightHeader({
+  pickIndex,
+  totalPicks,
+}: {
+  pickIndex: number;
+  totalPicks: number;
+}) {
+  const subtitle =
+    totalPicks > 1
+      ? `SPOTLIGHT ${pickIndex + 1}/${totalPicks} READY`
+      : totalPicks === 1
+        ? 'READY TO COOK'
+        : 'NOTHING YET';
   return (
-    <View>
-      <Mono size={10} bold color={palette.accentDeep}>
-        TONIGHT
-      </Mono>
-      <View style={{ height: spacing.xs }} />
+    <View style={styles.headerBlock}>
+      <View style={styles.kickerRow}>
+        <Mono size={10} bold color={palette.accentDeep}>
+          TONIGHT
+        </Mono>
+        <View style={styles.kickerDot} />
+        <Mono size={10} color={palette.textSecondary}>
+          {subtitle}
+        </Mono>
+      </View>
+      <View style={{ height: 4 }} />
       <View style={styles.titleWrap}>
-        <DisplayText size={40} color={palette.primary} style={styles.title}>
-          What&rsquo;s for dinner?
+        <DisplayText size={44} color={palette.primary} style={styles.brandTitle}>
+          Tonight
         </DisplayText>
         <BrushstrokeUnderline
-          width={260}
+          width={180}
           color={palette.accent}
-          strokeWidth={2.4}
-          style={styles.underline}
+          strokeWidth={2.6}
+          style={styles.brandUnderline}
         />
       </View>
       <View style={{ height: spacing.lg }} />
-      <View style={styles.emptyCard}>
-        <BodyText size={15} color={palette.textSecondary} weight="medium">
-          Tell us your energy, we&rsquo;ll draft three dinners in about 10 seconds.
-        </BodyText>
-        <View style={{ height: spacing.md }} />
-        <PolishedButton
-          label="Find tonight's dinner"
-          tone="forest"
-          onPress={onFind}
-          trailingIcon={<ArrowRight size={14} color={palette.surface} />}
-        />
-      </View>
+    </View>
+  );
+}
+
+function HeroEmpty({ onFind }: { onFind: () => void }) {
+  return (
+    <View style={styles.emptyCard}>
+      <DisplayText size={26} color={palette.ink} style={styles.emptyHeadline}>
+        What&rsquo;s for dinner?
+      </DisplayText>
+      <View style={{ height: spacing.xs }} />
+      <BodyText size={15} color={palette.textSecondary} weight="medium">
+        Tell us your energy, we&rsquo;ll draft three dinners in about 10 seconds.
+      </BodyText>
+      <View style={{ height: spacing.md }} />
+      <PolishedButton
+        label="Find tonight's dinner"
+        tone="forest"
+        onPress={onFind}
+        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
+      />
     </View>
   );
 }
 
 function HeroPopulated({
   pick,
-  todayIso,
   onOpen,
-  onSwap,
 }: {
   pick: Recipe;
-  todayIso: ISODate;
   onOpen: () => void;
-  onSwap: () => void;
 }) {
-  const { weekday, month, day } = formatDayShort(todayIso);
   return (
     <View>
-      <Mono size={10} bold color={palette.accentDeep}>
-        TONIGHT · {weekday} {month} {day}
-      </Mono>
-      <View style={{ height: spacing.sm }} />
       <View style={styles.heroCard}>
         <FoodHeroImage
           localKey={pick.localImageKey as SeedMealKey | undefined}
@@ -157,29 +191,88 @@ function HeroPopulated({
       <DisplayText size={32} color={palette.ink} style={styles.heroTitle}>
         {pick.title}
       </DisplayText>
-      <View style={{ height: 4 }} />
-      <Mono size={11} color={palette.textSecondary}>
+      <View style={{ height: 6 }} />
+      <BodyText size={14} weight="medium" color={palette.textSecondary}>
         {pick.cuisine} · {pick.timeMinutes} min · serves {pick.servings}
-      </Mono>
+      </BodyText>
       <View style={{ height: spacing.md }} />
-      <PolishedButton
-        label="Cook now"
-        tone="forest"
-        onPress={onOpen}
-        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
-      />
-      <View style={{ height: spacing.sm }} />
-      <Pressable
-        hitSlop={6}
-        onPress={onSwap}
-        style={{ alignSelf: 'center' }}
-        accessibilityRole="button"
-        accessibilityLabel="Try another pick"
-      >
-        <BodyText size={13} weight="semi" color={palette.textSecondary}>
-          Try another
+      <View style={styles.heroCtaRow}>
+        <View style={styles.readyChip}>
+          <View style={styles.readyDot} />
+          <Mono size={10} bold color={palette.accentDeep}>
+            READY TO COOK
+          </Mono>
+        </View>
+        <PolishedButton
+          label="Cook tonight"
+          tone="forest"
+          onPress={onOpen}
+          trailingIcon={<ArrowRight size={14} color={palette.surface} />}
+        />
+      </View>
+    </View>
+  );
+}
+
+function MorePicks({
+  picks,
+  onSpotlight,
+}: {
+  picks: { recipe: Recipe; idx: number }[];
+  onSpotlight: (idx: number) => void;
+}) {
+  return (
+    <View>
+      <View style={{ height: spacing.xl }} />
+      <View style={styles.morePicksHeader}>
+        <Mono size={10} bold color={palette.accentDeep}>
+          MORE PICKS
+        </Mono>
+        <BodyText
+          size={12}
+          weight="medium"
+          color={palette.textTertiary}
+          style={styles.morePicksHint}
+        >
+          Tap to spotlight
         </BodyText>
-      </Pressable>
+      </View>
+      <View style={{ height: spacing.sm }} />
+      <View style={styles.morePicksRow}>
+        {picks.map(({ recipe, idx }) => (
+          <Pressable
+            key={recipe.id}
+            onPress={() => onSpotlight(idx)}
+            style={styles.morePickCard}
+            accessibilityRole="button"
+            accessibilityLabel={`Spotlight ${recipe.title}`}
+          >
+            <View style={styles.morePickThumb}>
+              <FoodHeroImage
+                localKey={recipe.localImageKey as SeedMealKey | undefined}
+                remoteUrl={recipe.heroImageUrl}
+                blurhash={recipe.blurhash}
+                height={90}
+                cornerRadius={12}
+                style={{ width: '100%', height: 90 }}
+              />
+            </View>
+            <View style={{ height: spacing.xs }} />
+            <DisplayText size={18} color={palette.ink} style={styles.morePickTitle}>
+              {recipe.title}
+            </DisplayText>
+            <View style={{ height: 2 }} />
+            <BodyText
+              size={12}
+              weight="medium"
+              color={palette.textSecondary}
+              numberOfLines={1}
+            >
+              {recipe.cuisine} · {recipe.timeMinutes} min
+            </BodyText>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -338,17 +431,31 @@ function RecentCooks({
 }
 
 const styles = StyleSheet.create({
+  headerBlock: {
+    marginBottom: spacing.sm,
+  },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  kickerDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.textSecondary,
+  },
   titleWrap: {
     position: 'relative',
     alignSelf: 'flex-start',
   },
-  title: {
-    letterSpacing: -1.2,
-    lineHeight: 44,
+  brandTitle: {
+    letterSpacing: -1.6,
+    lineHeight: 48,
   },
-  underline: {
+  brandUnderline: {
     position: 'absolute',
-    left: -6,
+    left: -4,
     bottom: -10,
   },
   emptyCard: {
@@ -357,6 +464,10 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.glassBorder,
+  },
+  emptyHeadline: {
+    letterSpacing: -0.4,
+    lineHeight: 30,
   },
   heroCard: {
     borderRadius: 22,
@@ -367,6 +478,58 @@ const styles = StyleSheet.create({
   heroTitle: {
     letterSpacing: -0.5,
     lineHeight: 36,
+  },
+  heroCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  readyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+    backgroundColor: palette.surface,
+  },
+  readyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: palette.accent,
+  },
+  morePicksHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  morePicksHint: {
+    fontFamily: fontFamily.display,
+    fontStyle: 'italic',
+  },
+  morePicksRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  morePickCard: {
+    flex: 1,
+    padding: spacing.sm + 2,
+    borderRadius: 14,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+  },
+  morePickThumb: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  morePickTitle: {
+    letterSpacing: -0.2,
+    lineHeight: 20,
   },
   upcomingCard: {
     width: 132,
