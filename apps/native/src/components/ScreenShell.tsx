@@ -1,7 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { View, StyleSheet, ScrollView, ScrollViewProps } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WashBackground } from './WashBackground';
 import { spacing, screen, palette } from '../design';
 
 export interface ScreenShellProps {
@@ -23,7 +22,6 @@ export function ScreenShell({
 
   return (
     <View style={styles.root}>
-      <WashBackground />
       <SafeAreaView style={styles.safe} edges={['top']}>
         {scrollable ? (
           <ScrollView

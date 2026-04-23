@@ -11,12 +11,11 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { WashBackground } from '../../components/WashBackground';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { StepDots } from '../../components/StepDots';
 import { PolishedButton } from '../../components/PolishedButton';
-import { IconArrowRight } from '../../components/painted';
+import { ArrowRight } from 'lucide-react-native';
 import { palette, spacing, typeScale, energyTier } from '../../design';
 import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -98,7 +97,6 @@ export function OnboardingScreen() {
 
   return (
     <View style={styles.root}>
-      <WashBackground />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <Pressable
@@ -139,7 +137,7 @@ export function OnboardingScreen() {
           <PolishedButton
             label={isLast ? 'Get started' : 'Next'}
             tone="forest"
-            trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
+            trailingIcon={<ArrowRight size={14} color={palette.surface} />}
             onPress={goNext}
           />
         </View>

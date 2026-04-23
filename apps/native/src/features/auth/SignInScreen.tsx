@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { WashBackground } from '../../components/WashBackground';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
@@ -42,7 +41,6 @@ export function SignInScreen() {
 
   return (
     <View style={styles.root}>
-      <WashBackground />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.content}>
           <View style={styles.topSpacer} />

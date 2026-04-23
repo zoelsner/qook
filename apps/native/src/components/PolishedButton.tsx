@@ -11,7 +11,7 @@ import { palette, typeScale } from '../design';
 import { shadowCtaPrimary } from '../design/shadows';
 import { BodyText } from './Text';
 
-export type PolishedButtonTone = 'forest' | 'cream' | 'apple';
+export type PolishedButtonTone = 'forest' | 'rust' | 'cream' | 'ghost' | 'apple';
 
 export interface PolishedButtonProps
   extends Omit<PressableProps, 'style' | 'children'> {
@@ -22,9 +22,10 @@ export interface PolishedButtonProps
   style?: StyleProp<ViewStyle>;
 }
 
-// Flat rounded CTA for shell surfaces (auth, onboarding). Solid fill,
-// hairline border, ios-like. In-app product CTAs still use PaintedButton
-// so the hand-drawn voice stays tied to recipe content.
+// Flat rounded CTA. Solid fill or outline ghost, hairline border, ios-like.
+// PaintedButton (wobbly hand-drawn) is deprecated — always prefer this.
+// Tones: forest (primary), rust (alt / error retry), cream (secondary on
+// washed surfaces), ghost (outline), apple (Sign-in-with-Apple black).
 export function PolishedButton({
   label,
   tone = 'forest',
@@ -34,17 +35,13 @@ export function PolishedButton({
   disabled,
   ...pressable
 }: PolishedButtonProps) {
-  const fill =
-    tone === 'apple' ? '#000000' : tone === 'cream' ? palette.surface : palette.primary;
-  const textColor = tone === 'cream' ? palette.primary : palette.surface;
-  const borderColor =
-    tone === 'cream' ? 'rgba(42, 58, 38, 0.10)' : 'rgba(255, 252, 246, 0.08)';
+  const { fill, textColor, borderColor, withShadow } = resolveTone(tone);
 
   return (
     <View
       style={[
         styles.wrap,
-        shadowCtaPrimary,
+        withShadow ? shadowCtaPrimary : null,
         { opacity: disabled ? 0.55 : 1 },
         style,
       ]}
@@ -71,6 +68,52 @@ export function PolishedButton({
       </Pressable>
     </View>
   );
+}
+
+function resolveTone(tone: PolishedButtonTone): {
+  fill: string;
+  textColor: string;
+  borderColor: string;
+  withShadow: boolean;
+} {
+  switch (tone) {
+    case 'rust':
+      return {
+        fill: palette.accent,
+        textColor: palette.surface,
+        borderColor: 'rgba(255, 252, 246, 0.10)',
+        withShadow: true,
+      };
+    case 'cream':
+      return {
+        fill: palette.surface,
+        textColor: palette.primary,
+        borderColor: 'rgba(42, 58, 38, 0.10)',
+        withShadow: true,
+      };
+    case 'ghost':
+      return {
+        fill: 'transparent',
+        textColor: palette.primary,
+        borderColor: 'rgba(42, 58, 38, 0.22)',
+        withShadow: false,
+      };
+    case 'apple':
+      return {
+        fill: '#000000',
+        textColor: palette.surface,
+        borderColor: 'rgba(255, 252, 246, 0.08)',
+        withShadow: true,
+      };
+    case 'forest':
+    default:
+      return {
+        fill: palette.primary,
+        textColor: palette.surface,
+        borderColor: 'rgba(255, 252, 246, 0.08)',
+        withShadow: true,
+      };
+  }
 }
 
 const styles = StyleSheet.create({
