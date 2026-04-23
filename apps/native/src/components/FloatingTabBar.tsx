@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Svg, { Path } from 'react-native-svg';
 import { palette, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
 import { useHaptics } from '../hooks/useHaptics';
@@ -23,10 +22,6 @@ const LABELS: Record<TabName, string> = {
   shop: 'Shop',
   more: 'More',
 };
-
-// Baked wobbly underline for the active tab (150×6 viewBox — from Paper).
-const TAB_UNDERLINE_PATH =
-  'M6 3 C 20 1, 40 5, 60 3 S 100 5, 130 2 S 144 4, 148 3';
 
 export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -68,20 +63,6 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
               accessibilityState={focused ? { selected: true } : undefined}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             >
-              {focused ? (
-                <View pointerEvents="none" style={styles.underline}>
-                  <Svg width="100%" height="6" viewBox="0 0 150 6" fill="none">
-                    <Path
-                      d={TAB_UNDERLINE_PATH}
-                      stroke={palette.accent}
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      opacity={0.85}
-                      fill="none"
-                    />
-                  </Svg>
-                </View>
-              ) : null}
               <TabIcon name={name} focused={focused} />
               <BodyText
                 size={10}
@@ -142,12 +123,5 @@ const styles = StyleSheet.create({
   tabLabel: {
     letterSpacing: 0.2,
     lineHeight: 12,
-  },
-  underline: {
-    position: 'absolute',
-    bottom: -4,
-    left: '50%',
-    width: 80,
-    transform: [{ translateX: -40 }],
   },
 });

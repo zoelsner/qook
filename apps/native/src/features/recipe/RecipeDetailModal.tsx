@@ -26,7 +26,7 @@ import {
 } from '../../components/painted';
 import { X, Bookmark, Share } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
-import { ENERGY_TIER_LABEL } from '../../types/energy';
+import { ENERGY_TIER_SUBTITLE } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
@@ -157,7 +157,7 @@ function RecipeBody({
           <GlassChip>
             <View style={styles.tierDot} />
             <Mono size={10} bold color={palette.accentDeep}>
-              {ENERGY_TIER_LABEL[recipe.tier].toUpperCase()}
+              {ENERGY_TIER_SUBTITLE[recipe.tier].toUpperCase()}
             </Mono>
           </GlassChip>
           <GlassChip>
@@ -393,7 +393,7 @@ function CookDock({
         label={isTodaysPick ? "Cooking tonight ✓" : 'Cook tonight'}
         tone="forest"
         onPress={onCook}
-        leadingIcon={<IconCookingSteam />}
+        leadingIcon={isTodaysPick ? undefined : <IconCookingSteam />}
         disabled={isTodaysPick}
         style={styles.cookCta}
       />

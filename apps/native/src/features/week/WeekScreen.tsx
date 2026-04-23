@@ -108,7 +108,7 @@ export function WeekScreen() {
       <View style={styles.summary}>
         <View style={styles.summaryLeft}>
           <Mono size={10} bold color={palette.primary}>
-            {tagged.length} NIGHTS SET
+            {tagged.length} {tagged.length === 1 ? 'NIGHT' : 'NIGHTS'} SET
           </Mono>
           <View style={styles.kickerDot} />
           <Mono size={10} color={palette.textSecondary}>
@@ -148,7 +148,11 @@ export function WeekScreen() {
         <PolishedButton label="Resume draft" tone="rust" onPress={onRetry} />
       ) : (
         <PolishedButton
-          label={tagged.length === 0 ? 'Tag a night to start' : `Draft ${tagged.length} dinners`}
+          label={
+            tagged.length === 0
+              ? 'Tag a night to start'
+              : `Draft ${tagged.length} ${tagged.length === 1 ? 'dinner' : 'dinners'}`
+          }
           tone="forest"
           onPress={onDraft}
           disabled={tagged.length === 0}

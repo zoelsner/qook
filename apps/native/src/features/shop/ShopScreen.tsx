@@ -157,6 +157,7 @@ export function ShopScreen() {
                   item={item}
                   checked={!!checked[item.key]}
                   onToggle={() => handleToggle(item.key)}
+                  hideRecipeSource={recipeCount <= 1}
                 />
               ))}
             </View>
@@ -227,19 +228,22 @@ function ShopRow({
   item,
   checked,
   onToggle,
+  hideRecipeSource,
 }: {
   item: ShopItem;
   checked: boolean;
   onToggle: () => void;
+  hideRecipeSource?: boolean;
 }) {
   const quantity = formatQuantity(item);
   const firstRecipe = item.recipeTitles[0];
   const extra = item.recipeTitles.length - 1;
-  const subText = firstRecipe
-    ? extra > 0
-      ? `${quantity} · ${firstRecipe} +${extra}`
-      : `${quantity} · ${firstRecipe}`
-    : quantity;
+  const subText =
+    hideRecipeSource || !firstRecipe
+      ? quantity
+      : extra > 0
+        ? `${quantity} · ${firstRecipe} +${extra}`
+        : `${quantity} · ${firstRecipe}`;
   const shortQty = item.quantities[0] ?? (item.recipeCount > 1 ? `×${item.recipeCount}` : '');
 
   return (
