@@ -4,6 +4,19 @@
 **First build day:** 2026-04-21 (Monday)
 **Ship:** 2026-05-24 — 32 days
 
+---
+
+## 📍 Active execution plan (2026-04-22)
+
+For the current MVP coding pass — **Tonight dashboard + Week planner + Shop derivation**:
+
+- **[qook-mvp-plan.md](./qook-mvp-plan.md)** — 10-move execution plan with full code snippets, dependencies, and verification. Self-contained, executable cold by Codex or a fresh Claude session.
+- **[qook-mvp-design-decisions.md](./qook-mvp-design-decisions.md)** — the *why*: product thesis, locked palette/typography/icons, state-model rationale, two Codex adversarial review passes, alternatives considered & rejected.
+
+Both docs supersede the Week/tab sections of NEXT-PASS.md and the scoping in SCOPE-couple-first.md for anything in Moves 1–10.
+
+---
+
 ## Status: Day 0 + Day-1 slice + painted-aesthetic design pivot
 
 Day 0 shipped the initial scaffold. Day-1 autonomous slice landed primitives + Expo Router + mock services + 5 stub screens + modal + swipe deck. **Late Day 1: full design pivot to "painted" hand-drawn aesthetic from Paper file.** 8 commits past initial push are local-only, waiting on Zach's push approval.

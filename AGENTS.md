@@ -1,4 +1,4 @@
-# CLAUDE.md — Qook
+# AGENTS.md — Qook
 
 ## Project
 
@@ -45,7 +45,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - Primitives dialed back: **BrushstrokeUnderline** used sparingly as title accent only, not system-wide
 - Primitives deprecated: **PaintedButton** (wobbly buttons), **painted icons** (IconClose, IconRefresh, IconHeart, IconArrowRight, etc. — replace with `lucide-react-native`), **PaintedCheckbox wobble**
 - 24 Seedream watercolor PNGs at `assets/meals-seed/v2/` (copied from sashafood) — the watercolor food imagery remains the distinctive visual
-- Aesthetic direction: Claude-style restraint on chrome, lean on typography (Fraunces + DM Sans), let watercolor food + palette carry the brand. Brushstrokes as accents, not as the system.
+- Aesthetic direction: Codex-style restraint on chrome, lean on typography (Fraunces + DM Sans), let watercolor food + palette carry the brand. Brushstrokes as accents, not as the system.
 
 ## Reference (NOT active code paths)
 
