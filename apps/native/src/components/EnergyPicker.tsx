@@ -5,11 +5,11 @@ import {
   energyTierColors,
   ENERGY_TIERS,
   ENERGY_TIER_LABEL,
-  ENERGY_TIER_SUBTITLE,
+  ENERGY_TIER_MINUTES,
   type EnergyTier,
 } from '../types/energy';
 import { useHaptics } from '../hooks/useHaptics';
-import { BodyText, Mono } from './Text';
+import { BodyText, DisplayText, Mono } from './Text';
 
 export interface EnergyPickerProps {
   value: EnergyTier;
@@ -42,20 +42,30 @@ export function EnergyPicker({ value, onChange }: EnergyPickerProps) {
           >
             <View style={[styles.dot, { backgroundColor: colors.text }]} />
             <View style={styles.labels}>
-              <BodyText
-                size={15}
-                weight="semi"
-                color={active ? colors.text : palette.ink}
-              >
-                {ENERGY_TIER_LABEL[tier]}
-              </BodyText>
               <Mono
                 size={10}
+                bold
                 color={active ? colors.text : palette.textTertiary}
-                style={styles.subtitle}
+                style={styles.kicker}
               >
-                {ENERGY_TIER_SUBTITLE[tier]}
+                {ENERGY_TIER_LABEL[tier]}
               </Mono>
+              <View style={styles.minutesRow}>
+                <DisplayText
+                  size={36}
+                  color={active ? colors.text : palette.ink}
+                  style={styles.minutesValue}
+                >
+                  {ENERGY_TIER_MINUTES[tier].value}
+                </DisplayText>
+                <BodyText
+                  size={13}
+                  weight="medium"
+                  color={active ? colors.text : palette.textTertiary}
+                >
+                  min {ENERGY_TIER_MINUTES[tier].qualifier}
+                </BodyText>
+              </View>
             </View>
             <View
               style={[
@@ -100,8 +110,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  subtitle: {
-    letterSpacing: 1,
+  kicker: {
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  minutesRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  minutesValue: {
+    letterSpacing: -1.5,
+    lineHeight: 38,
   },
   radio: {
     width: 20,

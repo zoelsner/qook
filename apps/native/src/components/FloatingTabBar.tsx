@@ -10,19 +10,17 @@ import { useHaptics } from '../hooks/useHaptics';
 import { BodyText } from './Text';
 import {
   IconTabTonight,
-  IconTabSwipe,
+  IconTabWeek,
   IconTabShop,
-  IconTabSaved,
   IconTabMore,
 } from './painted';
 
-type TabName = 'tonight' | 'swipe-night' | 'shop' | 'saved' | 'more';
+type TabName = 'tonight' | 'week' | 'shop' | 'more';
 
 const LABELS: Record<TabName, string> = {
   tonight: 'Tonight',
-  'swipe-night': 'Swipe',
+  week: 'Week',
   shop: 'Shop',
-  saved: 'Saved',
   more: 'More',
 };
 
@@ -105,13 +103,11 @@ function TabIcon({ name, focused }: { name: TabName; focused: boolean }) {
   const tint = focused ? palette.accent : palette.textSecondary;
   switch (name) {
     case 'tonight':
-      return <IconTabTonight color={focused ? palette.accent : palette.textSecondary} />;
-    case 'swipe-night':
-      return <IconTabSwipe color={tint} />;
+      return <IconTabTonight color={tint} />;
+    case 'week':
+      return <IconTabWeek color={tint} />;
     case 'shop':
       return <IconTabShop color={tint} />;
-    case 'saved':
-      return <IconTabSaved color={tint} />;
     case 'more':
       return <IconTabMore color={tint} />;
     default:
@@ -149,9 +145,9 @@ const styles = StyleSheet.create({
   },
   underline: {
     position: 'absolute',
-    top: -16,
+    bottom: -4,
     left: '50%',
-    width: 150,
-    transform: [{ translateX: -75 }],
+    width: 80,
+    transform: [{ translateX: -40 }],
   },
 });

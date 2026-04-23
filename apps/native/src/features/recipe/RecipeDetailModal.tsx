@@ -15,24 +15,22 @@ import type {
 } from '@qook/shared';
 
 import { FoodHeroImage } from '../../components/FoodHeroImage';
-import { WashBackground } from '../../components/WashBackground';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { PolishedButton } from '../../components/PolishedButton';
 import {
-  PaintedButton,
   PaintedCheckbox,
   PaintedDivider,
   IconPill,
   GlassChip,
-  IconClose,
-  IconBookmark,
-  IconShare,
-  IconHeart,
   IconCookingSteam,
 } from '../../components/painted';
+import { X, Bookmark, Share } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { todayISO } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 
 export interface RecipeDetailModalProps {
@@ -51,14 +49,24 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const [saved, setSaved] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
 
+  const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
+  const todaysPick = useWeekPlan((s) => activePickFor(s.plan[todayISO()]));
+  const isTodaysPick = todaysPick?.id === recipeId;
+
   const close = () => {
     tap();
     router.back();
   };
 
+  const onCookTonight = () => {
+    if (!recipe) return;
+    press();
+    appendRecipeAndSelect(todayISO(), recipe);
+    router.replace('/(tabs)/tonight');
+  };
+
   return (
     <View style={styles.root}>
-      <WashBackground />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -82,7 +90,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
       <SafeAreaView edges={['top']} style={styles.heroNav} pointerEvents="box-none">
         <View style={styles.heroNavInner}>
           <IconPill onPress={close} accessibilityLabel="Close">
-            <IconClose />
+            <X size={16} color={palette.ink} strokeWidth={2.2} />
           </IconPill>
           <View style={styles.heroNavRight}>
             <IconPill
@@ -92,10 +100,15 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
               }}
               accessibilityLabel="Save recipe"
             >
-              <IconBookmark filled={saved} />
+              <Bookmark
+                size={16}
+                color={palette.ink}
+                fill={saved ? palette.ink : 'transparent'}
+                strokeWidth={1.8}
+              />
             </IconPill>
             <IconPill onPress={() => tap()} accessibilityLabel="Share recipe">
-              <IconShare />
+              <Share size={16} color={palette.ink} strokeWidth={1.8} />
             </IconPill>
           </View>
         </View>
@@ -104,14 +117,8 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
       {recipe ? (
         <CookDock
           bottomInset={insets.bottom}
-          saved={saved}
-          onToggleSaved={() => {
-            press();
-            setSaved((s) => !s);
-          }}
-          onCook={() => {
-            press();
-          }}
+          isTodaysPick={isTodaysPick}
+          onCook={onCookTonight}
         />
       ) : null}
     </View>
@@ -368,13 +375,11 @@ function LoadingState() {
 
 function CookDock({
   bottomInset,
-  saved,
-  onToggleSaved,
+  isTodaysPick,
   onCook,
 }: {
   bottomInset: number;
-  saved: boolean;
-  onToggleSaved: () => void;
+  isTodaysPick: boolean;
   onCook: () => void;
 }) {
   return (
@@ -384,20 +389,12 @@ function CookDock({
         { bottom: Math.max(bottomInset, spacing.sm) + spacing.sm },
       ]}
     >
-      <IconPill size="lg" onPress={onToggleSaved} accessibilityLabel="Save">
-        <IconHeart
-          size={22}
-          color={palette.accent}
-          strokeColor={palette.accentDeep}
-          filled={saved}
-        />
-      </IconPill>
-      <PaintedButton
-        label="Cook tonight"
-        size="lg"
+      <PolishedButton
+        label={isTodaysPick ? "Cooking tonight ✓" : 'Cook tonight'}
         tone="forest"
         onPress={onCook}
         leadingIcon={<IconCookingSteam />}
+        disabled={isTodaysPick}
         style={styles.cookCta}
       />
     </View>

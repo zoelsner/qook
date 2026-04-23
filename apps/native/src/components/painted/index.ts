@@ -23,9 +23,8 @@ export {
   IconArrowRight,
   IconCookingSteam,
   IconTabTonight,
-  IconTabSwipe,
+  IconTabWeek,
   IconTabShop,
-  IconTabSaved,
   IconTabMore,
   IconApple,
 } from './Icon';

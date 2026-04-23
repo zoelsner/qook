@@ -7,12 +7,9 @@ import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { EnergyPicker } from '../../components/EnergyPicker';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  PaintedButton,
-  IconPill,
-  IconClose,
-  IconArrowRight,
-} from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { IconPill } from '../../components/painted';
+import { X, ArrowRight } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
@@ -38,7 +35,7 @@ export function EnergyPickerScreen() {
     <ScreenShell horizontalPadding={24}>
       <View style={styles.topBar}>
         <IconPill onPress={handleCancel} accessibilityLabel="Cancel">
-          <IconClose />
+          <X size={16} color={palette.ink} strokeWidth={2.2} />
         </IconPill>
       </View>
       <View style={{ height: spacing.md }} />
@@ -83,13 +80,11 @@ export function EnergyPickerScreen() {
 
       <View style={{ height: spacing.xl }} />
 
-      <PaintedButton
-        label="Draft three recipes"
-        size="lg"
+      <PolishedButton
+        label="See dinner ideas"
         tone="forest"
         onPress={handleContinue}
-        trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
-        fullWidth
+        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
       />
       <View style={{ height: spacing.sm + 2 }} />
       <BodyText

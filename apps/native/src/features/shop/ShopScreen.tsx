@@ -1,28 +1,30 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Svg, { Path } from 'react-native-svg';
-import type { GroceryCategory, GroceryItem } from '@qook/shared';
+import { useRouter } from 'expo-router';
+import type { GroceryCategory, GroceryItem, Timestamp } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  PaintedCheckbox,
-  PaintedButton,
-  IconPill,
-  IconArrowRight,
-} from '../../components/painted';
+import { PaintedCheckbox } from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { ArrowRight } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
-import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useWeekPlan } from '../../stores/weekPlan';
+import { todayISO } from '../week/weekDates';
 import {
   copyList,
   openAmazonFresh,
   openInstacart,
   shareList,
 } from '../../lib/shoppingShare';
+import {
+  aggregateIngredients,
+  formatQuantity,
+  type ShopItem,
+} from './aggregateIngredients';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
   'Produce',
@@ -34,178 +36,219 @@ const CATEGORY_ORDER: GroceryCategory[] = [
   'Other',
 ];
 
-export function ShopScreen() {
-  const queryClient = useQueryClient();
-  const insets = useSafeAreaInsets();
-  const { select, press } = useHaptics();
-  const { data: items = [] } = useQuery({
-    queryKey: ['groceries'],
-    queryFn: () => api.getGroceries(),
-  });
+// shoppingShare helpers take the legacy GroceryItem shape. Map ShopItem onto
+// that shape with local-only ids so Instacart/copy/share continue to work
+// without forking those helpers.
+function toGroceryItem(item: ShopItem): GroceryItem {
+  const ts = Date.now() as Timestamp;
+  return {
+    id: item.key,
+    userId: 'local',
+    canonicalKey: item.key,
+    name: item.name,
+    quantityText: item.quantities.join(' + ') || undefined,
+    category: item.category,
+    checked: false,
+    source: 'recipe_import',
+    sourceRecipeTitles: item.recipeTitles,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+}
 
-  const [optimistic, setOptimistic] = useState<Record<string, boolean>>({});
+export function ShopScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { press, select } = useHaptics();
+  const plan = useWeekPlan((s) => s.plan);
+  const hasHydrated = useWeekPlan((s) => s.hasHydrated);
+  const today = todayISO();
+
+  const items = useMemo(
+    () => (hasHydrated ? aggregateIngredients(plan, today) : []),
+    [plan, today, hasHydrated],
+  );
+
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
 
   const grouped = useMemo(() => {
-    const map = new Map<GroceryCategory, GroceryItem[]>();
+    const map = new Map<GroceryCategory, ShopItem[]>();
     for (const item of items) {
       const list = map.get(item.category) ?? [];
       list.push(item);
       map.set(item.category, list);
     }
-    return CATEGORY_ORDER.map((c) => ({
-      category: c,
-      items: map.get(c) ?? [],
-    })).filter((g) => g.items.length > 0);
+    return CATEGORY_ORDER.map((c) => ({ category: c, items: map.get(c) ?? [] })).filter(
+      (g) => g.items.length > 0,
+    );
   }, [items]);
 
   const totalItems = items.length;
-  const uncheckedItems = useMemo(
-    () => items.filter((i) => !(optimistic[i.id] ?? i.checked)),
-    [items, optimistic]
+  const recipeTitles = useMemo(() => {
+    const titles = new Set<string>();
+    for (const item of items) item.recipeTitles.forEach((t) => titles.add(t));
+    return titles;
+  }, [items]);
+  const recipeCount = recipeTitles.size;
+  const remaining = items.filter((i) => !checked[i.key]).length;
+  const uncheckedGrocery = useMemo(
+    () => items.filter((i) => !checked[i.key]).map(toGroceryItem),
+    [items, checked],
   );
-  const remaining = uncheckedItems.length;
 
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, checked }: { id: string; checked: boolean }) =>
-      api.toggleGrocery(id, checked),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['groceries'] });
-    },
-  });
-
-  const handleToggle = (id: string, nextChecked: boolean) => {
+  const handleToggle = (key: string) => {
     select();
-    setOptimistic((prev) => ({ ...prev, [id]: nextChecked }));
-    toggleMutation.mutate({ id, checked: nextChecked });
+    setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const recipesReferenced = useMemo(() => {
-    const titles = new Set<string>();
-    items.forEach((item) => {
-      item.sourceRecipeTitles?.forEach((t) => titles.add(t));
-    });
-    return titles.size;
-  }, [items]);
-
-  // Tab bar floats at bottom (height 68, gap from bottom insets ≈ 16). Dock
-  // sits above the tab bar with a small breathing gap.
   const dockBottom = insets.bottom + 68 + 24;
 
   return (
     <View style={{ flex: 1 }}>
       <ScreenShell horizontalPadding={24}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleGroup}>
-          <View style={styles.kickerRow}>
-            <Mono size={10} bold color={palette.accentDeep}>
-              shop
-            </Mono>
-            <View style={styles.kickerDot} />
-            <Mono size={10} color={palette.textSecondary}>
-              {totalItems} items · {recipesReferenced} recipes
-            </Mono>
-          </View>
-          <View style={styles.displayTitleWrap}>
-            <DisplayText size={44} color={palette.primary} style={styles.displayTitle}>
-              Grocery list
-            </DisplayText>
-            <BrushstrokeUnderline
-              width={220}
-              color={palette.accent}
-              pathVariant="v3"
-              strokeWidth={2.4}
-              style={styles.displayUnderline}
-            />
-          </View>
-        </View>
-        <IconPill onPress={() => press()} accessibilityLabel="Add item">
-          <AddIcon />
-        </IconPill>
-      </View>
-
-      <View style={{ height: spacing.xl - 4 }} />
-
-      {grouped.map(({ category, items: groupItems }, idx) => (
-        <View key={category} style={idx > 0 ? { marginTop: spacing.lg } : null}>
-          <View style={styles.sectionHeader}>
-            <Mono size={10} bold color={palette.accentDeep}>
-              {category} · {groupItems.length}
-            </Mono>
-            <View style={styles.sectionHeaderRule} />
-          </View>
-          {groupItems.map((item) => {
-            const isChecked = optimistic[item.id] ?? item.checked;
-            return (
-              <GroceryRow
-                key={item.id}
-                item={item}
-                checked={isChecked}
-                onToggle={() => handleToggle(item.id, !isChecked)}
+        <View style={styles.header}>
+          <View style={styles.headerTitleGroup}>
+            <View style={styles.kickerRow}>
+              <Mono size={10} bold color={palette.accentDeep}>
+                shop
+              </Mono>
+              <View style={styles.kickerDot} />
+              <Mono size={10} color={palette.textSecondary}>
+                {totalItems} items · {recipeCount} {recipeCount === 1 ? 'recipe' : 'recipes'}
+              </Mono>
+            </View>
+            <View style={styles.displayTitleWrap}>
+              <DisplayText size={44} color={palette.primary} style={styles.displayTitle}>
+                Grocery list
+              </DisplayText>
+              <BrushstrokeUnderline
+                width={220}
+                color={palette.accent}
+                pathVariant="v3"
+                strokeWidth={2.4}
+                style={styles.displayUnderline}
               />
-            );
-          })}
+            </View>
+          </View>
         </View>
-      ))}
+
+        <View style={{ height: spacing.xl - 4 }} />
+
+        {!hasHydrated ? null : totalItems === 0 ? (
+          <EmptyShop
+            onOpenWeek={() => {
+              press();
+              router.push('/(tabs)/week');
+            }}
+          />
+        ) : (
+          grouped.map(({ category, items: groupItems }, idx) => (
+            <View key={category} style={idx > 0 ? { marginTop: spacing.lg } : null}>
+              <View style={styles.sectionHeader}>
+                <Mono size={10} bold color={palette.accentDeep}>
+                  {category} · {groupItems.length}
+                </Mono>
+                <View style={styles.sectionHeaderRule} />
+              </View>
+              {groupItems.map((item) => (
+                <ShopRow
+                  key={item.key}
+                  item={item}
+                  checked={!!checked[item.key]}
+                  onToggle={() => handleToggle(item.key)}
+                />
+              ))}
+            </View>
+          ))
+        )}
 
         <View style={{ height: 200 }} />
       </ScreenShell>
 
-      <View style={[styles.stickyDockWrap, { bottom: dockBottom }]} pointerEvents="box-none">
-        <ShopDock
-          remaining={remaining}
-          uncheckedItems={uncheckedItems}
-          onShop={() => {
-            press();
-            openInstacart(uncheckedItems);
-          }}
-          onCopy={async () => {
-            select();
-            const ok = await copyList(uncheckedItems);
-            if (ok) setCopied(true);
-          }}
-          onShare={async () => {
-            select();
-            await shareList(uncheckedItems);
-          }}
-          onAmazonFresh={() => {
-            press();
-            openAmazonFresh(uncheckedItems);
-          }}
-          copied={copied}
-          onCopiedExpire={() => setCopied(false)}
-        />
-      </View>
+      {totalItems > 0 ? (
+        <View style={[styles.stickyDockWrap, { bottom: dockBottom }]} pointerEvents="box-none">
+          <ShopDock
+            remaining={remaining}
+            disabled={remaining === 0}
+            onShop={() => {
+              press();
+              openInstacart(uncheckedGrocery);
+            }}
+            onCopy={async () => {
+              select();
+              const ok = await copyList(uncheckedGrocery);
+              if (ok) setCopied(true);
+            }}
+            onShare={async () => {
+              select();
+              await shareList(uncheckedGrocery);
+            }}
+            onAmazonFresh={() => {
+              press();
+              openAmazonFresh(uncheckedGrocery);
+            }}
+            copied={copied}
+            onCopiedExpire={() => setCopied(false)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function GroceryRow({
+function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
+  return (
+    <View style={styles.empty}>
+      <Mono size={10} bold color={palette.accentDeep}>
+        nothing slotted
+      </Mono>
+      <View style={{ height: spacing.xs }} />
+      <DisplayText size={24} color={palette.ink} style={styles.emptyTitle}>
+        No ingredients yet.
+      </DisplayText>
+      <View style={{ height: spacing.sm }} />
+      <BodyText size={14} color={palette.textSecondary} weight="medium">
+        Tag a few nights in Week and draft dinners — we&rsquo;ll aggregate everything
+        you need into one list here.
+      </BodyText>
+      <View style={{ height: spacing.md }} />
+      <PolishedButton
+        label="Plan your week"
+        tone="forest"
+        onPress={onOpenWeek}
+        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
+      />
+    </View>
+  );
+}
+
+function ShopRow({
   item,
   checked,
   onToggle,
 }: {
-  item: GroceryItem;
+  item: ShopItem;
   checked: boolean;
   onToggle: () => void;
 }) {
-  const recipeLine = item.sourceRecipeTitles?.[0];
-  const extraCount = (item.sourceRecipeTitles?.length ?? 1) - 1;
   const quantity = formatQuantity(item);
-  const quantityShort = formatShort(item);
-  const subText = recipeLine
-    ? extraCount > 0
-      ? `${quantity} · multiple recipes`
-      : `${quantity} · ${recipeLine}`
+  const firstRecipe = item.recipeTitles[0];
+  const extra = item.recipeTitles.length - 1;
+  const subText = firstRecipe
+    ? extra > 0
+      ? `${quantity} · ${firstRecipe} +${extra}`
+      : `${quantity} · ${firstRecipe}`
     : quantity;
+  const shortQty = item.quantities[0] ?? (item.recipeCount > 1 ? `×${item.recipeCount}` : '');
 
   return (
     <Pressable
       onPress={onToggle}
-      style={({ pressed }) => [
-        styles.row,
-        pressed ? { opacity: 0.85 } : null,
-      ]}
+      style={({ pressed }) => [styles.row, pressed ? { opacity: 0.85 } : null]}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ${quantity}${checked ? ', checked' : ''}`}
+      accessibilityState={{ checked }}
     >
       <PaintedCheckbox checked={checked} size={22} />
       <View style={styles.rowText}>
@@ -217,6 +260,7 @@ function GroceryRow({
             styles.rowName,
             checked ? { textDecorationLine: 'line-through' } : null,
           ]}
+          numberOfLines={1}
         >
           {item.name}
         </BodyText>
@@ -233,7 +277,7 @@ function GroceryRow({
         color={palette.textSecondary}
         style={[styles.rowQty, checked ? { opacity: 0.55 } : null]}
       >
-        {quantityShort}
+        {shortQty}
       </Mono>
     </Pressable>
   );
@@ -241,7 +285,7 @@ function GroceryRow({
 
 function ShopDock({
   remaining,
-  uncheckedItems,
+  disabled,
   onShop,
   onCopy,
   onShare,
@@ -250,7 +294,7 @@ function ShopDock({
   onCopiedExpire,
 }: {
   remaining: number;
-  uncheckedItems: GroceryItem[];
+  disabled: boolean;
   onShop: () => void;
   onCopy: () => void;
   onShare: () => void;
@@ -259,9 +303,7 @@ function ShopDock({
   onCopiedExpire: () => void;
 }) {
   const estimatedDollars = Math.max(8, remaining * 3.5).toFixed(0);
-  const disabled = uncheckedItems.length === 0;
 
-  // Auto-expire the "Copied" confirmation after 1.6s.
   React.useEffect(() => {
     if (!copied) return;
     const id = setTimeout(onCopiedExpire, 1600);
@@ -290,14 +332,12 @@ function ShopDock({
         </View>
       </View>
       <View style={{ height: spacing.sm }} />
-      <PaintedButton
+      <PolishedButton
         label="Shop with Instacart"
-        size="lg"
         tone="forest"
         onPress={onShop}
         disabled={disabled}
-        trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
-        fullWidth
+        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
       />
       <View style={{ height: spacing.sm + 2 }} />
       <View style={styles.fallbackRow}>
@@ -325,36 +365,6 @@ function ShopDock({
       </View>
     </View>
   );
-}
-
-function AddIcon() {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 5v14M5 12h14"
-        stroke={palette.ink}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
-    </Svg>
-  );
-}
-
-function formatQuantity(item: GroceryItem): string {
-  if (item.quantityText) return item.quantityText;
-  if (item.quantityAmount == null) return '';
-  const unit =
-    item.quantityUnit && item.quantityUnit !== 'count' ? ` ${item.quantityUnit}` : '';
-  return `${item.quantityAmount}${unit}`.trim();
-}
-
-function formatShort(item: GroceryItem): string {
-  if (item.quantityText) return item.quantityText;
-  if (item.quantityAmount == null) return '';
-  if (item.quantityUnit === 'count' || !item.quantityUnit) {
-    return `${item.quantityAmount}`;
-  }
-  return `${item.quantityAmount} ${item.quantityUnit}`;
 }
 
 const styles = StyleSheet.create({
@@ -424,6 +434,17 @@ const styles = StyleSheet.create({
   },
   rowQty: {
     letterSpacing: 1.2,
+  },
+  empty: {
+    borderRadius: 22,
+    padding: spacing.lg,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+  },
+  emptyTitle: {
+    letterSpacing: -0.4,
+    lineHeight: 28,
   },
   stickyDockWrap: {
     position: 'absolute',

@@ -8,8 +8,8 @@ import { BodyText, DisplayText, Mono } from '../../components/Text';
 import {
   PaintedButton,
   PaintedDivider,
-  IconHeart,
 } from '../../components/painted';
+import { Heart } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -135,7 +135,7 @@ export function SwipeNightScreen() {
               select();
               handleLike();
             }}
-            leadingIcon={<IconHeart size={14} color={palette.surface} filled />}
+            leadingIcon={<Heart size={14} color={palette.surface} fill={palette.surface} />}
             style={{ flex: 1 }}
           />
         </View>

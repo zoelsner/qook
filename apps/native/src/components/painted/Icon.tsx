@@ -153,39 +153,45 @@ export function IconCookingSteam({
   );
 }
 
-// Tonight tab drop — filled rust droplet
+// Tonight tab — bowl + steam
 export function IconTabTonight({ size = 22, color = palette.accent }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 11H21" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
       <Path
-        d="M12 3c-.5 4-4 5-4 9a4 4 0 1 0 8 0c0-4-3.5-5-4-9Z"
-        fill={color}
+        d="M4 11Q4 18 12 18Q20 18 20 11"
         stroke={color}
-        strokeWidth={1.5}
+        strokeWidth={1.9}
+        strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
+      <Path d="M10 4V8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+      <Path d="M14 4V8" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
     </Svg>
   );
 }
 
-// Swipe tab — card with two horizontal lines
-export function IconTabSwipe({ size = 22, color = palette.textSecondary }: IconProps) {
+// Week tab — simplified calendar
+export function IconTabWeek({ size = 22, color = palette.textSecondary }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Rect
-        x={5}
-        y={6}
-        width={14}
-        height={12}
+        x={3.5}
+        y={4.5}
+        width={17}
+        height={16}
         rx={2.5}
         stroke={color}
-        strokeWidth={1.6}
+        strokeWidth={1.9}
         fill="none"
       />
+      <Path d="M8 2.5V6.5" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+      <Path d="M16 2.5V6.5" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
       <Path
-        d="M9 10h6M9 13h4"
+        d="M3.5 10H20.5"
         stroke={color}
-        strokeWidth={1.4}
+        strokeWidth={1.9}
         strokeLinecap="round"
       />
     </Svg>
@@ -206,21 +212,6 @@ export function IconTabShop({ size = 22, color = palette.textSecondary }: IconPr
         d="M9 7V5a3 3 0 0 1 6 0v2"
         stroke={color}
         strokeWidth={1.6}
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
-// Saved tab — bookmark outline
-export function IconTabSaved({ size = 22, color = palette.textSecondary }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M7 4h10v16l-5-3-5 3V4Z"
-        stroke={color}
-        strokeWidth={1.6}
-        strokeLinejoin="round"
         fill="none"
       />
     </Svg>

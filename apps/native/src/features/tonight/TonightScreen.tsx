@@ -1,482 +1,400 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Recipe } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
+import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  GlassChip,
-  IconPill,
-  IconRefresh,
-  IconCookingSteam,
-  IconArrowRight,
-  PaintedButton,
-} from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { ArrowRight, ChevronRight } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
-import { shadowCtaInline } from '../../design/shadows';
-import { ENERGY_TIER_LABEL } from '../../types/energy';
-import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
+import {
+  useWeekPlan,
+  activePickFor,
+  recentSelectedDays,
+  type DayPlan,
+} from '../../stores/weekPlan';
+import {
+  todayISO,
+  upcomingDays,
+  formatDayShort,
+  type ISODate,
+} from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
-
-type SpotlightStatus = 'ready' | 'needs';
-
-interface SpotlightState {
-  spotlightId: string | null;
-  statusByRecipe: Record<string, SpotlightStatus>;
-}
 
 export function TonightScreen() {
   const router = useRouter();
-  const { press, tap } = useHaptics();
-  const { data: recipes = [], isLoading } = useQuery({
-    queryKey: ['tonight'],
-    queryFn: () => api.getTonightPlan(),
-  });
+  const { press, select } = useHaptics();
+  const plan = useWeekPlan((s) => s.plan);
+  const hasHydrated = useWeekPlan((s) => s.hasHydrated);
+  const swapPick = useWeekPlan((s) => s.swapPick);
 
-  const openEatFlow = () => {
+  const today = todayISO();
+  const todayPlan = plan[today];
+  const todayPick = activePickFor(todayPlan);
+  const upcoming = upcomingDays(4, today).slice(1); // next 3 days after today
+  const recent = recentSelectedDays(plan, today, 5);
+
+  const onFindDinner = () => {
     press();
     router.push('/(eat)/energy');
   };
 
-  const [localSpotlight, setLocalSpotlight] = useState<string | null>(null);
-
-  const state: SpotlightState = useMemo(() => {
-    const statusByRecipe: Record<string, SpotlightStatus> = {};
-    recipes.forEach((recipe, idx) => {
-      statusByRecipe[recipe.id] = idx === 0 ? 'ready' : idx === 1 ? 'ready' : 'needs';
-    });
-    return {
-      spotlightId: localSpotlight ?? recipes[0]?.id ?? null,
-      statusByRecipe,
-    };
-  }, [recipes, localSpotlight]);
-
-  const spotlight = recipes.find((r) => r.id === state.spotlightId) ?? recipes[0];
-  const others = recipes.filter((r) => r.id !== spotlight?.id).slice(0, 2);
-  const readyCount = Object.values(state.statusByRecipe).filter(
-    (s) => s === 'ready'
-  ).length;
-
-  const openRecipe = (id: string) => {
+  const onOpenRecipe = (recipeId: string) => {
     press();
-    router.push({ pathname: '/(modals)/recipe/[id]', params: { id } });
+    router.push({ pathname: '/(modals)/recipe/[id]', params: { id: recipeId } });
   };
 
-  const swapSpotlight = (id: string) => {
-    tap();
-    setLocalSpotlight(id);
+  const onSwapToday = () => {
+    if (!todayPlan?.recipes?.length) return;
+    select();
+    swapPick(today);
   };
+
+  const onOpenWeek = () => {
+    press();
+    router.push('/(tabs)/week');
+  };
+
+  // Don't render anything state-dependent until AsyncStorage hydration completes
+  // to avoid an empty-state flash on cold launch when a pick already exists.
+  if (!hasHydrated) {
+    return <ScreenShell horizontalPadding={24} />;
+  }
 
   return (
     <ScreenShell horizontalPadding={24}>
-      <View style={styles.header}>
-        <View style={styles.titleGroup}>
-          <View style={styles.kickerRow}>
-            <Mono size={10} bold color={palette.accentDeep}>
-              tonight
-            </Mono>
-            <View style={styles.kickerDot} />
-            <Mono size={10} color={palette.textSecondary}>
-              spotlight {readyCount}/{Math.max(recipes.length, 1)} ready
-            </Mono>
-          </View>
-          <View style={styles.displayTitleWrap}>
-            <DisplayText size={56} color={palette.primary} style={styles.displayTitle}>
-              Tonight
-            </DisplayText>
-            <BrushstrokeUnderline
-              width={170}
-              color={palette.accent}
-              strokeWidth={2.4}
-              style={styles.displayUnderline}
-            />
-          </View>
-        </View>
-        <IconPill
-          onPress={openEatFlow}
-          accessibilityLabel="Draft fresh recipes"
-        >
-          <IconRefresh />
-        </IconPill>
-      </View>
-
-      <View style={{ height: spacing.lg }} />
-
-      {isLoading ? (
-        <Mono>loading</Mono>
-      ) : spotlight ? (
-        <>
-          <SpotlightCard
-            recipe={spotlight}
-            status={state.statusByRecipe[spotlight.id] ?? 'ready'}
-            onOpen={() => openRecipe(spotlight.id)}
-          />
-          {others.length > 0 ? (
-            <>
-              <View style={{ height: spacing.lg }} />
-              <View style={styles.morePicksHeader}>
-                <Mono size={10} bold color={palette.accentDeep}>
-                  more picks
-                </Mono>
-                <Mono size={11} color={palette.textSecondary} style={styles.tapHint}>
-                  Tap to spotlight
-                </Mono>
-              </View>
-              <View style={{ height: spacing.sm + 2 }} />
-              <View style={styles.miniRow}>
-                {others.map((recipe) => (
-                  <MiniCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    status={state.statusByRecipe[recipe.id] ?? 'needs'}
-                    onPress={() => swapSpotlight(recipe.id)}
-                  />
-                ))}
-              </View>
-            </>
-          ) : null}
-        </>
+      {todayPick ? (
+        <HeroPopulated
+          pick={todayPick}
+          todayIso={today}
+          onOpen={() => onOpenRecipe(todayPick.id)}
+          onSwap={onSwapToday}
+        />
       ) : (
-        <EmptyTonightCard onDraft={openEatFlow} />
+        <HeroEmpty onFind={onFindDinner} />
       )}
+
+      <UpcomingStrip
+        days={upcoming}
+        plan={plan}
+        onOpenRecipe={onOpenRecipe}
+        onOpenWeek={onOpenWeek}
+      />
+
+      <RecentCooks days={recent} plan={plan} onOpenRecipe={onOpenRecipe} />
     </ScreenShell>
   );
 }
 
-function EmptyTonightCard({ onDraft }: { onDraft: () => void }) {
+function HeroEmpty({ onFind }: { onFind: () => void }) {
   return (
-    <View style={styles.empty}>
+    <View>
       <Mono size={10} bold color={palette.accentDeep}>
-        sunday reset
+        TONIGHT
       </Mono>
       <View style={{ height: spacing.xs }} />
-      <DisplayText size={28} color={palette.ink} style={styles.emptyTitle}>
-        No plan yet.
-      </DisplayText>
-      <View style={{ height: spacing.sm }} />
-      <BodyText size={14} color={palette.textSecondary} weight="medium">
-        Cook up fresh picks for tonight — tell us your energy and we&apos;ll
-        draft three dinners in about ten seconds.
-      </BodyText>
-      <View style={{ height: spacing.md }} />
-      <PaintedButton
-        label="Draft tonight"
-        size="lg"
-        tone="forest"
-        onPress={onDraft}
-        leadingIcon={<IconCookingSteam />}
-        fullWidth
-      />
-    </View>
-  );
-}
-
-function SpotlightCard({
-  recipe,
-  status,
-  onOpen,
-}: {
-  recipe: Recipe;
-  status: SpotlightStatus;
-  onOpen: () => void;
-}) {
-  return (
-    <View style={styles.spotlight}>
-      <View style={styles.spotlightImageWrap}>
-        <FoodHeroImage
-          localKey={recipe.localImageKey as SeedMealKey | undefined}
-          remoteUrl={recipe.heroImageUrl}
-          blurhash={recipe.blurhash}
-          height={218}
-          cornerRadius={0}
-          style={{ width: '100%', height: 218 }}
-        />
-        <GlassChip style={styles.spotlightBadge}>
-          <View style={[styles.tinyDot, { backgroundColor: palette.accent }]} />
-          <Mono size={10} bold color={palette.accentDeep}>
-            SPOTLIGHT 1 OF 3
-          </Mono>
-        </GlassChip>
-        <GlassChip style={styles.energyBadge}>
-          <View style={[styles.tinyDot, { backgroundColor: palette.accent }]} />
-          <Mono size={10} bold color={palette.accentDeep}>
-            {ENERGY_TIER_LABEL[recipe.tier].toUpperCase()}
-          </Mono>
-        </GlassChip>
-      </View>
-
-      <View style={styles.spotlightContent}>
-        <View style={styles.spotlightTitleBlock}>
-          <Pressable onPress={onOpen}>
-            <DisplayText size={28} color={palette.ink} style={styles.spotlightTitle}>
-              {recipe.title}
-            </DisplayText>
-          </Pressable>
-          <View style={{ height: 6 }} />
-          <View style={styles.metaRow}>
-            <BodyText size={13} color={palette.textSecondary} weight="medium">
-              {recipe.cuisine}
-            </BodyText>
-            <View style={styles.metaDot} />
-            <BodyText size={13} color={palette.textSecondary} weight="medium">
-              {recipe.timeMinutes} min
-            </BodyText>
-            <View style={styles.metaDot} />
-            <BodyText size={13} color={palette.textSecondary} weight="medium">
-              serves {recipe.servings}
-            </BodyText>
-          </View>
-        </View>
-
-        <View style={styles.cookRow}>
-          <View style={styles.cookRowLeft}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: status === 'ready' ? palette.primaryMuted : palette.accent },
-              ]}
-            />
-            <Mono size={10} bold color={palette.textSecondary}>
-              {status === 'ready' ? 'READY TO COOK' : 'NEEDS SHOPPING'}
-            </Mono>
-          </View>
-          <Pressable
-            onPress={onOpen}
-            style={[styles.cookButton, shadowCtaInline]}
-          >
-            <BodyText size={12} weight="semi" color={palette.surface}>
-              Cook tonight
-            </BodyText>
-            <IconArrowRight size={12} color={palette.surface} />
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function MiniCard({
-  recipe,
-  status,
-  onPress,
-}: {
-  recipe: Recipe;
-  status: SpotlightStatus;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.miniCard,
-        pressed ? { opacity: 0.92, transform: [{ scale: 0.985 }] } : null,
-      ]}
-    >
-      <FoodHeroImage
-        localKey={recipe.localImageKey as SeedMealKey | undefined}
-        remoteUrl={recipe.heroImageUrl}
-        blurhash={recipe.blurhash}
-        height={88}
-        cornerRadius={0}
-        style={styles.miniImage}
-      />
-      <View style={styles.miniBody}>
-        <DisplayText size={18} color={palette.ink} style={styles.miniTitle}>
-          {recipe.title}
+      <View style={styles.titleWrap}>
+        <DisplayText size={40} color={palette.primary} style={styles.title}>
+          What&rsquo;s for dinner?
         </DisplayText>
-        <View style={styles.miniMetaRow}>
-          <BodyText size={11} color={palette.textSecondary} weight="medium">
-            {recipe.cuisine} · {recipe.timeMinutes} min
-          </BodyText>
-          <View style={styles.miniStatusRow}>
-            <View
-              style={[
-                styles.statusDotSm,
-                { backgroundColor: status === 'ready' ? palette.primaryMuted : palette.accent },
-              ]}
-            />
-            <Mono size={9} bold color={palette.textSecondary}>
-              {status === 'ready' ? 'READY' : 'NEEDS 1'}
-            </Mono>
-          </View>
-        </View>
+        <BrushstrokeUnderline
+          width={260}
+          color={palette.accent}
+          strokeWidth={2.4}
+          style={styles.underline}
+        />
       </View>
-    </Pressable>
+      <View style={{ height: spacing.lg }} />
+      <View style={styles.emptyCard}>
+        <BodyText size={15} color={palette.textSecondary} weight="medium">
+          Tell us your energy, we&rsquo;ll draft three dinners in about 10 seconds.
+        </BodyText>
+        <View style={{ height: spacing.md }} />
+        <PolishedButton
+          label="Find tonight's dinner"
+          tone="forest"
+          onPress={onFind}
+          trailingIcon={<ArrowRight size={14} color={palette.surface} />}
+        />
+      </View>
+    </View>
+  );
+}
+
+function HeroPopulated({
+  pick,
+  todayIso,
+  onOpen,
+  onSwap,
+}: {
+  pick: Recipe;
+  todayIso: ISODate;
+  onOpen: () => void;
+  onSwap: () => void;
+}) {
+  const { weekday, month, day } = formatDayShort(todayIso);
+  return (
+    <View>
+      <Mono size={10} bold color={palette.accentDeep}>
+        TONIGHT · {weekday} {month} {day}
+      </Mono>
+      <View style={{ height: spacing.sm }} />
+      <View style={styles.heroCard}>
+        <FoodHeroImage
+          localKey={pick.localImageKey as SeedMealKey | undefined}
+          remoteUrl={pick.heroImageUrl}
+          blurhash={pick.blurhash}
+          height={260}
+          cornerRadius={22}
+          style={{ width: '100%', height: 260 }}
+        />
+      </View>
+      <View style={{ height: spacing.md }} />
+      <DisplayText size={32} color={palette.ink} style={styles.heroTitle}>
+        {pick.title}
+      </DisplayText>
+      <View style={{ height: 4 }} />
+      <Mono size={11} color={palette.textSecondary}>
+        {pick.cuisine} · {pick.timeMinutes} min · serves {pick.servings}
+      </Mono>
+      <View style={{ height: spacing.md }} />
+      <PolishedButton
+        label="Cook now"
+        tone="forest"
+        onPress={onOpen}
+        trailingIcon={<ArrowRight size={14} color={palette.surface} />}
+      />
+      <View style={{ height: spacing.sm }} />
+      <Pressable
+        hitSlop={6}
+        onPress={onSwap}
+        style={{ alignSelf: 'center' }}
+        accessibilityRole="button"
+        accessibilityLabel="Try another pick"
+      >
+        <BodyText size={13} weight="semi" color={palette.textSecondary}>
+          Try another
+        </BodyText>
+      </Pressable>
+    </View>
+  );
+}
+
+function UpcomingStrip({
+  days,
+  plan,
+  onOpenRecipe,
+  onOpenWeek,
+}: {
+  days: ISODate[];
+  plan: Record<ISODate, DayPlan>;
+  onOpenRecipe: (id: string) => void;
+  onOpenWeek: () => void;
+}) {
+  const anyPlanned = days.some(
+    (d) => plan[d]?.energy || (plan[d]?.recipes?.length ?? 0) > 0,
+  );
+  if (!anyPlanned) return null;
+
+  return (
+    <View>
+      <View style={{ height: spacing.xl }} />
+      <Mono size={10} bold color={palette.accentDeep}>
+        UPCOMING
+      </Mono>
+      <View style={{ height: spacing.sm }} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 10 }}
+      >
+        {days.map((date) => {
+          const day = plan[date];
+          const pick = activePickFor(day);
+          const { weekday, month, day: d } = formatDayShort(date);
+          const accessibilityLabel = pick
+            ? `${weekday}: ${pick.title}`
+            : day?.energy
+              ? `${weekday}: tagged, not drafted yet`
+              : `${weekday}: no plans`;
+          return (
+            <Pressable
+              key={date}
+              onPress={() => (pick ? onOpenRecipe(pick.id) : onOpenWeek())}
+              style={styles.upcomingCard}
+              accessibilityRole="button"
+              accessibilityLabel={accessibilityLabel}
+            >
+              <Mono size={9} bold color={palette.accentDeep}>
+                {weekday} · {month} {d}
+              </Mono>
+              <View style={{ height: spacing.xs }} />
+              {pick ? (
+                <>
+                  <View style={styles.upcomingThumb}>
+                    <FoodHeroImage
+                      localKey={pick.localImageKey as SeedMealKey | undefined}
+                      remoteUrl={pick.heroImageUrl}
+                      blurhash={pick.blurhash}
+                      height={72}
+                      cornerRadius={10}
+                      style={{ width: '100%', height: 72 }}
+                    />
+                  </View>
+                  <View style={{ height: spacing.xs }} />
+                  <BodyText
+                    size={12}
+                    weight="semi"
+                    color={palette.ink}
+                    numberOfLines={2}
+                  >
+                    {pick.title}
+                  </BodyText>
+                </>
+              ) : day?.energy ? (
+                <BodyText
+                  size={12}
+                  weight="medium"
+                  color={palette.textSecondary}
+                  numberOfLines={2}
+                >
+                  tagged · not drafted yet
+                </BodyText>
+              ) : (
+                <BodyText
+                  size={12}
+                  weight="medium"
+                  color={palette.textTertiary}
+                  numberOfLines={2}
+                >
+                  no plans
+                </BodyText>
+              )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function RecentCooks({
+  days,
+  plan,
+  onOpenRecipe,
+}: {
+  days: ISODate[];
+  plan: Record<ISODate, DayPlan>;
+  onOpenRecipe: (id: string) => void;
+}) {
+  if (days.length === 0) return null;
+
+  return (
+    <View>
+      <View style={{ height: spacing.xl }} />
+      <Mono size={10} bold color={palette.accentDeep}>
+        YOU&rsquo;VE COOKED
+      </Mono>
+      <View style={{ height: spacing.sm }} />
+      <View style={styles.recentList}>
+        {days.map((date, idx) => {
+          const pick = activePickFor(plan[date]);
+          if (!pick) return null;
+          const { weekday, month, day: d } = formatDayShort(date);
+          const last = idx === days.length - 1;
+          return (
+            <Pressable
+              key={date}
+              onPress={() => onOpenRecipe(pick.id)}
+              style={[styles.recentRow, last ? styles.recentRowLast : null]}
+              accessibilityRole="button"
+              accessibilityLabel={`${weekday}: ${pick.title}`}
+            >
+              <View style={{ flex: 1 }}>
+                <Mono size={9} color={palette.textSecondary}>
+                  {weekday} · {month} {d}
+                </Mono>
+                <View style={{ height: 2 }} />
+                <BodyText
+                  size={14}
+                  weight="semi"
+                  color={palette.ink}
+                  numberOfLines={1}
+                >
+                  {pick.title}
+                </BodyText>
+              </View>
+              <ChevronRight size={16} color={palette.textTertiary} strokeWidth={2} />
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  titleGroup: {
-    gap: 6,
-  },
-  kickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  displayTitleWrap: {
+  titleWrap: {
     position: 'relative',
     alignSelf: 'flex-start',
   },
-  displayTitle: {
-    letterSpacing: -2,
-    lineHeight: 56,
+  title: {
+    letterSpacing: -1.2,
+    lineHeight: 44,
   },
-  displayUnderline: {
+  underline: {
     position: 'absolute',
     left: -6,
-    bottom: -6,
+    bottom: -10,
   },
-  spotlight: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
-  },
-  spotlightImageWrap: {
-    position: 'relative',
-    width: '100%',
-    height: 218,
-  },
-  spotlightBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-  },
-  energyBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-  tinyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  spotlightContent: {
-    padding: 22,
-    paddingTop: 12,
-    gap: 10,
-  },
-  spotlightTitleBlock: {
-    gap: 6,
-  },
-  spotlightTitle: {
-    letterSpacing: -0.8,
-    lineHeight: 32,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  cookRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-  },
-  cookRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusDotSm: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  cookButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: palette.primary,
-  },
-  morePicksHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  tapHint: {
-    fontStyle: 'italic',
-  },
-  miniRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  miniCard: {
-    flex: 1,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
-  },
-  miniImage: {
-    width: '100%',
-    height: 88,
-  },
-  miniBody: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 6,
-  },
-  miniTitle: {
-    letterSpacing: -0.4,
-    lineHeight: 20,
-  },
-  miniMetaRow: {
-    gap: 2,
-  },
-  miniStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  empty: {
+  emptyCard: {
     borderRadius: 22,
     padding: spacing.lg,
     backgroundColor: palette.surface,
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+  },
+  heroCard: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
   },
-  emptyTitle: {
-    letterSpacing: -0.6,
-    lineHeight: 32,
+  heroTitle: {
+    letterSpacing: -0.5,
+    lineHeight: 36,
+  },
+  upcomingCard: {
+    width: 132,
+    padding: spacing.sm + 2,
+    borderRadius: 14,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+  },
+  upcomingThumb: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  recentList: {
+    borderRadius: 18,
+    backgroundColor: palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+    paddingHorizontal: spacing.md,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(42, 58, 38, 0.08)',
+  },
+  recentRowLast: {
+    borderBottomWidth: 0,
   },
 });

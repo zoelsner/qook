@@ -12,15 +12,11 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { WashBackground } from '../../components/WashBackground';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  IconClose,
-  IconPill,
-  IconArrowRight,
-  PaintedButton,
-} from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { IconPill } from '../../components/painted';
+import { X, ArrowRight } from 'lucide-react-native';
 import { palette, spacing, typeScale } from '../../design';
 import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -82,7 +78,6 @@ export function ContextStep() {
 
   return (
     <View style={styles.root}>
-      <WashBackground />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.safe}
@@ -92,7 +87,7 @@ export function ContextStep() {
             <View style={styles.content}>
               <View style={styles.topBar}>
                 <IconPill onPress={handleCancel} accessibilityLabel="Cancel">
-                  <IconClose />
+                  <X size={16} color={palette.ink} strokeWidth={2.2} />
                 </IconPill>
               </View>
 
@@ -182,13 +177,11 @@ export function ContextStep() {
 
               <View style={styles.flexSpacer} />
 
-              <PaintedButton
-                label={trimmed.length > 0 ? 'Draft with this' : 'Draft three recipes'}
-                size="lg"
+              <PolishedButton
+                label={trimmed.length > 0 ? 'Use this, find dinner' : "Find tonight's dinner"}
                 tone="forest"
                 onPress={handleDraft}
-                trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
-                fullWidth
+                trailingIcon={<ArrowRight size={14} color={palette.surface} />}
               />
 
               <View style={{ height: spacing.sm + 2 }} />
@@ -208,7 +201,7 @@ export function ContextStep() {
                   weight="medium"
                   color={palette.textTertiary}
                 >
-                  Skip — just surprise me
+                  Skip — surprise me
                 </BodyText>
               </Pressable>
             </View>

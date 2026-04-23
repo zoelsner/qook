@@ -27,6 +27,17 @@ export const ENERGY_TIER_SUBTITLE: Record<EnergyTier, string> = {
   'weekend-project': '> 45 min',
 };
 
+// Minutes-first EnergyPicker rows (Move 4): hero number + "min or less/more".
+export const ENERGY_TIER_MINUTES: Record<
+  EnergyTier,
+  { value: number; qualifier: 'or less' | 'or more' }
+> = {
+  'brain-is-fried': { value: 15, qualifier: 'or less' },
+  'after-work': { value: 30, qualifier: 'or less' },
+  'got-energy': { value: 45, qualifier: 'or less' },
+  'weekend-project': { value: 60, qualifier: 'or more' },
+};
+
 export function energyTierColors(tier: EnergyTier) {
   return energyTier[PALETTE_KEY[tier]];
 }

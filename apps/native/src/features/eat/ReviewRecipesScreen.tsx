@@ -1,26 +1,20 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { Recipe } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  PaintedButton,
-  PaintedDivider,
-  IconPill,
-  IconClose,
-  IconArrowRight,
-  IconRefresh,
-  IconHeart,
-  GlassChip,
-} from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
+import { IconPill } from '../../components/painted';
+import { X, ArrowRight, RefreshCw } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
+import { useWeekPlan } from '../../stores/weekPlan';
+import { todayISO } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 
 export function ReviewRecipesScreen() {
@@ -32,7 +26,16 @@ export function ReviewRecipesScreen() {
   const errorMsg = useGenerationSession((s) => s.error);
   const start = useGenerationSession((s) => s.start);
   const reset = useGenerationSession((s) => s.reset);
-  const [savedIds, setSavedIds] = useState<Record<string, boolean>>({});
+  const setRecipes = useWeekPlan((s) => s.setRecipes);
+  const setPickIndex = useWeekPlan((s) => s.setPickIndex);
+  const commitSelection = useWeekPlan((s) => s.commitSelection);
+  const [pickIdx, setPickIdx] = useState(0);
+
+  const handleClose = () => {
+    press();
+    reset();
+    router.back();
+  };
 
   const handleRegenerate = () => {
     if (!tier) return;
@@ -41,36 +44,39 @@ export function ReviewRecipesScreen() {
     router.replace('/(eat)/loading');
   };
 
-  const handleClose = () => {
-    press();
-    reset();
-    router.back();
-  };
-
-  const toggleSave = (id: string) => {
+  const handleSwap = () => {
+    if (recipes.length === 0) return;
     select();
-    setSavedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+    setPickIdx((i) => (i + 1) % recipes.length);
   };
 
-  const openRecipe = (id: string) => {
+  const handleCook = () => {
+    const pick = recipes[pickIdx];
+    if (!pick) return;
     press();
-    router.push({ pathname: '/(modals)/recipe/[id]', params: { id } });
+    const today = todayISO();
+    setRecipes(today, recipes);
+    setPickIndex(today, pickIdx);
+    commitSelection(today);
+    reset();
+    router.replace({ pathname: '/(modals)/recipe/[id]', params: { id: pick.id } });
   };
 
-  const savedCount = Object.values(savedIds).filter(Boolean).length;
+  const pick = recipes[pickIdx];
+  const totalPicks = recipes.length;
 
   return (
     <ScreenShell horizontalPadding={24}>
       <View style={styles.topBar}>
         <IconPill onPress={handleClose} accessibilityLabel="Close">
-          <IconClose />
+          <X size={16} color={palette.ink} strokeWidth={2.2} />
         </IconPill>
         <IconPill
           onPress={handleRegenerate}
           accessibilityLabel="Regenerate"
           disabled={!tier}
         >
-          <IconRefresh />
+          <RefreshCw size={18} color={palette.primary} strokeWidth={2} />
         </IconPill>
       </View>
       <View style={{ height: spacing.md }} />
@@ -82,12 +88,13 @@ export function ReviewRecipesScreen() {
           </Mono>
           <View style={styles.kickerDot} />
           <Mono size={10} color={palette.textSecondary}>
-            {tier ? ENERGY_TIER_LABEL[tier].toUpperCase() : '—'} · {recipes.length} drafts
+            {tier ? ENERGY_TIER_LABEL[tier].toUpperCase() : '—'} · pick{' '}
+            {totalPicks === 0 ? 0 : pickIdx + 1} of {totalPicks}
           </Mono>
         </View>
         <View style={styles.displayTitleWrap}>
           <DisplayText size={38} color={palette.primary} style={styles.displayTitle}>
-            Three new ideas
+            Tonight&rsquo;s pick.
           </DisplayText>
           <BrushstrokeUnderline
             width={240}
@@ -101,120 +108,65 @@ export function ReviewRecipesScreen() {
       <View style={{ height: spacing.md }} />
 
       {sessionState === 'error' ? (
-        <ErrorState message={errorMsg ?? 'Something went sideways.'} onRetry={handleRegenerate} />
-      ) : (
+        <ErrorState
+          message={errorMsg ?? 'Something went sideways.'}
+          onRetry={handleRegenerate}
+        />
+      ) : !pick ? null : (
         <>
-          <BodyText size={14} color={palette.textSecondary} weight="medium">
-            {"Tap the heart on the ones you want — they'll land in Saved and feed tomorrow's shopping list."}
-          </BodyText>
-          <View style={{ height: spacing.lg }} />
-
-          <View style={styles.list}>
-            {recipes.map((recipe, idx) => (
-              <View key={recipe.id} style={idx > 0 ? { marginTop: spacing.md } : null}>
-                <ReviewCard
-                  recipe={recipe}
-                  saved={!!savedIds[recipe.id]}
-                  onOpen={() => openRecipe(recipe.id)}
-                  onToggleSave={() => toggleSave(recipe.id)}
-                />
-              </View>
-            ))}
+          <View style={styles.card}>
+            <FoodHeroImage
+              localKey={pick.localImageKey as SeedMealKey | undefined}
+              remoteUrl={pick.heroImageUrl}
+              blurhash={pick.blurhash}
+              height={320}
+              cornerRadius={22}
+              style={{ width: '100%', height: 320 }}
+            />
           </View>
-
-          <View style={{ height: spacing.lg }} />
-          <PaintedDivider />
           <View style={{ height: spacing.md }} />
-
-          <PaintedButton
-            label={savedCount === 0 ? 'Save all three' : `Save ${savedCount} of ${recipes.length}`}
-            size="lg"
+          <DisplayText size={32} color={palette.ink} style={styles.cardTitle}>
+            {pick.title}
+          </DisplayText>
+          <View style={{ height: 4 }} />
+          <Mono size={11} color={palette.textSecondary}>
+            {pick.cuisine} · {pick.timeMinutes} min · serves {pick.servings}
+          </Mono>
+          {pick.notes ? (
+            <>
+              <View style={{ height: spacing.sm }} />
+              <BodyText
+                size={14}
+                color={palette.textSecondary}
+                weight="medium"
+                numberOfLines={3}
+              >
+                {pick.notes}
+              </BodyText>
+            </>
+          ) : null}
+          <View style={{ height: spacing.lg }} />
+          <PolishedButton
+            label="Cook tonight"
             tone="forest"
-            onPress={handleClose}
-            trailingIcon={<IconArrowRight size={14} color={palette.surface} />}
-            fullWidth
+            onPress={handleCook}
+            trailingIcon={<ArrowRight size={14} color={palette.surface} />}
           />
           <View style={{ height: spacing.sm + 2 }} />
-          <Pressable hitSlop={6} onPress={handleRegenerate} style={{ alignSelf: 'center' }}>
-            <BodyText size={12} weight="semi" color={palette.textSecondary}>
-              Not these — draft again
+          <Pressable
+            hitSlop={6}
+            onPress={handleSwap}
+            style={{ alignSelf: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Try another pick"
+          >
+            <BodyText size={13} weight="semi" color={palette.textSecondary}>
+              Try another
             </BodyText>
           </Pressable>
         </>
       )}
     </ScreenShell>
-  );
-}
-
-function ReviewCard({
-  recipe,
-  saved,
-  onOpen,
-  onToggleSave,
-}: {
-  recipe: Recipe;
-  saved: boolean;
-  onOpen: () => void;
-  onToggleSave: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onOpen}
-      style={({ pressed }) => [
-        styles.card,
-        pressed ? { opacity: 0.95, transform: [{ scale: 0.995 }] } : null,
-      ]}
-    >
-      <View style={styles.cardImageWrap}>
-        <FoodHeroImage
-          localKey={recipe.localImageKey as SeedMealKey | undefined}
-          remoteUrl={recipe.heroImageUrl}
-          blurhash={recipe.blurhash}
-          height={140}
-          cornerRadius={0}
-          style={{ width: '100%', height: 140 }}
-        />
-        <GlassChip style={styles.tierBadge}>
-          <View style={[styles.tinyDot, { backgroundColor: palette.accent }]} />
-          <Mono size={9} bold color={palette.accentDeep}>
-            {ENERGY_TIER_LABEL[recipe.tier].toUpperCase()}
-          </Mono>
-        </GlassChip>
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            onToggleSave();
-          }}
-          hitSlop={8}
-          style={styles.saveBtn}
-          accessibilityLabel="Toggle save"
-        >
-          <IconHeart
-            size={22}
-            color={palette.accent}
-            strokeColor={palette.accentDeep}
-            filled={saved}
-          />
-        </Pressable>
-      </View>
-      <View style={styles.cardBody}>
-        <DisplayText size={22} color={palette.ink} style={styles.cardTitle}>
-          {recipe.title}
-        </DisplayText>
-        <View style={{ height: 4 }} />
-        <Mono size={11} color={palette.textSecondary}>
-          {recipe.cuisine} · {recipe.timeMinutes} min · serves {recipe.servings}
-        </Mono>
-        {recipe.notes ? (
-          <>
-            <View style={{ height: 6 }} />
-            <BodyText size={13} color={palette.textSecondary} weight="medium" numberOfLines={2}>
-              {recipe.notes}
-            </BodyText>
-          </>
-        ) : null}
-      </View>
-    </Pressable>
   );
 }
 
@@ -225,11 +177,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         {"couldn't draft"}
       </Mono>
       <View style={{ height: spacing.xs }} />
-      <DisplayText size={22} color={palette.ink} style={{ letterSpacing: -0.5, lineHeight: 26 }}>
+      <DisplayText
+        size={22}
+        color={palette.ink}
+        style={{ letterSpacing: -0.5, lineHeight: 26 }}
+      >
         {message}
       </DisplayText>
       <View style={{ height: spacing.md }} />
-      <PaintedButton label="Try again" size="md" tone="rust" onPress={onRetry} />
+      <PolishedButton label="Try again" tone="rust" onPress={onRetry} />
     </View>
   );
 }
@@ -266,9 +222,6 @@ const styles = StyleSheet.create({
     left: -6,
     bottom: -8,
   },
-  list: {
-    gap: 0,
-  },
   card: {
     borderRadius: 22,
     overflow: 'hidden',
@@ -276,38 +229,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
   },
-  cardImageWrap: {
-    position: 'relative',
-    width: '100%',
-    height: 140,
-  },
-  tierBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-  },
-  tinyDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
-  saveBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: palette.surfaceTranslucent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardBody: {
-    padding: spacing.md,
-  },
   cardTitle: {
     letterSpacing: -0.5,
-    lineHeight: 26,
+    lineHeight: 36,
   },
   errorCard: {
     borderRadius: 22,
