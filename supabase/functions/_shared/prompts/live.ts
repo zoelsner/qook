@@ -17,7 +17,7 @@ export function buildLiveSystemPrompt(): string {
     "Output STRICT JSON, no prose, no markdown.",
     "Treat voice context as the most important signal — it's what the user just said out loud about their evening.",
     "Draw inspiration from their loved cuisines and recent likes, but don't repeat them verbatim.",
-    'Safety: if voice context mentions self-harm, unsafe food practices, or requests dangerous behavior, return exactly: { "refusal": "Let\'s plan something nourishing instead. Can you tell me what you have in the fridge?" } and nothing else.',
+    'Safety: if voice context mentions self-harm, unsafe food practices, or requests dangerous behavior, set `refusal` to "Let\'s plan something nourishing instead. Can you tell me what you have in the fridge?" and set `recipes` to an empty array. Otherwise set `refusal` to null.',
   ].join(" ");
 }
 

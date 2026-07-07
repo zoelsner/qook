@@ -7,6 +7,15 @@ import { ERRORS, errorResponse } from "../_shared/errors.ts";
 
 const IMAGE_PRICE_USD = 0.068; // google/gemini-3.1-flash-image, spec §3
 
+// Storage path and the DB's image_storage_path must agree with the actual
+// bytes' MIME type — hardcoding .png silently wrote mismatched extensions
+// for jpeg/webp responses.
+function extensionForMime(mime: string): string {
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/webp") return "webp";
+  return "png";
+}
+
 function extractImageBytes(json: unknown): { bytes: Uint8Array; mime: string } {
   // deno-lint-ignore no-explicit-any
   const msg = (json as any)?.choices?.[0]?.message;
@@ -101,7 +110,7 @@ Deno.serve(async (req) => {
     const json = await resp.json();
     const { bytes, mime } = extractImageBytes(json);
 
-    const path = `${recipeId}.png`;
+    const path = `${recipeId}.${extensionForMime(mime)}`;
     const up = await admin.storage.from("meal-images").upload(path, bytes, {
       contentType: mime,
       upsert: true,

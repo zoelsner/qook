@@ -26,3 +26,41 @@ export function routeStreamEvent(
     /* malformed event — ignore */
   }
 }
+
+// Parses a full buffered SSE response body (as returned by a plain `fetch`,
+// not the streaming EventSource client) into the last `final` or `error`
+// event it contains. Pure — no RN-touching imports — so it can be unit
+// tested with `bun run` alongside routeStreamEvent above.
+export function parseBufferedSse(
+  text: string
+): { finalRecipes?: unknown[]; error?: { code: string; message: string } } {
+  const blocks = text.split(/\n\n+/);
+  let finalRecipes: unknown[] | undefined;
+  let error: { code: string; message: string } | undefined;
+
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    const eventLine = lines.find((l) => l.startsWith('event:'));
+    const dataLine = lines.find((l) => l.startsWith('data:'));
+    if (!eventLine || !dataLine) continue;
+    const event = eventLine.slice('event:'.length).trim();
+    const data = dataLine.slice('data:'.length).trim();
+    if (event !== 'final' && event !== 'error') continue;
+
+    try {
+      const payload = JSON.parse(data);
+      if (event === 'final') {
+        finalRecipes = payload.recipes ?? [];
+      } else {
+        error = {
+          code: payload.code ?? 'generation_failed',
+          message: payload.message ?? 'Something went wrong.',
+        };
+      }
+    } catch {
+      /* malformed event — ignore, fall through to caller's generic error */
+    }
+  }
+
+  return { finalRecipes, error };
+}

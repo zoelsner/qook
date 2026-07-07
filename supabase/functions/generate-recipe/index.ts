@@ -24,7 +24,7 @@ const RequestBody = z.object({
     "got-energy",
     "weekend-project",
   ]),
-  context: z.string().optional(),
+  context: z.string().max(500).optional(),
 });
 
 const ResponseEnvelope = z.object({ recipes: z.array(Recipe).length(3) });
@@ -186,9 +186,9 @@ Deno.serve(async (req) => {
         );
 
         const raw = JSON.parse(stripCodeFences(full));
-        if (raw && typeof raw === "object" && "refusal" in raw) {
+        if (raw && typeof raw === "object" && typeof raw.refusal === "string" && raw.refusal) {
           await finishSession(admin, sessionId, "failed");
-          send("error", { code: ERRORS.VALIDATION, message: String(raw.refusal) });
+          send("error", { code: ERRORS.VALIDATION, message: raw.refusal });
           controller.close();
           return;
         }

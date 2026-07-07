@@ -2,13 +2,13 @@ import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
 import type { EnergyTier, Recipe, Timestamp } from '@qook/shared';
 import { ensureSession } from './supabase';
-import { routeStreamEvent } from './streamEventRouter';
+import { routeStreamEvent, parseBufferedSse } from './streamEventRouter';
 import type { StreamCallbacks } from './streamEventRouter';
 
 // Re-exported so any other consumer can still import the router from here;
 // the bun assertion script imports it directly from streamEventRouter.ts
 // instead (see that file's header comment for why).
-export { routeStreamEvent };
+export { routeStreamEvent, parseBufferedSse };
 export type { StreamCallbacks };
 
 // The edge mapper (dbRowToClientRecipe) emits createdAt/updatedAt as ISO
@@ -78,12 +78,22 @@ export async function streamRecipes(
         finish(() => reject(new Error('stream_connection_error')));
         return;
       }
+      // routeStreamEvent swallows JSON-parse failures internally (it just
+      // returns without calling onError) — so a malformed `error` frame
+      // would otherwise never call onError, and the promise would hang
+      // forever. Track whether it actually fired and reject as a
+      // connection-level failure if not.
+      let handled = false;
       routeStreamEvent('error', raw, {
         onError: (code, message) => {
+          handled = true;
           cb.onError?.(code, message);
           finish(() => reject(new Error(message)));
         },
       });
+      if (!handled) {
+        finish(() => reject(new Error('stream_connection_error')));
+      }
     });
   });
 }

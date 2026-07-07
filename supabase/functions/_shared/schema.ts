@@ -237,7 +237,7 @@ export const RecipeEnvelopeJsonSchema = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["recipes"],
+    required: ["recipes", "refusal"],
     properties: {
       // No minItems/maxItems: Anthropic structured outputs reject array
       // minItems > 1. The prompt asks for exactly 3 and the Zod envelope
@@ -246,6 +246,11 @@ export const RecipeEnvelopeJsonSchema = {
         type: "array",
         items: RecipeJsonSchema.schema,
       },
+      // Strict mode forces the model into { recipes: [...] } and can't emit
+      // an alternate top-level shape for the safety-refusal path — so the
+      // refusal rides inside the envelope instead. null unless the model is
+      // refusing; when set, recipes is [].
+      refusal: { type: ["string", "null"] },
     },
   },
 } as const;

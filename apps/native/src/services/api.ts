@@ -5,7 +5,7 @@ import type {
   GroceryItem,
   Recipe,
 } from '@qook/shared';
-import { supabase } from './supabase';
+import { supabase, ensureSession } from './supabase';
 import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
@@ -145,7 +145,7 @@ export async function generateRecipesForEnergy(
     await lag(1500);
     return pickForTier(tier, 3);
   }
-  const { streamRecipes, normalizeFinalRecipes } = await import(
+  const { streamRecipes, normalizeFinalRecipes, parseBufferedSse } = await import(
     './generateRecipeStream'
   );
   const { useGenerationSession } = await import('../stores/generationSession');
@@ -159,13 +159,40 @@ export async function generateRecipesForEnergy(
     });
   } catch (streamErr) {
     if ((streamErr as Error).message !== 'stream_connection_error') throw streamErr;
-    // Fallback: non-stream invoke (same edge fn returns SSE, so use a plain
-    // fetch that reads the `final` event out of the buffered stream).
-    const { data, error } = await supabase.functions.invoke('generate-recipe', {
-      body: { tier, context: context?.trim() || undefined },
+    // react-native-sse surfaces both real connection failures AND pre-stream
+    // HTTP errors (429 rate-limit, 400, 500 — which arrive as an error event
+    // with no `.data`) as the same 'stream_connection_error'. EventSource is
+    // kept for the streaming UX; this buffered fetch is the fallback that
+    // recovers the server's typed {code,message} either way — from the JSON
+    // error body directly if the request never entered the stream, or by
+    // parsing the full SSE text if it did.
+    const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as string;
+    const anonKey = Constants.expoConfig?.extra?.supabaseAnonKey as string;
+    const token = await ensureSession();
+    const res = await fetch(`${supabaseUrl}/functions/v1/generate-recipe`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+      },
+      body: JSON.stringify({ tier, context: context?.trim() || undefined }),
     });
-    if (error) throw error;
-    return normalizeFinalRecipes((data as { recipes: unknown[] }).recipes);
+
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!res.ok && contentType.includes('application/json')) {
+      const body = (await res.json().catch(() => ({}))) as {
+        code?: string;
+        message?: string;
+      };
+      throw new Error(body.message ?? body.code ?? 'Something went wrong.');
+    }
+
+    const text = await res.text();
+    const { finalRecipes, error } = parseBufferedSse(text);
+    if (finalRecipes) return normalizeFinalRecipes(finalRecipes);
+    if (error) throw new Error(error.message ?? error.code);
+    throw new Error('Something went wrong.');
   }
 }
 
