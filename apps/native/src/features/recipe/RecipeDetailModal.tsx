@@ -81,6 +81,13 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     }
   };
 
+  const onAddAllToList = () => {
+    if (!recipe) return;
+    press();
+    appendRecipeAndSelect(todayISO(), recipe);
+    router.push('/(tabs)/shop');
+  };
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -99,6 +106,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
               select();
               setCheckedIds((prev) => ({ ...prev, [id]: !prev[id] }));
             }}
+            onAddAll={onAddAllToList}
           />
         )}
       </ScrollView>
@@ -145,10 +153,12 @@ function RecipeBody({
   recipe,
   checkedIds,
   onToggleIngredient,
+  onAddAll,
 }: {
   recipe: Recipe;
   checkedIds: Record<string, boolean>;
   onToggleIngredient: (id: string) => void;
+  onAddAll: () => void;
 }) {
   const ingredientCount = recipe.ingredients.reduce(
     (acc, group) => acc + group.items.length,
@@ -209,7 +219,7 @@ function RecipeBody({
           <Mono size={10} bold color={palette.accentDeep}>
             ingredients
           </Mono>
-          <Pressable hitSlop={6}>
+          <Pressable hitSlop={6} onPress={onAddAll} accessibilityRole="button">
             <BodyText
               size={12}
               weight="semi"
