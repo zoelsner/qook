@@ -70,6 +70,10 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Thrown for non-ok responses that are not 429/5xx (e.g. 400/401/403/404).
+// These must fail fast — no retry, no backoff sleep.
+class NonRetryableError extends Error {}
+
 export async function chat(opts: ChatOpts): Promise<string> {
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const maxRetries = opts.maxRetries ?? 2;
@@ -97,6 +101,12 @@ export async function chat(opts: ChatOpts): Promise<string> {
       clearTimeout(t);
 
       if (resp.status === 429) {
+        if (attempt === maxRetries) {
+          lastErr = new Error(
+            `OpenRouter ${resp.status} after ${maxRetries + 1} attempts`,
+          );
+          break;
+        }
         const retryAfter = Number(resp.headers.get("Retry-After") ?? 0);
         const wait = retryAfter > 0
           ? retryAfter * 1000
@@ -105,11 +115,20 @@ export async function chat(opts: ChatOpts): Promise<string> {
         continue;
       }
       if (resp.status >= 500 && resp.status < 600) {
+        if (attempt === maxRetries) {
+          lastErr = new Error(
+            `OpenRouter ${resp.status} after ${maxRetries + 1} attempts`,
+          );
+          break;
+        }
         await sleep(1000 * 2 ** attempt);
         continue;
       }
       if (!resp.ok) {
-        throw new Error(`OpenRouter ${resp.status}: ${await resp.text()}`);
+        // Non-retryable: 400/401/403/404/etc. Fail fast to the caller.
+        throw new NonRetryableError(
+          `OpenRouter ${resp.status}: ${await resp.text()}`,
+        );
       }
       const json = await resp.json();
       const content = json?.choices?.[0]?.message?.content;
@@ -119,9 +138,13 @@ export async function chat(opts: ChatOpts): Promise<string> {
       }
       return content;
     } catch (err) {
-      lastErr = err;
       clearTimeout(t);
+      if (err instanceof NonRetryableError) {
+        throw err;
+      }
+      lastErr = err;
       if (controller.signal.aborted) {
+        if (attempt === maxRetries) break;
         await sleep(500);
         continue;
       }

@@ -56,6 +56,54 @@ Deno.test("chat retries on 429 then succeeds", async () => {
   }
 });
 
+Deno.test("chat fails fast on 401", async () => {
+  const origFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = () => {
+    calls++;
+    return Promise.resolve(new Response("unauthorized", { status: 401 }));
+  };
+  try {
+    let threw: unknown;
+    try {
+      await chat({ messages: [{ role: "user", content: "hi" }] });
+    } catch (err) {
+      threw = err;
+    }
+    assert(threw instanceof Error);
+    assert((threw as Error).message.includes("401"));
+    assertEquals(calls, 1);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+Deno.test("chat surfaces status after exhausted retries", async () => {
+  const origFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = () => {
+    calls++;
+    return Promise.resolve(new Response("unavailable", { status: 503 }));
+  };
+  try {
+    let threw: unknown;
+    try {
+      await chat({
+        messages: [{ role: "user", content: "hi" }],
+        maxRetries: 0,
+        timeoutMs: 5000,
+      });
+    } catch (err) {
+      threw = err;
+    }
+    assert(threw instanceof Error);
+    assert((threw as Error).message.includes("503"));
+    assertEquals(calls, 1);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
 Deno.test("MODELS defaults match spec §4.3", () => {
   assertEquals(MODELS.textDraft(), "anthropic/claude-haiku-4.5");
   assertEquals(MODELS.textPolish(), "anthropic/claude-sonnet-5");
