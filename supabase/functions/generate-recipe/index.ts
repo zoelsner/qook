@@ -194,11 +194,13 @@ Deno.serve(async (req) => {
         }
         const result = ResponseEnvelope.safeParse(raw);
         if (!result.success) {
+          // Zod issues carry the diagnostics; keep the raw echo short — model
+          // output can weave the user's voice_context (PII) into recipe text.
           console.error(
             "generate-recipe validation failed",
             JSON.stringify(result.error.issues.slice(0, 5)),
             "raw:",
-            full.slice(0, 2000),
+            full.slice(0, 300),
           );
           await finishSession(admin, sessionId, "failed");
           send("error", {
