@@ -56,3 +56,9 @@ packages/shared/src/database.ts
 
 # OS
 Thumbs.db
+
+# Large binaries (regenerated from catalog.html; too big for plain git)
+docs/meals/catalog.pdf
+
+# Scratch
+.tmp/

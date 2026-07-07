@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Qook meal catalog — 24 recipes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FCF9F1;
+    --surface: #FEFBF3;
+    --ink: #26241C;
+    --text: #26241C;
+    --text-sec: #5A5846;
+    --text-ter: #8A8875;
+    --forest: #2A3A26;
+    --rust: #C36A48;
+    --prussian: #3D5469;
+    --halo: rgba(42, 58, 38, 0.08);
+    --border: rgba(42, 58, 38, 0.12);
+    --paper: rgba(42, 58, 38, 0.04);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--cream);
+    color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header.top {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+    margin-bottom: 48px;
+  }
+  .top-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--rust);
+    text-transform: uppercase;
+  }
+  .top-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 64px;
+    letter-spacing: -0.02em;
+    line-height: 1.02;
+    margin: 8px 0 4px;
+    color: var(--forest);
+  }
+  .top-title em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--rust);
+  }
+  .top-sub {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--text-sec);
+    margin: 8px 0 24px;
+  }
+  .top-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text-sec);
+    text-transform: uppercase;
+  }
+  .top-stats strong {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: var(--forest);
+    display: block;
+    margin-bottom: 2px;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    color: var(--forest);
+    margin: 0 0 8px;
+  }
+  .subcopy {
+    color: var(--text-sec);
+    margin: 0 0 24px;
+    font-size: 14px;
+  }
+
+  /* Matrix */
+  .matrix-section { margin-bottom: 64px; }
+  .matrix-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .matrix th, .matrix td {
+    text-align: left;
+    padding: 12px 10px;
+    vertical-align: top;
+  }
+  .matrix-tier {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--tier-color, var(--forest));
+    white-space: nowrap;
+  }
+  .matrix-tier-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--tier-color);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .matrix-cuisine {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--forest);
+    border-right: 1px solid var(--border);
+    white-space: nowrap;
+    padding-right: 16px;
+  }
+  .matrix-cell {
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    min-width: 160px;
+  }
+  .matrix-cell.empty {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      rgba(42, 58, 38, 0.03) 6px,
+      rgba(42, 58, 38, 0.03) 7px
+    );
+  }
+  .matrix-title {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text);
+    padding: 2px 0;
+  }
+
+  /* Tier section */
+  .tier-section { margin-bottom: 64px; }
+  .tier-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--tier-color);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .tier-meta {
+    display: flex;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-sec);
+    text-transform: uppercase;
+  }
+  .tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 32px;
+  }
+
+  /* Recipe card */
+  .recipe {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    break-inside: avoid;
+  }
+  .recipe-media {
+    background: var(--paper);
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+  .recipe-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .recipe-body { padding: 20px 20px 24px; }
+  .recipe-kicker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-sec);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .tier-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .recipe-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+    margin: 0 0 10px;
+    color: var(--forest);
+  }
+  .recipe-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .meta-chip {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--text-sec);
+    border: 1px solid var(--border);
+  }
+  .meta-chip strong {
+    color: var(--forest);
+    font-weight: 600;
+  }
+  .recipe-notes {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-sec);
+    margin: 0 0 16px;
+    padding-left: 10px;
+    border-left: 2px solid var(--rust);
+  }
+  .recipe-ingredients {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ingr-group-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--rust);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .ingr-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 3px;
+  }
+  .ingr-list li {
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 0;
+    border-bottom: 1px dotted var(--halo);
+  }
+  .ingr-item { color: var(--text); }
+  .ingr-qty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-ter);
+    white-space: nowrap;
+  }
+  .recipe-steps { margin-bottom: 12px; }
+  .steps-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--rust);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .steps-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 4px;
+    counter-reset: step;
+  }
+  .steps-list li {
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text);
+  }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--rust);
+  }
+  .step-title {
+    font-weight: 600;
+  }
+  .step-obj {
+    color: var(--text-sec);
+    font-style: italic;
+  }
+  .recipe-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--halo);
+  }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--text-ter);
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-ter);
+    text-transform: uppercase;
+  }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 24px; max-width: none; }
+    .tier-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+    .recipe { box-shadow: none; break-inside: avoid; }
+    .matrix-wrap { overflow-x: visible; }
+    .top-title { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="top-kicker">Qook · mock library · v1</div>
+    <h1 class="top-title">Tonight's <em>rotation</em></h1>
+    <p class="top-sub">All 24 recipes the mock mode cycles through, grouped by tier and cuisine. Compiled 2026-04-23.</p>
+    <div class="top-stats">
+      <span><strong>24</strong>recipes</span>
+      <span><strong>15</strong>cuisines</span>
+      <span><strong>4</strong>energy tiers</span>
+      <span><strong>263</strong>total ingredient lines</span>
+    </div>
+  </header>
+
+  
+    <section class="matrix-section">
+      <h2>Tier × cuisine matrix</h2>
+      <p class="subcopy">Where every recipe lives in the grid. Gaps are gaps — "got-energy Turkish" is a blank we could fill later.</p>
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <thead>
+            <tr><th></th><th class="matrix-tier" style="--tier-color: #3D5469"><div class="matrix-tier-dot"></div>≤ 15 min — brain is fried</th><th class="matrix-tier" style="--tier-color: #C36A48"><div class="matrix-tier-dot"></div>≤ 30 min — after work</th><th class="matrix-tier" style="--tier-color: #7A8568"><div class="matrix-tier-dot"></div>≤ 45 min — got energy</th><th class="matrix-tier" style="--tier-color: #2A3A26"><div class="matrix-tier-dot"></div>60+ min — weekend project</th></tr>
+          </thead>
+          <tbody><tr><th class="matrix-cuisine">American</th><td class="matrix-cell filled"><div class="matrix-title">Tuna Melt</div></td><td class="matrix-cell filled"><div class="matrix-title">Weeknight Turkey Chili</div><div class="matrix-title">Steak and Eggs Rice Bowl</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Chinese</th><td class="matrix-cell filled"><div class="matrix-title">Egg Fried Rice</div></td><td class="matrix-cell filled"><div class="matrix-title">Beef and Broccoli Stir-Fry</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Greek</th><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Greek Chicken Bowl</div></td><td class="matrix-cell filled"><div class="matrix-title">Greek Lemon Chicken and Orzo</div></td></tr><tr><th class="matrix-cuisine">Hawaiian</th><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Salmon Poke Bowl</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Indian</th><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Chicken Tikka</div></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Italian</th><td class="matrix-cell filled"><div class="matrix-title">Garlic Butter Spaghetti</div></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Mushroom Risotto</div></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Italian-American</th><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Turkey Meatballs with Marinara</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Japanese</th><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Miso Salmon Bowl</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Korean</th><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Gochujang Pork over Rice</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Lebanese</th><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Fattoush with Grilled Chicken</div></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Mediterranean</th><td class="matrix-cell filled"><div class="matrix-title">White Bean and Tuna Salad</div></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Sheet Pan Chicken and Vegetables</div></td><td class="matrix-cell filled"><div class="matrix-title">Lamb Chops with Herbed Bulgur</div></td></tr><tr><th class="matrix-cuisine">Mexican</th><td class="matrix-cell filled"><div class="matrix-title">Black Bean Quesadilla</div></td><td class="matrix-cell filled"><div class="matrix-title">Chili-Lime Shrimp Tacos</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Moroccan</th><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Shakshuka with Merguez</div></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Thai</th><td class="matrix-cell filled"><div class="matrix-title">Peanut Noodles</div></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td><td class="matrix-cell empty"></td></tr><tr><th class="matrix-cuisine">Turkish</th><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Menemen with Sucuk</div></td><td class="matrix-cell empty"></td><td class="matrix-cell filled"><div class="matrix-title">Adana Kebab</div></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  
+  
+    <section class="tier-section" id="tier-brain-is-fried">
+      <header class="tier-header" style="--tier-color: #3D5469">
+        <h2>≤ 15 min — brain is fried</h2>
+        <div class="tier-meta">
+          <span>6 recipes</span>
+          <span>6 cuisines</span>
+        </div>
+      </header>
+      <div class="tier-grid">
+        
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="American">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/tuna-melt.png" alt="Tuna Melt" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">Tuna Melt</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">American</span>
+          <span class="meta-chip"><strong>12</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Diner-style tuna melt - crunch, melt, lemon.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">canned tuna in oil</span><span class="ingr-qty">2 cans (5 oz each)</span></li><li><span class="ingr-item">mayo</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">dijon mustard</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">celery</span><span class="ingr-qty">1 stalk</span></li><li><span class="ingr-item">red onion</span><span class="ingr-qty">2 tbsp, minced</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1/2</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Build</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">sourdough or rye</span><span class="ingr-qty">4 slices</span></li><li><span class="ingr-item">sharp cheddar</span><span class="ingr-qty">4 oz</span></li><li><span class="ingr-item">butter</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Mix tuna salad</span> <span class="step-obj">Bright, not drowned in mayo.</span></li><li><span class="step-num">2.</span> <span class="step-title">Melt and toast</span> <span class="step-obj">Golden bread, bubbling cheese.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">sandwich</span><span class="tag">toaster</span><span class="tag">pescatarian</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="Chinese">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/egg-fried-rice.png" alt="Egg Fried Rice" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">Egg Fried Rice</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Chinese</span>
+          <span class="meta-chip"><strong>12</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Takeout-style fried rice; day-old rice is the single non-negotiable.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">day-old cooked rice</span><span class="ingr-qty">3 cups</span></li><li><span class="ingr-item">eggs</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">soy sauce</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">toasted sesame oil</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">neutral oil</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Aromatics</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">garlic</span><span class="ingr-qty">2 cloves</span></li><li><span class="ingr-item">frozen peas</span><span class="ingr-qty">1/2 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Scramble eggs</span> <span class="step-obj">Quick soft scramble, set aside.</span></li><li><span class="step-num">2.</span> <span class="step-title">Fry rice</span> <span class="step-obj">Blast heat until grains separate and edges crisp.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">rice</span><span class="tag">one-pan</span><span class="tag">vegetarian</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="Italian">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/garlic-butter-spaghetti.png" alt="Garlic Butter Spaghetti" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">Garlic Butter Spaghetti</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Italian</span>
+          <span class="meta-chip"><strong>15</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">The pasta you make when the fridge is empty and you still need dinner.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">spaghetti</span><span class="ingr-qty">8 oz</span></li><li><span class="ingr-item">butter</span><span class="ingr-qty">4 tbsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">5 cloves</span></li><li><span class="ingr-item">parmesan, grated</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">chili flakes</span><span class="ingr-qty">1/4 tsp</span></li><li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Boil pasta</span> <span class="step-obj">Salt the water like the sea.</span></li><li><span class="step-num">2.</span> <span class="step-title">Build sauce</span> <span class="step-obj">Bloom garlic in butter, emulsify with pasta water.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">pasta</span><span class="tag">pantry</span><span class="tag">vegetarian</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="Mediterranean">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/white-bean-tuna-salad.png" alt="White Bean and Tuna Salad" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">White Bean and Tuna Salad</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Mediterranean</span>
+          <span class="meta-chip"><strong>10</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Pantry salad that eats like a full meal - protein + fiber + brightness.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">canned tuna in olive oil</span><span class="ingr-qty">2 cans (5 oz each)</span></li><li><span class="ingr-item">cannellini beans</span><span class="ingr-qty">1 can (15 oz)</span></li><li><span class="ingr-item">cherry tomatoes</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">red onion</span><span class="ingr-qty">1/4</span></li><li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">1/4 cup</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Dressing</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">extra-virgin olive oil</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">red wine vinegar</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">flaky salt + black pepper</span><span class="ingr-qty">to taste</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Assemble</span> <span class="step-obj">No cooking, just layering and dressing.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">no-cook</span><span class="tag">pantry</span><span class="tag">pescatarian</span><span class="tag">gluten-free</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="Mexican">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/black-bean-quesadilla.png" alt="Black Bean Quesadilla" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">Black Bean Quesadilla</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Mexican</span>
+          <span class="meta-chip"><strong>12</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Crisp-edged, smoky, with enough bean mash to actually fill you up.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">black beans</span><span class="ingr-qty">1 can (15 oz)</span></li><li><span class="ingr-item">flour tortillas</span><span class="ingr-qty">4 (10-inch)</span></li><li><span class="ingr-item">monterey jack</span><span class="ingr-qty">2 cups, shredded</span></li><li><span class="ingr-item">cumin</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">smoked paprika</span><span class="ingr-qty">1/2 tsp</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Top</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">sour cream or yogurt</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">salsa</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">lime</span><span class="ingr-qty">1</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Warm and mash beans</span> <span class="step-obj">Seasoned bean layer, thick enough to hold.</span></li><li><span class="step-num">2.</span> <span class="step-title">Fold and crisp</span> <span class="step-obj">Golden tortilla, oozy cheese pull.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">one-pan</span><span class="tag">vegetarian</span><span class="tag">vegetarian</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="brain-is-fried" data-cuisine="Thai">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/peanut-noodles.png" alt="Peanut Noodles" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #3D5469"></span>
+          <span class="kicker-text">≤ 15 min — brain is fried</span>
+        </div>
+        <h3 class="recipe-title">Peanut Noodles</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Thai</span>
+          <span class="meta-chip"><strong>15</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Fifteen-minute Thai-inspired peanut noodles - the lowest-effort weeknight dinner in the book.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">rice noodles</span><span class="ingr-qty">8 oz</span></li><li><span class="ingr-item">peanut butter</span><span class="ingr-qty">1/3 cup</span></li><li><span class="ingr-item">soy sauce</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">lime</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">honey</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Side</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">cucumber</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">cilantro</span><span class="ingr-qty">1/4 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Cook noodles</span> <span class="step-obj">Boil water, cook noodles to just-tender.</span></li><li><span class="step-num">2.</span> <span class="step-title">Build sauce and toss</span> <span class="step-obj">Whisk sauce, toss with noodles and vegetables.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">noodles</span><span class="tag">no-cook</span><span class="tag">vegetarian</span><span class="tag">dairy-free</span></div>
+      </div>
+    </article>
+  
+      </div>
+    </section>
+  
+    <section class="tier-section" id="tier-after-work">
+      <header class="tier-header" style="--tier-color: #C36A48">
+        <h2>≤ 30 min — after work</h2>
+        <div class="tier-meta">
+          <span>9 recipes</span>
+          <span>8 cuisines</span>
+        </div>
+      </header>
+      <div class="tier-grid">
+        
+    <article class="recipe" data-tier="after-work" data-cuisine="American">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/turkey-chili.png" alt="Weeknight Turkey Chili" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Weeknight Turkey Chili</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">American</span>
+          <span class="meta-chip"><strong>30</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">A deeply spiced 30-minute chili that tastes like it simmered all afternoon.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">ground turkey</span><span class="ingr-qty">1.5 lb</span></li><li><span class="ingr-item">yellow onion</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">4 cloves</span></li><li><span class="ingr-item">kidney beans</span><span class="ingr-qty">1 can (15 oz)</span></li><li><span class="ingr-item">black beans</span><span class="ingr-qty">1 can (15 oz)</span></li><li><span class="ingr-item">fire-roasted diced tomatoes</span><span class="ingr-qty">1 can (28 oz)</span></li><li><span class="ingr-item">tomato paste</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Spices</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">chili powder</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">cumin</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">smoked paprika</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">oregano</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">chicken broth</span><span class="ingr-qty">1 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Brown and build</span> <span class="step-obj">Deep fond, toasted spices, rich base.</span></li><li><span class="step-num">2.</span> <span class="step-title">Simmer</span> <span class="step-obj">Thicken to spoon-able.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">one-pot</span><span class="tag">cozy</span><span class="tag">gluten-free</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="American">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/steak-eggs-bowl.png" alt="Steak and Eggs Rice Bowl" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Steak and Eggs Rice Bowl</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">American</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Diner comfort in bowl form - crusty steak, runny egg, rice to soak it all.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">hanger or flank steak</span><span class="ingr-qty">12 oz</span></li><li><span class="ingr-item">eggs</span><span class="ingr-qty">4</span></li><li><span class="ingr-item">jasmine rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">butter</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">neutral oil</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Sauce + garnish</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">soy sauce</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">worcestershire</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">black pepper</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">kimchi (optional)</span><span class="ingr-qty">1/2 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Rice and rest</span> <span class="step-obj">Rice on; steak at room temp.</span></li><li><span class="step-num">2.</span> <span class="step-title">Sear steak, fry eggs</span> <span class="step-obj">Hard sear + 5m rest; soft fried eggs.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">bowl</span><span class="tag">brinner</span><span class="tag">gluten-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Chinese">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/beef-broccoli-stirfry.png" alt="Beef and Broccoli Stir-Fry" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Beef and Broccoli Stir-Fry</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Chinese</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Takeout-better beef and broccoli in one pan with a glossy sauce.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">flank steak</span><span class="ingr-qty">12 oz</span></li><li><span class="ingr-item">broccoli florets</span><span class="ingr-qty">4 cups</span></li><li><span class="ingr-item">jasmine rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">neutral oil</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">ginger</span><span class="ingr-qty">1 tbsp, grated</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Sauce</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">soy sauce</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">oyster sauce</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">shaoxing wine or dry sherry</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">brown sugar</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">cornstarch</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Rice + prep</span> <span class="step-obj">Rice on first, everything else sliced thin.</span></li><li><span class="step-num">2.</span> <span class="step-title">Stir-fry</span> <span class="step-obj">Sear beef, steam-fry broccoli, combine.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">stir-fry</span><span class="tag">one-pan</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Hawaiian">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/salmon-poke-bowl.png" alt="Salmon Poke Bowl" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Salmon Poke Bowl</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Hawaiian</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Cold, clean poke bowl that eats like a restaurant lunch - minimal stove time.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">sushi-grade salmon</span><span class="ingr-qty">10 oz</span></li><li><span class="ingr-item">short-grain rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">soy sauce</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">sesame oil</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">rice vinegar</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Bowl</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">avocado</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">cucumber</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">edamame, shelled</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">nori, shredded</span><span class="ingr-qty">1 sheet</span></li><li><span class="ingr-item">toasted sesame seeds</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Rice and marinade</span> <span class="step-obj">Start rice; build the poke sauce.</span></li><li><span class="step-num">2.</span> <span class="step-title">Assemble</span> <span class="step-obj">Rice base, cold toppings, finish with nori and sesame.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">bowl</span><span class="tag">no-cook-main</span><span class="tag">pescatarian</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Italian-American">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/turkey-meatballs.png" alt="Turkey Meatballs with Marinara" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Turkey Meatballs with Marinara</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Italian-American</span>
+          <span class="meta-chip"><strong>30</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Tender turkey meatballs that poach in marinara - no-fry, still deeply flavorful.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Meatballs</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">ground turkey, 93/7</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">panko</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">milk</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">egg</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">parmesan, grated</span><span class="ingr-qty">1/3 cup</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">2 cloves</span></li><li><span class="ingr-item">italian seasoning</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Sauce</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">crushed tomatoes</span><span class="ingr-qty">1 can (28 oz)</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li><li><span class="ingr-item">red pepper flakes</span><span class="ingr-qty">1/2 tsp</span></li><li><span class="ingr-item">fresh basil</span><span class="ingr-qty">1/4 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Mix and form</span> <span class="step-obj">Panko + milk = tender meatballs.</span></li><li><span class="step-num">2.</span> <span class="step-title">Build sauce, simmer</span> <span class="step-obj">Quick tomato sauce; meatballs finish in it.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">meatballs</span><span class="tag">pasta-friendly</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Japanese">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/miso-salmon.png" alt="Miso Salmon Bowl" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Miso Salmon Bowl</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Japanese</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Miso Salmon Bowl is a Japanese dish built for bold flavor and a satisfying finish.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">salmon fillet</span><span class="ingr-qty">8 oz</span></li><li><span class="ingr-item">short-grain rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">miso paste</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">mirin</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">soy sauce</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Side</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">cucumber</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">rice vinegar</span><span class="ingr-qty">2 tsp</span></li><li><span class="ingr-item">sesame seeds</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Cook rice</span> <span class="step-obj">Get rice steaming first so it finishes with the salmon.</span></li><li><span class="step-num">2.</span> <span class="step-title">Glaze and broil salmon</span> <span class="step-obj">Build the miso glaze and get caramelization on top.</span></li><li><span class="step-num">3.</span> <span class="step-title">Cucumber finish</span> <span class="step-obj">Quick vinegar cucumber while salmon broils.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">bowl</span><span class="tag">fish</span><span class="tag">pescatarian</span><span class="tag">dairy-free</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Korean">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/gochujang-pork.png" alt="Gochujang Pork over Rice" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Gochujang Pork over Rice</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Korean</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Sweet-spicy-savory pork over rice - the bowl that makes a weeknight feel intentional.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">ground pork</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">jasmine rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">gochujang</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">soy sauce</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">brown sugar</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">ginger</span><span class="ingr-qty">1 tbsp, grated</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li><li><span class="ingr-item">sesame oil</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Top</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">egg</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">toasted sesame seeds</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">cucumber</span><span class="ingr-qty">1</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Rice + sauce</span> <span class="step-obj">Start rice; mix the glaze.</span></li><li><span class="step-num">2.</span> <span class="step-title">Sear pork, fry eggs</span> <span class="step-obj">Crispy pork edges + runny yolk.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">rice-bowl</span><span class="tag">spicy</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Mexican">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/shrimp-tacos.png" alt="Chili-Lime Shrimp Tacos" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Chili-Lime Shrimp Tacos</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Mexican</span>
+          <span class="meta-chip"><strong>25</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Bright, smoky shrimp tacos with a creamy-crunchy slaw in under 30.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">large shrimp, peeled</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">chili powder</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">cumin</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">smoked paprika</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">lime</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">neutral oil</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Slaw</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">green cabbage, shredded</span><span class="ingr-qty">2 cups</span></li><li><span class="ingr-item">cilantro</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">jalapeno, thin-sliced</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">mayo or yogurt</span><span class="ingr-qty">3 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Wrap</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">corn tortillas</span><span class="ingr-qty">6 (6-inch)</span></li><li><span class="ingr-item">avocado</span><span class="ingr-qty">1</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Season shrimp and slaw</span> <span class="step-obj">Build flavor while the pan heats.</span></li><li><span class="step-num">2.</span> <span class="step-title">Sear and wrap</span> <span class="step-obj">Shrimp cooks fast; char tortillas while you plate.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">tacos</span><span class="tag">fast</span><span class="tag">pescatarian</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="after-work" data-cuisine="Turkish">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/menemen-sucuk.png" alt="Menemen with Sucuk" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #C36A48"></span>
+          <span class="kicker-text">≤ 30 min — after work</span>
+        </div>
+        <h3 class="recipe-title">Menemen with Sucuk</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Turkish</span>
+          <span class="meta-chip"><strong>20</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Turkish breakfast-for-dinner: jammy tomato, soft eggs, spicy sausage.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">sucuk (turkish garlic sausage), sliced</span><span class="ingr-qty">6 oz</span></li><li><span class="ingr-item">eggs</span><span class="ingr-qty">4</span></li><li><span class="ingr-item">ripe tomatoes</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">green bell pepper or romano</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">yellow onion</span><span class="ingr-qty">1/2</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">aleppo pepper</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Serve</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">feta, crumbled</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">crusty bread</span><span class="ingr-qty">to serve</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Crisp sucuk, build base</span> <span class="step-obj">Render spicy fat, then soften the vegetables in it.</span></li><li><span class="step-num">2.</span> <span class="step-title">Fold in eggs</span> <span class="step-obj">Soft curds; do NOT scramble tight.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">eggs</span><span class="tag">skillet</span><span class="tag">gluten-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+      </div>
+    </section>
+  
+    <section class="tier-section" id="tier-got-energy">
+      <header class="tier-header" style="--tier-color: #7A8568">
+        <h2>≤ 45 min — got energy</h2>
+        <div class="tier-meta">
+          <span>6 recipes</span>
+          <span>6 cuisines</span>
+        </div>
+      </header>
+      <div class="tier-grid">
+        
+    <article class="recipe" data-tier="got-energy" data-cuisine="Greek">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/greek-chicken-bowl.png" alt="Greek Chicken Bowl" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Greek Chicken Bowl</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Greek</span>
+          <span class="meta-chip"><strong>35</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Bright, herbaceous, feta-forward - the bowl you&#39;d order twice a week.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">chicken thighs, boneless</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">dried oregano</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Bowl base</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">orzo or farro</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">english cucumber</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">cherry tomatoes</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">kalamata olives</span><span class="ingr-qty">1/3 cup</span></li><li><span class="ingr-item">red onion</span><span class="ingr-qty">1/4</span></li><li><span class="ingr-item">feta</span><span class="ingr-qty">4 oz</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Tzatziki</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">greek yogurt</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">cucumber, grated</span><span class="ingr-qty">1/4</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">1 clove</span></li><li><span class="ingr-item">dill</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Marinate and grain</span> <span class="step-obj">Chicken building flavor while grain cooks.</span></li><li><span class="step-num">2.</span> <span class="step-title">Sear chicken, mix tzatziki</span> <span class="step-obj">Golden crust; cool creamy sauce.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">bowl</span><span class="tag">grain</span><span class="tag">gluten-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="got-energy" data-cuisine="Indian">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/chicken-tikka.png" alt="Chicken Tikka" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Chicken Tikka</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Indian</span>
+          <span class="meta-chip"><strong>40</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Medium</span>
+          
+        </div>
+        <p class="recipe-notes">Charred, smoky chicken tikka with yogurt-tenderized chunks - rice or naan does the rest.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Marinade</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">chicken thighs, boneless</span><span class="ingr-qty">1.5 lb</span></li><li><span class="ingr-item">full-fat yogurt</span><span class="ingr-qty">3/4 cup</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">ginger</span><span class="ingr-qty">1 tbsp, grated</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">4 cloves, grated</span></li><li><span class="ingr-item">garam masala</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">smoked paprika</span><span class="ingr-qty">2 tsp</span></li><li><span class="ingr-item">kashmiri chili powder</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">ground cumin</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">kosher salt</span><span class="ingr-qty">1.5 tsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Serve</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">basmati rice or naan</span><span class="ingr-qty">to serve</span></li><li><span class="ingr-item">red onion, thin-sliced</span><span class="ingr-qty">1/2</span></li><li><span class="ingr-item">lemon wedges</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">cilantro</span><span class="ingr-qty">1/4 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Marinate</span> <span class="step-obj">Yogurt + spice = tender and deeply flavored.</span></li><li><span class="step-num">2.</span> <span class="step-title">Broil or grill</span> <span class="step-obj">Char edges, juicy interior.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">grill</span><span class="tag">marinade</span><span class="tag">gluten-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="got-energy" data-cuisine="Italian">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/mushroom-risotto.png" alt="Mushroom Risotto" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Mushroom Risotto</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Italian</span>
+          <span class="meta-chip"><strong>40</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Medium</span>
+          
+        </div>
+        <p class="recipe-notes">Creamy, earthy risotto - the dinner that fills the kitchen with butter-mushroom smell.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">arborio or carnaroli rice</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">mixed mushrooms (cremini, shiitake)</span><span class="ingr-qty">12 oz</span></li><li><span class="ingr-item">shallot</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">2 cloves</span></li><li><span class="ingr-item">dry white wine</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">vegetable or chicken broth, warm</span><span class="ingr-qty">4 cups</span></li><li><span class="ingr-item">butter</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">parmesan, grated</span><span class="ingr-qty">2/3 cup</span></li><li><span class="ingr-item">thyme</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Brown mushrooms</span> <span class="step-obj">Dry sear first - color, not steam.</span></li><li><span class="step-num">2.</span> <span class="step-title">Build the risotto</span> <span class="step-obj">Toast rice, ladle stock, stir steadily.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">rice</span><span class="tag">stovetop</span><span class="tag">vegetarian</span><span class="tag">gluten-free</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="got-energy" data-cuisine="Lebanese">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/fattoush-grilled-chicken.png" alt="Fattoush with Grilled Chicken" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Fattoush with Grilled Chicken</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Lebanese</span>
+          <span class="meta-chip"><strong>40</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Herbaceous, sumac-bright Lebanese salad with crunchy pita and juicy chicken.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Chicken</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">chicken breasts or thighs</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">sumac</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">2 cloves</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Salad</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">pita bread</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">romaine</span><span class="ingr-qty">1 head</span></li><li><span class="ingr-item">persian cucumber</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">roma tomato</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">radish</span><span class="ingr-qty">4</span></li><li><span class="ingr-item">fresh mint</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Dressing</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">pomegranate molasses</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">sumac</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">1 clove</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Marinate and toast pita</span> <span class="step-obj">Chicken builds flavor; pita becomes crunchy.</span></li><li><span class="step-num">2.</span> <span class="step-title">Grill and toss</span> <span class="step-obj">Chicken gets color, salad stays loud.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">salad</span><span class="tag">grill</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="got-energy" data-cuisine="Mediterranean">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/sheet-pan-chicken.png" alt="Sheet Pan Chicken and Vegetables" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Sheet Pan Chicken and Vegetables</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Mediterranean</span>
+          <span class="meta-chip"><strong>40</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">A hands-off Mediterranean sheet-pan dinner with crisp skin and caramelized edges.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">bone-in chicken thighs</span><span class="ingr-qty">2 lb</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">4 cloves</span></li><li><span class="ingr-item">oregano</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Side</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">baby potatoes</span><span class="ingr-qty">1 lb</span></li><li><span class="ingr-item">red onion</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">bell pepper</span><span class="ingr-qty">2</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Prep and marinate</span> <span class="step-obj">Season chicken and cut vegetables so the tray goes in together.</span></li><li><span class="step-num">2.</span> <span class="step-title">Roast</span> <span class="step-obj">One tray, hot oven, minimal babysitting.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">sheet-pan</span><span class="tag">one-pan</span><span class="tag">gluten-free</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="got-energy" data-cuisine="Moroccan">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/shakshuka-merguez.png" alt="Shakshuka with Merguez" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #7A8568"></span>
+          <span class="kicker-text">≤ 45 min — got energy</span>
+        </div>
+        <h3 class="recipe-title">Shakshuka with Merguez</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Moroccan</span>
+          <span class="meta-chip"><strong>35</strong> min</span>
+          <span class="meta-chip">serves <strong>2</strong></span>
+          <span class="meta-chip">Easy</span>
+          
+        </div>
+        <p class="recipe-notes">Spicy merguez shakshuka - the skillet brunch that plays as dinner.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">merguez sausage</span><span class="ingr-qty">8 oz</span></li><li><span class="ingr-item">eggs</span><span class="ingr-qty">4</span></li><li><span class="ingr-item">crushed tomatoes</span><span class="ingr-qty">1 can (28 oz)</span></li><li><span class="ingr-item">yellow onion</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">red bell pepper</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Spices</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">ground cumin</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">smoked paprika</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">coriander</span><span class="ingr-qty">1/2 tsp</span></li><li><span class="ingr-item">harissa (optional)</span><span class="ingr-qty">1 tbsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Serve</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">feta</span><span class="ingr-qty">2 oz</span></li><li><span class="ingr-item">cilantro</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">crusty bread</span><span class="ingr-qty">to serve</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Crisp sausage, build base</span> <span class="step-obj">Render merguez fat, sweat veg in it.</span></li><li><span class="step-num">2.</span> <span class="step-title">Poach eggs</span> <span class="step-obj">Runny yolk in a bubbling tomato pool.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">skillet</span><span class="tag">eggs</span><span class="tag">gluten-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+      </div>
+    </section>
+  
+    <section class="tier-section" id="tier-weekend-project">
+      <header class="tier-header" style="--tier-color: #2A3A26">
+        <h2>60+ min — weekend project</h2>
+        <div class="tier-meta">
+          <span>3 recipes</span>
+          <span>3 cuisines</span>
+        </div>
+      </header>
+      <div class="tier-grid">
+        
+    <article class="recipe" data-tier="weekend-project" data-cuisine="Greek">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/greek-lemon-chicken-orzo.png" alt="Greek Lemon Chicken and Orzo" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #2A3A26"></span>
+          <span class="kicker-text">60+ min — weekend project</span>
+        </div>
+        <h3 class="recipe-title">Greek Lemon Chicken and Orzo</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Greek</span>
+          <span class="meta-chip"><strong>60</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Medium</span>
+          
+        </div>
+        <p class="recipe-notes">One-skillet Sunday-night chicken with lemony, tomato-streaked orzo.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Main</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">bone-in skin-on chicken thighs</span><span class="ingr-qty">2.5 lb</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">dried oregano</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">6 cloves</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">2</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Orzo</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">orzo</span><span class="ingr-qty">1.5 cups</span></li><li><span class="ingr-item">chicken broth</span><span class="ingr-qty">3 cups</span></li><li><span class="ingr-item">dry white wine</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">cherry tomatoes</span><span class="ingr-qty">1 pint</span></li><li><span class="ingr-item">baby spinach</span><span class="ingr-qty">4 cups</span></li><li><span class="ingr-item">feta</span><span class="ingr-qty">4 oz</span></li><li><span class="ingr-item">dill</span><span class="ingr-qty">2 tbsp</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Sear chicken</span> <span class="step-obj">Crisp skin now so oven work is easy.</span></li><li><span class="step-num">2.</span> <span class="step-title">Build orzo bed</span> <span class="step-obj">Toast, deglaze, layer.</span></li><li><span class="step-num">3.</span> <span class="step-title">Roast and finish</span> <span class="step-obj">Chicken steams orzo, skin crisps.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">oven</span><span class="tag">one-pot</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="weekend-project" data-cuisine="Mediterranean">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/lamb-chops-bulgur.png" alt="Lamb Chops with Herbed Bulgur" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #2A3A26"></span>
+          <span class="kicker-text">60+ min — weekend project</span>
+        </div>
+        <h3 class="recipe-title">Lamb Chops with Herbed Bulgur</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Mediterranean</span>
+          <span class="meta-chip"><strong>60</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Medium</span>
+          
+        </div>
+        <p class="recipe-notes">Garlic-rosemary lamb chops with a herb-forward bulgur pilaf - dinner-party leaning.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Chops</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">lamb rib or loin chops</span><span class="ingr-qty">2 lb (8 chops)</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">3 tbsp</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">4 cloves</span></li><li><span class="ingr-item">rosemary</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">lemon zest</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Bulgur</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">coarse bulgur</span><span class="ingr-qty">1 cup</span></li><li><span class="ingr-item">chicken or vegetable broth</span><span class="ingr-qty">2 cups</span></li><li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">mint</span><span class="ingr-qty">1/4 cup</span></li><li><span class="ingr-item">scallion</span><span class="ingr-qty">3</span></li><li><span class="ingr-item">lemon</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">olive oil</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">toasted pine nuts</span><span class="ingr-qty">1/4 cup</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Marinate</span> <span class="step-obj">Rub lamb with garlic-rosemary paste.</span></li><li><span class="step-num">2.</span> <span class="step-title">Cook bulgur, sear chops</span> <span class="step-obj">Grain absorbs while lamb gets a crust.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">grill</span><span class="tag">grain</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+    <article class="recipe" data-tier="weekend-project" data-cuisine="Turkish">
+      <div class="recipe-media">
+        <img src="../../apps/native/assets/meals-seed/v2/adana-kebab.png" alt="Adana Kebab" loading="lazy" />
+      </div>
+      <div class="recipe-body">
+        <div class="recipe-kicker">
+          <span class="tier-dot" style="background: #2A3A26"></span>
+          <span class="kicker-text">60+ min — weekend project</span>
+        </div>
+        <h3 class="recipe-title">Adana Kebab</h3>
+        <div class="recipe-meta">
+          <span class="meta-chip">Turkish</span>
+          <span class="meta-chip"><strong>75</strong> min</span>
+          <span class="meta-chip">serves <strong>4</strong></span>
+          <span class="meta-chip">Advanced</span>
+          
+        </div>
+        <p class="recipe-notes">Hand-formed Turkish kebabs with charred crust - a proper weekend grill dinner.</p>
+        <div class="recipe-ingredients">
+          <div class="ingr-group">
+           <div class="ingr-group-title">Kebab</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">ground lamb (fatty) or 70/30 beef</span><span class="ingr-qty">1.5 lb</span></li><li><span class="ingr-item">red bell pepper</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">yellow onion</span><span class="ingr-qty">1/2</span></li><li><span class="ingr-item">garlic</span><span class="ingr-qty">3 cloves</span></li><li><span class="ingr-item">aleppo or urfa pepper</span><span class="ingr-qty">2 tbsp</span></li><li><span class="ingr-item">sumac</span><span class="ingr-qty">1 tbsp</span></li><li><span class="ingr-item">kosher salt</span><span class="ingr-qty">1.5 tsp</span></li><li><span class="ingr-item">black pepper</span><span class="ingr-qty">1 tsp</span></li>
+           </ul>
+         </div><div class="ingr-group">
+           <div class="ingr-group-title">Flatbread and sides</div>
+           <ul class="ingr-list">
+             <li><span class="ingr-item">lavash or pita</span><span class="ingr-qty">4</span></li><li><span class="ingr-item">red onion, thin-sliced</span><span class="ingr-qty">1</span></li><li><span class="ingr-item">sumac</span><span class="ingr-qty">1 tsp</span></li><li><span class="ingr-item">flat-leaf parsley</span><span class="ingr-qty">1/2 cup</span></li><li><span class="ingr-item">tomato, sliced</span><span class="ingr-qty">2</span></li><li><span class="ingr-item">lemon wedges</span><span class="ingr-qty">1</span></li>
+           </ul>
+         </div>
+        </div>
+        <div class="recipe-steps">
+          <div class="steps-title">Flow</div>
+          <ol class="steps-list"><li><span class="step-num">1.</span> <span class="step-title">Mince and rest</span> <span class="step-obj">Paste-like texture makes the skewer hold.</span></li><li><span class="step-num">2.</span> <span class="step-title">Skewer and cook</span> <span class="step-obj">Thin, even kebabs; sear hard.</span></li></ol>
+        </div>
+        <div class="recipe-tags"><span class="tag">grill</span><span class="tag">hand-formed</span><span class="tag">dairy-free</span><span class="tag">high-protein</span></div>
+      </div>
+    </article>
+  
+      </div>
+    </section>
+  
+
+  <footer>
+    Generated from <code>apps/native/src/services/fixtures/recipes.ts</code> · regenerate with <code>bun scripts/generate-meal-catalog.ts</code>
+  </footer>
+</div>
+</body>
+</html>

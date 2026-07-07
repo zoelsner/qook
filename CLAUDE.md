@@ -12,7 +12,8 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 2. `docs/plan/PLAN.md` — 32-day execution plan (especially §9 Day 1 checklist + §4 timeline)
 3. `docs/plan/SCOPE-couple-first.md` — 2026-04-20 scoping pivot: household-first, decision-load axis, 4 tabs (Tonight / Week / Shop / More), one-store (`weekPlan`) product loop
 4. `docs/plan/NEXT-PASS.md` §0 + §11 — shipped commits + still-valid polish backlog
-5. Section files as needed:
+5. `docs/plan/AUDIT-2026-04-23.md` — fresh-eye whole-app audit, Instacart redesign, categorization + model picks (reference, not execution plan)
+6. Section files as needed:
    - `docs/plan/section-backend.md` — Supabase (schema, RLS, Edge Fns, cron, storage)
    - `docs/plan/section-frontend.md` — Expo + RN (design tokens, primitives, routing)
    - `docs/plan/section-domain.md` — TS types + flows + normalize
@@ -21,11 +22,20 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
 ## Current product shape (2026-04-23)
 
-- **4 tabs**: Tonight (dashboard) · Week (energy-map planner) · Shop (derived list) · More (settings).
-- **One unified store** `useWeekPlan` (Zustand + `persist` to AsyncStorage, key `qook.weekPlan.v1`). Tonight reads `plan[today]`, Week writes `plan[*]`, Shop aggregates ingredients across future days. `activePickFor(day)`, `recentSelectedDays(plan, today, N)` are the selector helpers.
+- **4 tabs**: Tonight (dashboard) · Week (energy-map planner) · Shop (derived list) · More (settings, taste prefs, plan reset).
+- **One unified product-loop store** `useWeekPlan` (Zustand + `persist` to AsyncStorage, key `qook.weekPlan.v1`). Tonight reads `plan[today]`, Week writes `plan[*]`, Shop aggregates ingredients across future days. `activePickFor(day)`, `recentSelectedDays(plan, today, N)` are the selector helpers.
+- **Prefs sidebar store** `usePrefs` (key `qook.prefs.v1`) — cuisines, proteins, avoid list, servings, unit system, default tier, planning start day. Lives alongside `useWeekPlan` so plan resets (including `clearAll`) don't nuke user preferences. Summary lines on More read from here.
 - **`clearFuture()` keeps today + past; wipes dates > today.** There's no `clearFutureOnly` — it's `clearFuture`. `clearAll` wipes everything. Persisted state survives sim reloads; to reset, call `useWeekPlan.getState().clearAll()` from the JS debugger or uninstall the app.
 - **Mock vs live** — `app.json.extra.apiMode` = `'mock' | 'live'`. Mock mode reads `apps/native/src/services/fixtures/recipes.ts` — **24 recipes** (6 brain-is-fried / 9 after-work / 6 got-energy / 3 weekend-project), each tied to a Seedream PNG at `apps/native/assets/meals-seed/v2/`. `generateRecipesForEnergy(tier)` filters by tier + Fisher-Yates shuffles. `getTonightPlan()` returns a random 3.
 - **Supabase Edge Functions are scaffolded but empty** (`generate-recipe`, `generate-deck-batch`, `generate-image`, `delete-account`, `warm-start-import`). Live path is not wired; `section-ai.md` is the spec.
+
+## Routes (Expo Router v5, file-based)
+
+- `(tabs)/{tonight,week,shop,more}.tsx` — bottom tab bar, rendered by custom `FloatingTabBar`. Height is `screen.tabBarHeight` (design token in `src/design/spacing.ts`) — any sticky dock that sits above the bar uses `insets.bottom + screen.tabBarHeight + gap` (see `ShopScreen.tsx`). Don't hardcode the number.
+- `(eat)/{energy,loading,review,context}.tsx` — modal stack for the energy → draft → pick flow.
+- `(modals)/recipe/[id].tsx` — recipe detail modal.
+- `preferences.tsx` · `household.tsx` · `generation.tsx` — top-level routes pushed from More rows (`router.push('/preferences')` etc.). Source lives in `src/features/more/`. File-based routing auto-registers them; they're not enumerated in root `_layout.tsx` Stack.Screen entries. If Expo Router ever stops auto-picking them up, either add explicit Stack entries or wrap them in a `(settings)/` group with its own `_layout.tsx`.
+- `(auth)/sign-in.tsx` · `(onboarding)/index.tsx` — brand mark on both renders `assets/icon.png` (the watercolor bowl), not a text-"Q" glyph.
 
 ## Stack
 
@@ -77,6 +87,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **SwiftUI reference only** — active code path is Expo/React Native. Do not edit `sashafood/apps/swift/` from this project.
 - **Metro hot-reload occasionally misses fixture edits** — if a code change doesn't appear in the sim, shake the sim (`Cmd+Ctrl+Z` in Simulator) → tap **Reload** in the Expo dev menu. Cmd+R alone sometimes re-renders with a stale bundle.
 - **Security-hook word trigger** — the write-time security hook flags certain Python-stdlib names that happen to also be cooking terms (the one starting with `pi-` for preserving vegetables in vinegar). Reword recipe sections to avoid it: "quick vinegar cucumber", "cucumber finish", etc.
+- **Don't fabricate URLs or endpoints** — `qook.app` isn't purchased yet (Day 1 task), so no `qook.app/privacy`, `qook.app/terms`, or `@qook.app` emails in code. Render legal/feedback rows as "Coming at TestFlight launch" stubs until the domain is provisioned. If an endpoint, API, or address doesn't exist yet, say so in-copy rather than guessing a placeholder URL.
 
 ## Dev commands
 
