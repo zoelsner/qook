@@ -35,7 +35,12 @@ export function ScreenShell({
             {content}
           </ScrollView>
         ) : (
-          <View style={styles.fill}>{content}</View>
+          // Children go directly under a flex:1 view — nesting them in the
+          // auto-height `content` wrapper collapses any flex:1 child to zero
+          // height (GenerationLoadingScreen rendered no text because of this).
+          <View style={[styles.fill, { paddingHorizontal: horizontalPadding }]}>
+            {children}
+          </View>
         )}
       </SafeAreaView>
     </View>
