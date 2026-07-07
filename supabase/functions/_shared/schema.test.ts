@@ -55,3 +55,46 @@ Deno.test("RecipeJsonSchema requires parsed on ingredient items", () => {
       .items;
   assertEquals(itemProps.required.includes("parsed"), true);
 });
+
+// deno-lint-ignore no-explicit-any
+function assertExhaustiveRequired(node: any, path: string): void {
+  if (node === null || typeof node !== "object") return;
+  if (node.properties && typeof node.properties === "object") {
+    const propKeys = Object.keys(node.properties);
+    const required = node.required ?? [];
+    for (const key of propKeys) {
+      assertEquals(
+        required.includes(key),
+        true,
+        `${path}: property "${key}" missing from required`,
+      );
+    }
+    for (const key of propKeys) {
+      assertExhaustiveRequired(node.properties[key], `${path}.${key}`);
+    }
+  }
+  if (node.items) {
+    assertExhaustiveRequired(node.items, `${path}[]`);
+  }
+}
+
+Deno.test("RecipeJsonSchema is exhaustively strict: every properties key is required", () => {
+  assertExhaustiveRequired(RecipeJsonSchema.schema, "schema");
+});
+
+Deno.test("Recipe accepts explicit nulls for optional fields", () => {
+  const withNulls = structuredClone(VALID);
+  // deno-lint-ignore no-explicit-any
+  (withNulls as any).nutrition = null;
+  // deno-lint-ignore no-explicit-any
+  (withNulls as any).notes = null;
+  // deno-lint-ignore no-explicit-any
+  (withNulls as any).ingredientGroups[0].items[0].quantity = null;
+  // deno-lint-ignore no-explicit-any
+  (withNulls as any).ingredientGroups[0].items[0].notes = null;
+  const r = Recipe.parse(withNulls);
+  assertEquals(r.nutrition, null);
+  assertEquals(r.notes, null);
+  assertEquals(r.ingredientGroups[0].items[0].quantity, null);
+  assertEquals(r.ingredientGroups[0].items[0].notes, null);
+});

@@ -24,8 +24,8 @@ export const ParsedIngredient = z.object({
 
 export const RecipeIngredientItem = z.object({
   item: z.string().min(1),
-  quantity: z.string().optional(),
-  notes: z.string().optional(),
+  quantity: z.string().nullish(),
+  notes: z.string().nullish(),
   parsed: ParsedIngredient,
 });
 
@@ -64,13 +64,13 @@ export const Recipe = z.object({
   workflowSections: z.array(RecipeWorkflowSection).min(1),
   nutrition: z
     .object({
-      calories: z.number().int().optional(),
-      proteinG: z.number().int().optional(),
-      carbG: z.number().int().optional(),
-      fatG: z.number().int().optional(),
+      calories: z.number().int().nullish(),
+      proteinG: z.number().int().nullish(),
+      carbG: z.number().int().nullish(),
+      fatG: z.number().int().nullish(),
     })
-    .optional(),
-  notes: z.string().max(300).optional(),
+    .nullish(),
+  notes: z.string().max(300).nullish(),
 });
 
 export type Recipe = z.infer<typeof Recipe>;
@@ -92,6 +92,8 @@ export const RecipeJsonSchema = {
       "servings",
       "ingredientGroups",
       "workflowSections",
+      "nutrition",
+      "notes",
     ],
     properties: {
       title: { type: "string", minLength: 4 },
@@ -122,11 +124,11 @@ export const RecipeJsonSchema = {
               items: {
                 type: "object",
                 additionalProperties: false,
-                required: ["item", "parsed"],
+                required: ["item", "quantity", "notes", "parsed"],
                 properties: {
                   item: { type: "string" },
-                  quantity: { type: "string" },
-                  notes: { type: "string" },
+                  quantity: { type: ["string", "null"] },
+                  notes: { type: ["string", "null"] },
                   parsed: {
                     type: "object",
                     additionalProperties: false,
@@ -204,16 +206,17 @@ export const RecipeJsonSchema = {
         },
       },
       nutrition: {
-        type: "object",
+        type: ["object", "null"],
         additionalProperties: false,
+        required: ["calories", "proteinG", "carbG", "fatG"],
         properties: {
-          calories: { type: "integer" },
-          proteinG: { type: "integer" },
-          carbG: { type: "integer" },
-          fatG: { type: "integer" },
+          calories: { type: ["integer", "null"] },
+          proteinG: { type: ["integer", "null"] },
+          carbG: { type: ["integer", "null"] },
+          fatG: { type: ["integer", "null"] },
         },
       },
-      notes: { type: "string", maxLength: 300 },
+      notes: { type: ["string", "null"], maxLength: 300 },
     },
   },
 } as const;
