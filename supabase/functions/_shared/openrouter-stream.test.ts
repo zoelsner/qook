@@ -40,3 +40,48 @@ Deno.test("chatStream accumulates deltas and reports full text", async () => {
     globalThis.fetch = origFetch;
   }
 });
+
+Deno.test("chatStream calls onError on non-2xx open", async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = () =>
+    Promise.resolve(new Response("nope", { status: 500 }));
+  const errors: Error[] = [];
+  try {
+    let threw = false;
+    try {
+      await chatStream(
+        [{ role: "user", content: "hi" }],
+        { onError: (e) => errors.push(e) },
+      );
+    } catch {
+      threw = true;
+    }
+    assertEquals(threw, true);
+    assertEquals(errors.length, 1);
+    assertEquals(errors[0].message.includes("500"), true);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+Deno.test("chatStream calls onError on fetch rejection", async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = () => Promise.reject(new Error("boom"));
+  const errors: Error[] = [];
+  try {
+    let threw = false;
+    try {
+      await chatStream(
+        [{ role: "user", content: "hi" }],
+        { onError: (e) => errors.push(e) },
+      );
+    } catch {
+      threw = true;
+    }
+    assertEquals(threw, true);
+    assertEquals(errors.length, 1);
+    assertEquals(errors[0].message, "boom");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

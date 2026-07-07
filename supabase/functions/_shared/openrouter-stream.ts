@@ -15,33 +15,34 @@ export async function chatStream(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 25_000);
 
-  const resp = await fetch(OR_ENDPOINT, {
-    method: "POST",
-    headers: orHeaders(),
-    body: JSON.stringify({
-      model: opts.model ?? MODELS.textDraft(),
-      messages,
-      temperature: opts.temperature ?? 0.7,
-      stream: true,
-    }),
-    signal: controller.signal,
-  });
-
-  if (!resp.ok || !resp.body) {
-    clearTimeout(timeout);
-    throw new Error(
-      `Stream open failed: ${resp.status} ${
-        await resp.text().catch(() => "")
-      }`,
-    );
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let full = "";
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
   try {
+    const resp = await fetch(OR_ENDPOINT, {
+      method: "POST",
+      headers: orHeaders(),
+      body: JSON.stringify({
+        model: opts.model ?? MODELS.textDraft(),
+        messages,
+        temperature: opts.temperature ?? 0.7,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!resp.ok || !resp.body) {
+      throw new Error(
+        `Stream open failed: ${resp.status} ${
+          await resp.text().catch(() => "")
+        }`,
+      );
+    }
+
+    reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let full = "";
+
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -74,7 +75,7 @@ export async function chatStream(
   } finally {
     clearTimeout(timeout);
     try {
-      reader.releaseLock();
+      reader?.releaseLock();
     } catch {
       /* no-op */
     }
