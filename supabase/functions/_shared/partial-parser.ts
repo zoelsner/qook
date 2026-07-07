@@ -15,6 +15,7 @@ export function extractPartialRecipes(buf: string): unknown[] {
   if (arrStart < 0) return [];
   const out: unknown[] = [];
   let depth = 0;
+  let arrDepth = 1; // inside the recipes array already
   let objStart = -1;
   let inStr = false;
   let escaped = false;
@@ -36,6 +37,15 @@ export function extractPartialRecipes(buf: string): unknown[] {
       inStr = true;
       continue;
     }
+    if (ch === "[") {
+      arrDepth++;
+      continue;
+    }
+    if (ch === "]") {
+      arrDepth--;
+      if (arrDepth === 0) break; // recipes array closed — stop scanning
+      continue;
+    }
     if (ch === "{") {
       if (depth === 0) objStart = i;
       depth++;
@@ -48,7 +58,13 @@ export function extractPartialRecipes(buf: string): unknown[] {
         try {
           const obj = JSON.parse(slice);
           const preview = Recipe.partial().safeParse(obj);
-          if (preview.success) out.push(preview.data);
+          if (
+            preview.success &&
+            typeof preview.data.title === "string" &&
+            preview.data.title.length > 0
+          ) {
+            out.push(preview.data);
+          }
         } catch {
           /* incomplete — skip */
         }
