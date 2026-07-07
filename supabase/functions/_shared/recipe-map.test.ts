@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  buildSlug,
   computeSignature,
   dbRowToClientRecipe,
   toRecipeInsert,
@@ -58,6 +59,50 @@ Deno.test("toRecipeInsert uses snake_case DB columns", () => {
 
 Deno.test("dbRowToClientRecipe maps to camelCase and builds heroImageUrl", () => {
   Deno.env.set("SUPABASE_MEAL_IMAGES_BASE", "https://cdn.test/meal-images");
+  const client = dbRowToClientRecipe(
+    {
+      id: "abc",
+      title: "Pan-Fried Gnocchi",
+      cuisine: "Italian",
+      energy_tier: "after-work",
+      serves: 2,
+      total_time_min: 25,
+      difficulty: "Medium",
+      ingredient_groups: R.ingredientGroups,
+      workflow_sections: R.workflowSections,
+      timeline: [],
+      image_status: "ready",
+      image_storage_path: "abc.png",
+      source: "ai",
+      signature: "deadbeefcafebabe",
+      created_at: "2026-07-06T00:00:00Z",
+      updated_at: "2026-07-06T00:00:00Z",
+    },
+    ["vegan", "quick"],
+  );
+  assertEquals(client.timeMinutes, 25);
+  assertEquals(client.servings, 2);
+  assertEquals(client.tier, "after-work");
+  assertEquals(client.heroImageUrl, "https://cdn.test/meal-images/abc.png");
+
+  // Client-shape parsed ingredient fields (canonicalKey/name/quantityAmount/
+  // quantityUnit), not the model's snake_case canonical_key/canonical_name/
+  // amount/unit.
+  assertEquals(client.ingredients[0].items[0].item, "gnocchi");
+  assertEquals(client.ingredients[0].items[0].parsed?.canonicalKey, "gnocchi");
+  assertEquals(client.ingredients[0].items[0].parsed?.name, "gnocchi");
+  assertEquals(client.ingredients[0].items[0].parsed?.category, "Pantry");
+  assertEquals(client.ingredients[0].items[0].parsed?.quantityAmount, 1);
+  assertEquals(client.ingredients[0].items[0].parsed?.quantityUnit, "lb");
+
+  // slug/signature/dietaryTags contract fields.
+  assertEquals(client.signature, "deadbeefcafebabe");
+  assertEquals(client.slug, "pan-fried-gnocchi-deadbe");
+  assertEquals(client.tags, ["vegan", "quick"]);
+  assertEquals(client.dietaryTags, ["vegan", "quick"]);
+});
+
+Deno.test("dbRowToClientRecipe defaults tags to [] for DB-only reads", () => {
   const client = dbRowToClientRecipe({
     id: "abc",
     title: "Pan-Fried Gnocchi",
@@ -70,14 +115,23 @@ Deno.test("dbRowToClientRecipe maps to camelCase and builds heroImageUrl", () =>
     workflow_sections: R.workflowSections,
     timeline: [],
     image_status: "ready",
-    image_storage_path: "abc.png",
     source: "ai",
+    signature: "deadbeefcafebabe",
     created_at: "2026-07-06T00:00:00Z",
     updated_at: "2026-07-06T00:00:00Z",
   });
-  assertEquals(client.timeMinutes, 25);
-  assertEquals(client.servings, 2);
-  assertEquals(client.tier, "after-work");
-  assertEquals(client.heroImageUrl, "https://cdn.test/meal-images/abc.png");
-  assertEquals(client.ingredients[0].items[0].item, "gnocchi");
+  assertEquals(client.tags, []);
+  assertEquals(client.dietaryTags, []);
+  assertEquals(client.ownerId, undefined);
+});
+
+Deno.test("buildSlug is deterministic and collision-resistant", () => {
+  const a = buildSlug("Pan-Fried Gnocchi!!", "deadbeefcafebabe");
+  const b = buildSlug("Pan-Fried Gnocchi!!", "deadbeefcafebabe");
+  assertEquals(a, b);
+  assertEquals(a, "pan-fried-gnocchi-deadbe");
+
+  // Same title, different signature → different slug (collision avoidance).
+  const c = buildSlug("Pan-Fried Gnocchi!!", "0000001111112222");
+  assert(a !== c);
 });

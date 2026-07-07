@@ -192,6 +192,14 @@ Deno.serve(async (req) => {
 
         const ids = await persistRecipes(admin, result.data.recipes);
 
+        // ids[i] corresponds to result.data.recipes[i] (persistRecipes
+        // iterates recipes in order) — use that correlation to carry each
+        // recipe's model-emitted tags through to the client mapper, since
+        // the `recipes` table has no tags column to re-read them from.
+        const tagsById = new Map(
+          ids.map((id, i) => [id, result.data.recipes[i].tags]),
+        );
+
         // Re-read persisted rows and map to client shape (real ids + status).
         const { data: rows } = await admin
           .from("recipes")
@@ -203,7 +211,9 @@ Deno.serve(async (req) => {
         const clientRecipes = ids
           .map((id) => byId.get(id))
           .filter((r): r is Record<string, unknown> => Boolean(r))
-          .map(dbRowToClientRecipe);
+          .map((row) =>
+            dbRowToClientRecipe(row, tagsById.get(String(row.id)) ?? [])
+          );
 
         await finishSession(admin, sessionId, "ready");
         send("final", { recipes: clientRecipes });
