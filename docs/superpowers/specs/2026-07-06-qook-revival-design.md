@@ -65,12 +65,18 @@ Art budget, globally: **at most one full-bleed painting per screen** — and onl
 4. Shop dock: disable visually at zero unchecked items (verify `PolishedButton` disabled styling).
 5. Week: long-press populated day → "Clear this day."
 
-## 3. Image pipeline
+## 3. Image pipeline — the canon loop
 
-- **Live + library model: `google/gemini-3.1-flash-image`** ($0.067/img, 7–11s). Winner of the 5-model bake-off for consistency and restraint.
-- **Cohort decks (post-TestFlight): `openai/gpt-5.4-image-2`** ($0.23/img, minutes-slow, most painterly; runs overnight where latency is free).
-- **Prompt**: keep the locked template in `section-ai.md` §2.5 with three tweaks: (a) composition adds "a single plate, one serving, dish centered"; (b) margin hardened to "the outer 15% of the canvas stays clean cream paper on all sides"; (c) add "at most two small watercolor accents outside the plate."
-- **Regenerate all 24 fixture illustrations** with the tweaked prompt (~$1.60). Replaces the pre-tuning wash-heavy set in `assets/meals-seed/v2/` (keep old set in `v2-archive/` until sim-walk sign-off).
+**Single model everywhere: `google/gemini-3.1-flash-image`** ($0.068/img, 7–17s). Zach ruled out GPT-5.4 Image 2 on price ($0.23); it survives only as a possible "studio repaint" premium perk later, never the pipeline. (Seedream 4.5's OpenRouter endpoints are confirmed dead; Seedream 5.0 Lite exists on fal.ai at $0.035 with multi-reference support — a future option if we ever accept a second provider.)
+
+Consistency mechanism, validated by experiment (exploration Nº4, 2026-07-06):
+
+1. **Prompt tweaks** (all three verified effective): (a) composition adds "a single plate, one serving, dish centered"; (b) "the outer 15% of the canvas stays clean cream paper on all sides"; (c) "at most two small watercolor accents outside the plate."
+2. **Canon anchor**: generate ~6 candidates of one dish with the tweaked prompt; **Zach hand-picks the canon image** (note: the anchor's surface — wood vs plain cream — is inherited by everything, so pick deliberately). The canon ships as an asset the Edge Function attaches to every generation as a style-reference image with the directive "match this artist's hand; do not copy subject or composition."
+3. **Regenerate all 24 fixture illustrations** with tweaked prompt + canon reference (~$1.70). Replaces the pre-tuning wash-heavy set in `assets/meals-seed/v2/` (keep old set in `v2-archive/` until sim-walk sign-off).
+4. Every live `generate-image` call uses the identical canon + prompt. The style is locked once and never drifts.
+
+**Image timing and tiers** (architecture is tier-ready, one flag): v1/TestFlight paints on commit ("Cook tonight") — one image per cooked dinner. The premium behavior (paint all 3 proposals at choose-time, ~$0.20/session) is the same Edge Function fired earlier, gated by a `tier` claim on the user row; it turns on with RevenueCat in v1.1. Proposals without paintings show the cream-circle letter vignette (§6).
 
 ## 4. Backend — live mode (the priority)
 
@@ -84,7 +90,7 @@ Architecture is unchanged from `section-backend.md`/`section-ai.md` (Supabase Ed
 
 ### 4.2 Functions
 - `generate-recipe` — receives `{tier, context}`, streams 3 recipes via SSE, validates with Zod, persists to `recipes`, returns array. Rate limits per README: 10/user/day, 30/user/month.
-- `generate-image` — save-gated (fires on "Cook tonight," not on draft). Calls Gemini 3.1 Flash Image with the §3 prompt, stores PNG to Supabase Storage, writes URL to recipe row.
+- `generate-image` — commit-gated (fires on "Cook tonight," not on draft; tier flag can move it to proposal-time later, §3). Calls Gemini 3.1 Flash Image with the §3 canon reference + tweaked prompt, stores PNG to Supabase Storage, writes URL to recipe row.
 - `shopping-share` — Instacart **Create Shopping List** (`POST /idp/v1/products/products_link`, free self-serve IDP key — NOT the heavyweight Connect Platform). Maps items using `parsed` quantities. Errors: empty list → 422 + client toast; Instacart down → fall back to existing search-URL path. AmazonFresh dropped from the primary dock.
 - `delete-account` — minimal: delete auth user + cascade via RLS-owned rows (App Review requires it).
 - `generate-deck-batch` + pg_cron — **deferred to post-TestFlight** (live generation covers testers).
