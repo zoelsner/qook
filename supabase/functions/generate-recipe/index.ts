@@ -15,6 +15,7 @@ import {
   toRecipeInsert,
 } from "../_shared/recipe-map.ts";
 import { ERRORS } from "../_shared/errors.ts";
+import { finishSession } from "./session.ts";
 
 const RequestBody = z.object({
   tier: z.enum([
@@ -101,15 +102,32 @@ Deno.serve(async (req) => {
   const { tier, context } = parsedBody.data;
 
   // Record a session row so the quota window counts this generation.
-  await admin.from("generation_sessions").insert({
-    user_id: user.id,
-    flavor_mode: "comfort",
-    effort_mode: "standard",
-    energy_tier: tier,
-    recipe_count: 3,
-    voice_context: context ?? null,
-    status: "generating",
-  });
+  // This insert IS the quota-counting record — a silent failure here means
+  // unmetered generation, so its result must be checked before any AI call.
+  const { data: session, error: sessionError } = await admin
+    .from("generation_sessions")
+    .insert({
+      user_id: user.id,
+      flavor_mode: "comfort",
+      effort_mode: "standard",
+      energy_tier: tier,
+      recipe_count: 3,
+      voice_context: context ?? null,
+      status: "generating",
+    })
+    .select("id")
+    .single();
+  if (sessionError) {
+    console.error("generation_sessions insert failed", String(sessionError));
+    return new Response(
+      JSON.stringify({
+        code: ERRORS.GENERATION_FAILED,
+        message: "The kitchen is busy — try again in a minute.",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+  const sessionId: string = session.id;
 
   const { data: prefs } = await admin
     .from("user_preferences")
@@ -156,12 +174,14 @@ Deno.serve(async (req) => {
 
         const raw = JSON.parse(stripCodeFences(full));
         if (raw && typeof raw === "object" && "refusal" in raw) {
+          await finishSession(admin, sessionId, "failed");
           send("error", { code: ERRORS.VALIDATION, message: String(raw.refusal) });
           controller.close();
           return;
         }
         const result = ResponseEnvelope.safeParse(raw);
         if (!result.success) {
+          await finishSession(admin, sessionId, "failed");
           send("error", {
             code: ERRORS.VALIDATION,
             message: "The kitchen produced something odd — try again.",
@@ -185,9 +205,11 @@ Deno.serve(async (req) => {
           .filter((r): r is Record<string, unknown> => Boolean(r))
           .map(dbRowToClientRecipe);
 
+        await finishSession(admin, sessionId, "ready");
         send("final", { recipes: clientRecipes });
         send("done", {});
       } catch (err) {
+        await finishSession(admin, sessionId, "failed");
         send("error", {
           code: ERRORS.GENERATION_FAILED,
           message: "The kitchen is busy — try again in a minute.",
