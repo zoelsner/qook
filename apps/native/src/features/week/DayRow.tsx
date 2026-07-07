@@ -1,7 +1,7 @@
 import type { EnergyTier } from '@qook/shared';
 import { ChevronRight, RefreshCw } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette } from '../../design';
@@ -28,6 +28,7 @@ export function DayRow({
   const setEnergy = useWeekPlan((state) => state.setEnergy);
   const clearEnergy = useWeekPlan((state) => state.clearEnergy);
   const swapPick = useWeekPlan((state) => state.swapPick);
+  const clearDay = useWeekPlan((state) => state.clearDay);
   const day = useWeekPlan((state) => state.plan[date]);
   // Guard: while a batch draft is in flight, ignore chip mutations — otherwise
   // an in-flight response can repopulate a day the user just cleared or
@@ -37,6 +38,19 @@ export function DayRow({
   const { weekday } = formatDayShort(date);
   const activeTier = day?.energy;
   const pick = activePickFor(day);
+
+  const onClearDay = () => {
+    if (!pick) return;
+    tap();
+    Alert.alert(
+      'Clear this day?',
+      `Remove "${pick.title}" from ${weekday}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => clearDay(date) },
+      ],
+    );
+  };
 
   const onChipPress = (tier: EnergyTier) => {
     if (drafting) return;
@@ -54,9 +68,11 @@ export function DayRow({
     return (
       <Pressable
         onPress={() => onOpenRecipe(pick.id)}
+        onLongPress={onClearDay}
+        delayLongPress={400}
         style={styles.row}
         accessibilityRole="button"
-        accessibilityLabel={`${weekday}: ${pick.title}`}
+        accessibilityLabel={`${weekday}: ${pick.title}. Long-press to clear.`}
       >
         <View style={styles.dayLabel}>
           {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}
