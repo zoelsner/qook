@@ -41,8 +41,8 @@
       "expo-splash-screen"
     ],
     "extra": {
-      "supabaseUrl": "https://YOUR_PROJECT.supabase.co",
-      "supabaseAnonKey": "PUBLIC_ANON_KEY",
+      "supabaseUrl": "https://eehjclffugngogbvctib.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlaGpjbGZmdWduZ29nYnZjdGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MzU1NzIsImV4cCI6MjA5OTAxMTU3Mn0.UKg-FSRMKbgyPoFgMdK2BXP7v2sOTfVl4zpaKngXqg0",
       "apiMode": "mock"
     }
   }
