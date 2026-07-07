@@ -10,7 +10,7 @@ import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PaintedCheckbox } from '../../components/painted';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight } from 'lucide-react-native';
-import { palette, spacing } from '../../design';
+import { palette, screen, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
@@ -102,7 +102,7 @@ export function ShopScreen() {
     setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const dockBottom = insets.bottom + 68 + 24;
+  const dockBottom = insets.bottom + screen.tabBarHeight + 24;
 
   return (
     <View style={{ flex: 1 }}>

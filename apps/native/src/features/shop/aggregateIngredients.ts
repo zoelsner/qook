@@ -1,4 +1,4 @@
-import type { GroceryCategory } from '@qook/shared';
+import { categorizeIngredient, type GroceryCategory } from '@qook/shared';
 
 import type { ISODate } from '../week/weekDates';
 import type { DayPlan } from '../../stores/weekPlan';
@@ -44,7 +44,8 @@ export function aggregateIngredients(
 
       const key = ingredient.parsed?.canonicalKey ?? rawName.toLowerCase();
       const displayName = ingredient.parsed?.name ?? rawName;
-      const category: GroceryCategory = ingredient.parsed?.category ?? 'Other';
+      const category: GroceryCategory =
+        ingredient.parsed?.category ?? categorizeIngredient(displayName);
       const quantity = ingredient.quantity?.trim() || '';
       const existing = map.get(key);
 
