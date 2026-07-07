@@ -1,3 +1,4 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { serviceClient } from "../_shared/supabase.ts";
 import { buildImagePrompt } from "../_shared/prompts/image.ts";
 import { CANON_IMAGE_DATA_URL } from "../_shared/assets/canon-b64.ts";
@@ -25,10 +26,26 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
-  // Service-role only (fired on "Cook tonight" or by another edge fn).
-  const auth = req.headers.get("Authorization");
-  if (auth !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) {
-    return errorResponse(ERRORS.UNAUTHORIZED, "Service role required.", 401);
+  // Internal-only (fired by another edge fn or ops tooling). The caller
+  // proves it holds a service-role key by capability — only service keys
+  // can call auth.admin — rather than byte-comparing against env (the
+  // platform-injected SUPABASE_SERVICE_ROLE_KEY differs from the dashboard
+  // key on new-API-key projects). The key rides x-internal-secret because
+  // the gateway rejects new-format keys in the Authorization header.
+  const presented = req.headers.get("x-internal-secret") ??
+    (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!presented) {
+    return errorResponse(ERRORS.UNAUTHORIZED, "Internal secret required.", 401);
+  }
+  const probe = createClient(Deno.env.get("SUPABASE_URL")!, presented, {
+    auth: { persistSession: false },
+  });
+  const { error: probeError } = await probe.auth.admin.listUsers({
+    page: 1,
+    perPage: 1,
+  });
+  if (probeError) {
+    return errorResponse(ERRORS.UNAUTHORIZED, "Internal secret required.", 401);
   }
 
   const { recipeId } = (await req.json().catch(() => ({}))) as {
