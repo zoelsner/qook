@@ -123,14 +123,8 @@ create table public.user_saved_recipes (
 );
 create index user_saved_recipes_user_idx on public.user_saved_recipes (user_id, saved_at desc);
 
-create view public.my_saved_recipes as
-  select sr.user_id, sr.saved_at, r.*
-  from public.user_saved_recipes sr
-  join public.recipes r on r.id = sr.recipe_id
-  union all
-  select r.user_id, r.created_at as saved_at, r.*
-  from public.recipes r
-  where r.user_id is not null;
+-- (my_saved_recipes view removed 2026-07-07: selected user_id twice so it never
+-- applied cleanly anywhere, and nothing consumes it — saved recipes are client-side.)
 
 -- 2.8 cohort_decks (created BEFORE weekly_decks for FK order)
 
