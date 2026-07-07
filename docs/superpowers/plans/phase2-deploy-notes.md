@@ -40,8 +40,13 @@ Date: 2026-07-07. Executed by Claude (SDD Task 11, adapted cloud-first — no Do
 - Passing run: `ready` → 3 `title` → 21 `partial` → `final` → `done` in 30s; 3 global cache recipes persisted (user_id null, signatures set, image_status pending); all 6 failed smoke sessions correctly marked `failed`, 1 `ready`.
 - Task-reviewed (approved); validation-failure log trimmed to 300 chars of raw output (PII hygiene — model text can echo voice_context).
 
+## Task 14 live flip + sim walk — DONE 2026-07-07 (one carried finding)
+
+- Auth resolution: anonymous sign-ins enabled on the project (management API); `ensureSession()` in the client signs in anonymously when no session exists; `profiles.email` made nullable (migration `20260707000000`) because the signup trigger inserts a null email for anonymous users.
+- Sim walk (idb-driven; computer-use screenshots were broken by a macOS screen-capture permission): Tonight → After Work → "Something easy with chicken" → loading → review landed a real AI recipe ("Pan-Seared Chicken with Garlic Butter and Asparagus"); DB shows the anonymous session `ready` with matching voice_context. First walk accidentally exercised the MOCK path (app was on a cached bundle from an older Metro) — detected because the DB showed no new session; forced a fresh bundle load from the worktree Metro (port 8082) and re-walked live.
+- **Carried finding (Important, fix by Task 20):** GenerationLoadingScreen renders no text at runtime — no "Cooking up ideas…", no stage labels, no streamed titles; only the spinner and step dots show (verified in two captures at 15s/25s). Title SSE events are confirmed emitted server-side.
+
 ## Still owed (recorded in SDD ledger)
 
-- Task 14 live flip + sim walk — **blocker found**: client `streamRecipes` throws `no_session`; needs anonymous sign-ins enabled + client bootstrap, AND `profiles.email` is `citext NOT NULL` so the signup trigger would reject anonymous users (email is null) — migration required first.
-- Task 18 [COST] image smoke (STOP-CONFIRM), Task 20 final verification.
+- Task 18 [COST] image smoke (STOP-CONFIRM), loading-screen text fix, Task 20 final verification.
 - Post-deploy hard gate: delete-account cascade smoke — reuse the Task 13 smoke user.
