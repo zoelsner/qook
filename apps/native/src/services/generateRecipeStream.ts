@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import EventSource from 'react-native-sse';
 import type { EnergyTier, Recipe, Timestamp } from '@qook/shared';
-import { supabase } from './supabase';
+import { ensureSession } from './supabase';
 import { routeStreamEvent } from './streamEventRouter';
 import type { StreamCallbacks } from './streamEventRouter';
 
@@ -33,9 +33,7 @@ export async function streamRecipes(
   cb: StreamCallbacks
 ): Promise<Recipe[]> {
   const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as string;
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error('no_session');
+  const token = await ensureSession();
 
   const url = `${supabaseUrl}/functions/v1/generate-recipe`;
 

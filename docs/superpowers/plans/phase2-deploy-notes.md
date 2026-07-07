@@ -31,7 +31,17 @@ Date: 2026-07-07. Executed by Claude (SDD Task 11, adapted cloud-first — no Do
 
 - `extra.supabaseUrl` / `extra.supabaseAnonKey` set to the real project values (anon key is public by design). `apiMode` remains `"mock"` — the live flip is Task 14.
 
+## Task 13 [COST] text smoke — PASSED 2026-07-07
+
+- Throwaway user `smoke-task13@qook.test` created via admin API (profile auto-created by `handle_new_user` trigger); signed in via password grant.
+- Run 1 caught a real bug: `chatStream` never sent `response_format` → model free-formed JSON → Zod envelope validation failed after a full paid generation.
+- Fix iterations (schema-validation 400s abort before token generation, so they cost ~nothing) mapped Anthropic's structured-outputs subset: no `maxItems`, no `minItems` > 1, no integer `minimum`/`maximum`, no `enum` on union types (nullable enum → `anyOf`). All stripped constraints remain enforced by Zod post-stream.
+- 22s stream timeout aborted mid-generation once structured outputs produced the full detailed envelope → raised to 90s. Unthrottled cumulative `partial` events totaled ~900KB/generation → throttled to 500ms (titles unthrottled; `final` is built from re-read DB rows so the throttle cannot stale it).
+- Passing run: `ready` → 3 `title` → 21 `partial` → `final` → `done` in 30s; 3 global cache recipes persisted (user_id null, signatures set, image_status pending); all 6 failed smoke sessions correctly marked `failed`, 1 `ready`.
+- Task-reviewed (approved); validation-failure log trimmed to 300 chars of raw output (PII hygiene — model text can echo voice_context).
+
 ## Still owed (recorded in SDD ledger)
 
-- Task 13 [COST] text smoke (STOP-CONFIRM), Task 14 live flip + sim walk, Task 18 [COST] image smoke, Task 20 final verification.
-- Post-deploy hard gate: delete-account cascade smoke with a throwaway user.
+- Task 14 live flip + sim walk — **blocker found**: client `streamRecipes` throws `no_session`; needs anonymous sign-ins enabled + client bootstrap, AND `profiles.email` is `citext NOT NULL` so the signup trigger would reject anonymous users (email is null) — migration required first.
+- Task 18 [COST] image smoke (STOP-CONFIRM), Task 20 final verification.
+- Post-deploy hard gate: delete-account cascade smoke — reuse the Task 13 smoke user.
