@@ -78,7 +78,7 @@ Deno.test("dbRowToClientRecipe maps to camelCase and builds heroImageUrl", () =>
       created_at: "2026-07-06T00:00:00Z",
       updated_at: "2026-07-06T00:00:00Z",
     },
-    ["vegan", "quick"],
+    ["quick", "vegan", "gluten-free"],
   );
   assertEquals(client.timeMinutes, 25);
   assertEquals(client.servings, 2);
@@ -95,11 +95,12 @@ Deno.test("dbRowToClientRecipe maps to camelCase and builds heroImageUrl", () =>
   assertEquals(client.ingredients[0].items[0].parsed?.quantityAmount, 1);
   assertEquals(client.ingredients[0].items[0].parsed?.quantityUnit, "lb");
 
-  // slug/signature/dietaryTags contract fields.
+  // slug/signature/dietaryTags contract fields. tags keeps the model's
+  // free-text array; dietaryTags is filtered to valid DietaryTag members.
   assertEquals(client.signature, "deadbeefcafebabe");
   assertEquals(client.slug, "pan-fried-gnocchi-deadbe");
-  assertEquals(client.tags, ["vegan", "quick"]);
-  assertEquals(client.dietaryTags, ["vegan", "quick"]);
+  assertEquals(client.tags, ["quick", "vegan", "gluten-free"]);
+  assertEquals(client.dietaryTags, ["vegan", "gluten-free"]);
 });
 
 Deno.test("dbRowToClientRecipe defaults tags to [] for DB-only reads", () => {
@@ -134,4 +135,7 @@ Deno.test("buildSlug is deterministic and collision-resistant", () => {
   // Same title, different signature → different slug (collision avoidance).
   const c = buildSlug("Pan-Fried Gnocchi!!", "0000001111112222");
   assert(a !== c);
+
+  // Missing signature → plain slugified title, no trailing dash.
+  assertEquals(buildSlug("Pan-Fried Gnocchi!!", ""), "pan-fried-gnocchi");
 });

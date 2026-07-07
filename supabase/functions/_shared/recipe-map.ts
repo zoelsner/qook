@@ -151,14 +151,29 @@ function mapIngredientGroups(
 
 // Deterministic slug: lowercase title, non-alphanumeric runs → single `-`,
 // trim leading/trailing `-`, then append the first 6 hex chars of the
-// recipe's dedup signature so same-title recipes don't collide.
+// recipe's dedup signature so same-title recipes don't collide. Rows with
+// no signature get the plain slugified title (no trailing dash).
 export function buildSlug(title: string, signature: string): string {
   const base = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `${base}-${signature.slice(0, 6)}`;
+  return signature ? `${base}-${signature.slice(0, 6)}` : base;
 }
+
+// Client DietaryTag closed enum — MUST stay identical to the union in
+// packages/shared/src/types/primitives.ts (DietaryTag). Defined locally
+// because client package code must not be imported into the Deno bundle.
+const DIETARY_TAG_SET = new Set<string>([
+  "vegan",
+  "vegetarian",
+  "pescatarian",
+  "gluten-free",
+  "dairy-free",
+  "nut-free",
+  "low-carb",
+  "high-protein",
+]);
 
 // `modelTags` is the in-memory model Recipe's `tags` (see schema.ts) for the
 // generation that just produced/matched this row. The `recipes` table has no
@@ -181,7 +196,9 @@ export function dbRowToClientRecipe(
     cuisine: String(row.cuisine),
     tier: String(row.energy_tier),
     tags: modelTags,
-    dietaryTags: modelTags,
+    // Model tags are free text; the client DietaryTag union is closed —
+    // only pass through the values that are valid members.
+    dietaryTags: modelTags.filter((t) => DIETARY_TAG_SET.has(t)),
     timeMinutes: Number(row.total_time_min ?? 0),
     servings: Number(row.serves ?? 0),
     difficulty: String(row.difficulty ?? "Medium"),
