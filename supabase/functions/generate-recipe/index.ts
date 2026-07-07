@@ -4,7 +4,7 @@ import {
   buildLiveSystemPrompt,
   buildLiveUserPrompt,
 } from "../_shared/prompts/live.ts";
-import { Recipe } from "../_shared/schema.ts";
+import { Recipe, RecipeEnvelopeJsonSchema } from "../_shared/schema.ts";
 import { serviceClient, userClient } from "../_shared/supabase.ts";
 import { buildLiveContext } from "../_shared/context.ts";
 import { checkQuota } from "../_shared/rate-limit.ts";
@@ -169,7 +169,11 @@ Deno.serve(async (req) => {
               }
             },
           },
-          { temperature: 0.75, timeoutMs: 22_000 },
+          {
+            temperature: 0.75,
+            timeoutMs: 22_000,
+            jsonSchema: RecipeEnvelopeJsonSchema,
+          },
         );
 
         const raw = JSON.parse(stripCodeFences(full));
@@ -181,6 +185,12 @@ Deno.serve(async (req) => {
         }
         const result = ResponseEnvelope.safeParse(raw);
         if (!result.success) {
+          console.error(
+            "generate-recipe validation failed",
+            JSON.stringify(result.error.issues.slice(0, 5)),
+            "raw:",
+            full.slice(0, 2000),
+          );
           await finishSession(admin, sessionId, "failed");
           send("error", {
             code: ERRORS.VALIDATION,

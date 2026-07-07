@@ -10,7 +10,12 @@ export type StreamHandlers = {
 export async function chatStream(
   messages: { role: string; content: string }[],
   handlers: StreamHandlers,
-  opts: { model?: string; temperature?: number; timeoutMs?: number } = {},
+  opts: {
+    model?: string;
+    temperature?: number;
+    timeoutMs?: number;
+    jsonSchema?: { name: string; schema: unknown; strict?: boolean };
+  } = {},
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 25_000);
@@ -26,6 +31,14 @@ export async function chatStream(
         messages,
         temperature: opts.temperature ?? 0.7,
         stream: true,
+        ...(opts.jsonSchema
+          ? {
+            response_format: {
+              type: "json_schema",
+              json_schema: opts.jsonSchema,
+            },
+          }
+          : {}),
       }),
       signal: controller.signal,
     });

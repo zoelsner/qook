@@ -220,3 +220,23 @@ export const RecipeJsonSchema = {
     },
   },
 } as const;
+
+// Envelope for generate-recipe's streaming call: { recipes: [3 × Recipe] }.
+// Matches ResponseEnvelope in generate-recipe/index.ts.
+export const RecipeEnvelopeJsonSchema = {
+  name: "RecipeEnvelope",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["recipes"],
+    properties: {
+      recipes: {
+        type: "array",
+        minItems: 3,
+        maxItems: 3,
+        items: RecipeJsonSchema.schema,
+      },
+    },
+  },
+} as const;
