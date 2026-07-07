@@ -2,6 +2,11 @@
 // Run: bun run scripts/test-saved-recipes.ts
 import { useWeekPlan } from '../apps/native/src/stores/weekPlan';
 
+// AsyncStorage is a no-op target under bun; persist writes reject with
+// "window is not defined" after assertions pass. Ignore that noise so the
+// exit code reflects the assertions only.
+process.on('unhandledRejection', () => {});
+
 function assert(cond: boolean, msg: string) {
   if (!cond) {
     console.error('FAIL:', msg);
@@ -26,3 +31,4 @@ assert(
 );
 
 console.log('PASS: saved-recipes toggle');
+process.exit(0);
