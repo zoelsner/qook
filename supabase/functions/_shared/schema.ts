@@ -96,15 +96,17 @@ export const RecipeJsonSchema = {
       "notes",
     ],
     properties: {
-      title: { type: "string", minLength: 4 },
-      cuisine: { type: "string", minLength: 2 },
+      title: { type: "string" },
+      cuisine: { type: "string" },
       tier: {
         type: "string",
         enum: ["brain-is-fried", "after-work", "got-energy", "weekend-project"],
       },
-      tags: { type: "array", items: { type: "string" }, maxItems: 8 },
-      timeMinutes: { type: "integer", minimum: 1, maximum: 240 },
-      servings: { type: "integer", minimum: 1, maximum: 12 },
+      // No maxItems — Anthropic structured outputs reject it on arrays;
+      // the Zod schema still caps tags at 8 after the stream.
+      tags: { type: "array", items: { type: "string" } },
+      timeMinutes: { type: "integer" },
+      servings: { type: "integer" },
       ingredientGroups: {
         type: "array",
         minItems: 1,
@@ -155,20 +157,26 @@ export const RecipeJsonSchema = {
                         ],
                       },
                       amount: { type: ["number", "null"] },
+                      // anyOf, not `type: [..., null]` + enum — Anthropic's
+                      // schema validator rejects enums on union types.
                       unit: {
-                        type: ["string", "null"],
-                        enum: [
-                          "g",
-                          "kg",
-                          "oz",
-                          "lb",
-                          "tsp",
-                          "tbsp",
-                          "cup",
-                          "count",
-                          "ml",
-                          "l",
-                          null,
+                        anyOf: [
+                          {
+                            type: "string",
+                            enum: [
+                              "g",
+                              "kg",
+                              "oz",
+                              "lb",
+                              "tsp",
+                              "tbsp",
+                              "cup",
+                              "count",
+                              "ml",
+                              "l",
+                            ],
+                          },
+                          { type: "null" },
                         ],
                       },
                     },
@@ -198,7 +206,7 @@ export const RecipeJsonSchema = {
                 required: ["instruction", "durationMin"],
                 properties: {
                   instruction: { type: "string" },
-                  durationMin: { type: "integer", minimum: 1 },
+                  durationMin: { type: "integer" },
                 },
               },
             },
@@ -216,7 +224,7 @@ export const RecipeJsonSchema = {
           fatG: { type: ["integer", "null"] },
         },
       },
-      notes: { type: ["string", "null"], maxLength: 300 },
+      notes: { type: ["string", "null"] },
     },
   },
 } as const;
@@ -231,10 +239,11 @@ export const RecipeEnvelopeJsonSchema = {
     additionalProperties: false,
     required: ["recipes"],
     properties: {
+      // No minItems/maxItems: Anthropic structured outputs reject array
+      // minItems > 1. The prompt asks for exactly 3 and the Zod envelope
+      // (.length(3)) enforces it after the stream.
       recipes: {
         type: "array",
-        minItems: 3,
-        maxItems: 3,
         items: RecipeJsonSchema.schema,
       },
     },

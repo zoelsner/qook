@@ -147,6 +147,9 @@ Deno.serve(async (req) => {
 
       send("ready", { status: "generating" });
       const emittedTitles = new Set<number>();
+      // Throttle cumulative partial payloads (they grow with the buffer —
+      // unthrottled they total ~1MB per generation). Titles always go out.
+      let lastPartialAt = 0;
 
       try {
         const full = await chatStream(
@@ -158,7 +161,11 @@ Deno.serve(async (req) => {
             onPartial: (buf) => {
               const partials = extractPartialRecipes(buf);
               if (partials.length) {
-                send("partial", { recipes: partials });
+                const now = Date.now();
+                if (now - lastPartialAt >= 500) {
+                  lastPartialAt = now;
+                  send("partial", { recipes: partials });
+                }
                 partials.forEach((p, i) => {
                   const title = (p as { title?: string }).title;
                   if (title && !emittedTitles.has(i)) {
@@ -170,8 +177,10 @@ Deno.serve(async (req) => {
             },
           },
           {
+            // 22s was calibrated for free-form JSON; structured outputs emit
+            // the full detailed envelope (~10k+ tokens) and need longer.
             temperature: 0.75,
-            timeoutMs: 22_000,
+            timeoutMs: 90_000,
             jsonSchema: RecipeEnvelopeJsonSchema,
           },
         );
