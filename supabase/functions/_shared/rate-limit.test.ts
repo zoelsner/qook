@@ -11,8 +11,12 @@ function fakeClient(counts: number[]) {
           return {
             eq() {
               return {
-                gte: () =>
-                  Promise.resolve({ count: counts[i++], error: null }),
+                neq() {
+                  return {
+                    gte: () =>
+                      Promise.resolve({ count: counts[i++], error: null }),
+                  };
+                },
               };
             },
           };

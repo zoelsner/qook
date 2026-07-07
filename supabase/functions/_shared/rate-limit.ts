@@ -8,10 +8,15 @@ const MONTHLY_MAX = 30;
 
 async function countSince(admin: Admin, userId: string, sinceMs: number) {
   const since = new Date(Date.now() - sinceMs).toISOString();
+  // Failed generations don't count against the user's quota (Zach
+  // 2026-07-07). In-flight ("generating") sessions still count, so a
+  // parallel blast can't outrun the limit; they stop counting only once
+  // finishSession marks them failed.
   const { count, error } = await admin
     .from("generation_sessions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
+    .neq("status", "failed")
     .gte("created_at", since);
   if (error) throw error;
   return count ?? 0;

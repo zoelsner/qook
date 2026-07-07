@@ -106,6 +106,8 @@ export function toRecipeInsert(r: Recipe, signature: string) {
     workflow_sections: r.workflowSections,
     timeline: [] as unknown[],
     notes: r.notes ?? null,
+    tags: r.tags ?? [],
+    nutrition: r.nutrition ?? null,
     source: "ai" as const,
     image_status: "pending" as const,
   };
@@ -175,11 +177,9 @@ const DIETARY_TAG_SET = new Set<string>([
   "high-protein",
 ]);
 
-// `modelTags` is the in-memory model Recipe's `tags` (see schema.ts) for the
-// generation that just produced/matched this row. The `recipes` table has no
-// tags column, so there is nothing to persist — callers pass the tags they
-// already have on hand at generation time. DB-only reads (no in-memory
-// recipe available) omit the param and get `[]` for both tag fields.
+// Tags come from the row's `tags` column (persisted since migration
+// 20260707000001); `modelTags` remains as a fallback for rows written
+// before the column existed or callers holding fresher in-memory tags.
 export function dbRowToClientRecipe(
   row: Record<string, unknown>,
   modelTags: string[] = [],
@@ -188,6 +188,23 @@ export function dbRowToClientRecipe(
   const title = String(row.title);
   const signature = String(row.signature ?? "");
   const ownerId = row.user_id != null ? String(row.user_id) : undefined;
+  const rowTags = Array.isArray(row.tags) ? row.tags.map(String) : [];
+  const tags = rowTags.length ? rowTags : modelTags;
+  // DB nutrition {calories, proteinG, carbG, fatG} → client
+  // NutritionalEstimate (note carbsG spelling + required source).
+  const n = row.nutrition as
+    | { calories?: number | null; proteinG?: number | null; carbG?: number | null; fatG?: number | null }
+    | null
+    | undefined;
+  const nutritionalEstimate = n
+    ? {
+      ...(n.calories != null ? { calories: n.calories } : {}),
+      ...(n.proteinG != null ? { proteinG: n.proteinG } : {}),
+      ...(n.carbG != null ? { carbsG: n.carbG } : {}),
+      ...(n.fatG != null ? { fatG: n.fatG } : {}),
+      source: "ai-estimate" as const,
+    }
+    : undefined;
   return {
     id: String(row.id),
     slug: buildSlug(title, signature),
@@ -195,10 +212,11 @@ export function dbRowToClientRecipe(
     title,
     cuisine: String(row.cuisine),
     tier: String(row.energy_tier),
-    tags: modelTags,
+    tags,
     // Model tags are free text; the client DietaryTag union is closed —
     // only pass through the values that are valid members.
-    dietaryTags: modelTags.filter((t) => DIETARY_TAG_SET.has(t)),
+    dietaryTags: tags.filter((t) => DIETARY_TAG_SET.has(t)),
+    ...(nutritionalEstimate ? { nutritionalEstimate } : {}),
     timeMinutes: Number(row.total_time_min ?? 0),
     servings: Number(row.serves ?? 0),
     difficulty: String(row.difficulty ?? "Medium"),
