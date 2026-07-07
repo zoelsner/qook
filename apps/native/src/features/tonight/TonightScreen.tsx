@@ -193,7 +193,11 @@ function HeroPopulated({
       </DisplayText>
       <View style={{ height: 6 }} />
       <BodyText size={14} weight="medium" color={palette.textSecondary}>
-        {pick.cuisine} · {pick.timeMinutes} min · serves {pick.servings}
+        {pick.cuisine} · {pick.timeMinutes} min
+        {pick.nutritionalEstimate?.proteinG != null
+          ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
+          : ''}
+        {' '}· serves {pick.servings}
       </BodyText>
       <View style={{ height: spacing.md }} />
       <View style={styles.heroCtaRow}>

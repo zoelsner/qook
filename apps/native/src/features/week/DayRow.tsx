@@ -8,6 +8,7 @@ import { palette } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useBatchSession } from '../../stores/batchSession';
 import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
+import { energyTierColors } from '../../types/energy';
 import { formatDayShort, isToday, type ISODate } from './weekDates';
 
 const WEEK_TIERS: { tier: EnergyTier; minutes: number }[] = [
@@ -15,13 +16,6 @@ const WEEK_TIERS: { tier: EnergyTier; minutes: number }[] = [
   { tier: 'after-work', minutes: 30 },
   { tier: 'got-energy', minutes: 45 },
 ];
-
-const TIER_BG: Record<EnergyTier, string> = {
-  'brain-is-fried': palette.utility,
-  'after-work': palette.accent,
-  'got-energy': '#7A8568',
-  'weekend-project': palette.primary,
-};
 
 export function DayRow({
   date,
@@ -75,7 +69,10 @@ export function DayRow({
             {pick.title}
           </BodyText>
           <Mono size={10} color={palette.textSecondary}>
-            {pick.timeMinutes} min · {pick.cuisine}
+            {pick.cuisine} · {pick.timeMinutes} min
+            {pick.nutritionalEstimate?.proteinG != null
+              ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
+              : ''}
           </Mono>
         </View>
         <Pressable
@@ -106,7 +103,7 @@ export function DayRow({
       <View style={styles.chips}>
         {WEEK_TIERS.map(({ tier, minutes }) => {
           const active = activeTier === tier;
-          const tierColor = TIER_BG[tier];
+          const colors = energyTierColors(tier);
           return (
             <Pressable
               key={tier}
@@ -115,7 +112,7 @@ export function DayRow({
               style={[
                 styles.chip,
                 active
-                  ? { backgroundColor: tierColor, borderColor: tierColor }
+                  ? { backgroundColor: colors.text, borderColor: colors.text }
                   : styles.chipInactive,
                 drafting ? styles.chipDrafting : null,
               ]}

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   FlatList,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -205,14 +206,12 @@ function SlideVisual({ slide }: { slide: Slide }) {
 function BrandVisual() {
   return (
     <View style={styles.qMark}>
-      <BodyText
-        weight="semi"
-        size={64}
-        color={palette.surface}
-        style={styles.qGlyph}
-      >
-        Q
-      </BodyText>
+      <Image
+        source={require('../../../assets/icon.png')}
+        style={styles.qIcon}
+        resizeMode="cover"
+        accessibilityLabel="Qook"
+      />
     </View>
   );
 }
@@ -249,6 +248,7 @@ function TiersVisual() {
               size={13}
               weight="medium"
               color={palette.textSecondary}
+              style={styles.tierCook}
             >
               {row.cook}
             </BodyText>
@@ -352,7 +352,8 @@ const styles = StyleSheet.create({
     width: 112,
     height: 112,
     borderRadius: 24,
-    backgroundColor: palette.accent,
+    overflow: 'hidden',
+    backgroundColor: palette.background,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#A85539',
@@ -361,13 +362,9 @@ const styles = StyleSheet.create({
     shadowRadius: 34,
     elevation: 10,
   },
-  qGlyph: {
-    fontFamily: fontFamily.display,
-    letterSpacing: -2,
-    lineHeight: 70,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    marginTop: -2,
+  qIcon: {
+    width: '100%',
+    height: '100%',
   },
   tierCard: {
     alignSelf: 'stretch',
@@ -390,6 +387,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
+  },
+  tierCook: {
+    // Fixed slot + left-align so the leading symbol (≤ / >) lines up across
+    // rows. With proportional numerals "15" is narrower than "30/45" and a
+    // right-aligned slot pushes its ≤ outward.
+    width: 66,
+    textAlign: 'left',
+    fontVariant: ['tabular-nums'],
   },
   flowCard: {
     alignSelf: 'stretch',

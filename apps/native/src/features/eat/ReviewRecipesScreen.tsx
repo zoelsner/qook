@@ -130,7 +130,11 @@ export function ReviewRecipesScreen() {
           </DisplayText>
           <View style={{ height: 4 }} />
           <Mono size={11} color={palette.textSecondary}>
-            {pick.cuisine} · {pick.timeMinutes} min · serves {pick.servings}
+            {pick.cuisine} · {pick.timeMinutes} min
+            {pick.nutritionalEstimate?.proteinG != null
+              ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
+              : ''}
+            {' '}· serves {pick.servings}
           </Mono>
           {pick.notes ? (
             <>

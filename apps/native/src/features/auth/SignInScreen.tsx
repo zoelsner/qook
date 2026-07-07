@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,7 +8,6 @@ import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconApple } from '../../components/painted';
 import { palette, spacing, typeScale } from '../../design';
-import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
 import { StorageKeys, writeFlag, writeString } from '../../lib/storage';
 
@@ -47,14 +46,12 @@ export function SignInScreen() {
 
           <View style={styles.brand}>
             <View style={styles.qMark}>
-              <BodyText
-                weight="semi"
-                size={52}
-                color={palette.surface}
-                style={styles.qGlyph}
-              >
-                Q
-              </BodyText>
+              <Image
+                source={require('../../../assets/icon.png')}
+                style={styles.qIcon}
+                resizeMode="cover"
+                accessibilityLabel="Qook"
+              />
             </View>
             <Mono size={11} color={palette.textSecondary} style={styles.kicker}>
               QOOK
@@ -162,10 +159,11 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   qMark: {
-    width: 80,
-    height: 80,
-    borderRadius: 18,
-    backgroundColor: palette.accent,
+    width: 100,
+    height: 100,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: palette.background,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#A85539',
@@ -174,13 +172,9 @@ const styles = StyleSheet.create({
     shadowRadius: 28,
     elevation: 8,
   },
-  qGlyph: {
-    fontFamily: fontFamily.display,
-    letterSpacing: -1.5,
-    lineHeight: 58,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    marginTop: -2,
+  qIcon: {
+    width: '100%',
+    height: '100%',
   },
   kicker: {
     letterSpacing: 3.5,

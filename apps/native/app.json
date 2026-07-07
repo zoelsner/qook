@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAF5EC"
+      "backgroundColor": "#FCF9F1"
     },
     "ios": {
       "bundleIdentifier": "com.kata.qook",
@@ -24,7 +24,7 @@
       "package": "com.kata.qook",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FAF5EC"
+        "backgroundColor": "#FCF9F1"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

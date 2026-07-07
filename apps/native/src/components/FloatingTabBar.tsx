@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { palette, spacing } from '../design';
+import { palette, screen, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
 import { useHaptics } from '../hooks/useHaptics';
 import { BodyText } from './Text';
@@ -65,9 +65,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             >
               <TabIcon name={name} focused={focused} />
               <BodyText
-                size={10}
+                size={11}
                 weight={focused ? 'semi' : 'medium'}
-                color={focused ? palette.accentDeep : palette.textSecondary}
+                color={focused ? palette.accent : palette.textSecondary}
                 style={styles.tabLabel}
               >
                 {label}
@@ -82,15 +82,16 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
 function TabIcon({ name, focused }: { name: TabName; focused: boolean }) {
   const tint = focused ? palette.accent : palette.textSecondary;
+  const size = 24; // 10% bump over the 22px default (was 26; dialed back)
   switch (name) {
     case 'tonight':
-      return <IconTabTonight color={tint} />;
+      return <IconTabTonight size={size} color={tint} />;
     case 'week':
-      return <IconTabWeek color={tint} />;
+      return <IconTabWeek size={size} color={tint} />;
     case 'shop':
-      return <IconTabShop color={tint} />;
+      return <IconTabShop size={size} color={tint} />;
     case 'more':
-      return <IconTabMore color={tint} />;
+      return <IconTabMore size={size} color={tint} />;
     default:
       return null;
   }
@@ -109,19 +110,19 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    height: 68,
+    height: screen.tabBarHeight,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 16,
   },
   tab: {
-    width: 56,
+    width: 58,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   tabLabel: {
     letterSpacing: 0.2,
-    lineHeight: 12,
+    lineHeight: 13,
   },
 });

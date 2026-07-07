@@ -173,6 +173,15 @@ function RecipeBody({
 
       <View style={styles.statsRow}>
         <Stat value={String(recipe.timeMinutes)} label="minutes" />
+        {recipe.nutritionalEstimate?.proteinG != null ? (
+          <>
+            <View style={styles.statRule} />
+            <Stat
+              value={`${recipe.nutritionalEstimate.proteinG}g`}
+              label="protein"
+            />
+          </>
+        ) : null}
         <View style={styles.statRule} />
         <Stat value={String(recipe.servings)} label="serves" />
         <View style={styles.statRule} />

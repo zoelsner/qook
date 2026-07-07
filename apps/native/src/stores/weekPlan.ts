@@ -169,7 +169,11 @@ export const useWeekPlan = create<WeekPlanState>()(
     {
       name: 'qook.weekPlan.v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      // v2 (2026-04-23): added Recipe.nutritionalEstimate to fixtures; bumping
+      // invalidates cached picks so the next reload rehydrates with fresh
+      // recipes that carry the new field. Safe to bump any time schema
+      // changes — zustand persist discards mismatched versions.
+      version: 2,
       partialize: (state) => ({ plan: state.plan }),
       merge: (persistedState, currentState) => {
         const persistedPlan = (persistedState as Partial<WeekPlanState> | undefined)?.plan ?? {};

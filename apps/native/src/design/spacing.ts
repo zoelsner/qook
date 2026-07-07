@@ -19,5 +19,8 @@ export const screen = {
   horizontal: 16,
   top: 64,
   bottom: 112,
-  tabBarHeight: 56,
+  // Source of truth for the floating tab bar's height. Used by the bar itself
+  // and by any sticky dock that needs to sit above it (e.g. Shop's Instacart
+  // dock computes `insets.bottom + screen.tabBarHeight + gap`).
+  tabBarHeight: 72,
 } as const;
