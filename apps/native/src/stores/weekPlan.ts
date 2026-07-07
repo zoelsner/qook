@@ -15,6 +15,7 @@ export interface DayPlan {
 
 interface WeekPlanState {
   plan: Record<ISODate, DayPlan>;
+  savedRecipeIds: string[];
   hasHydrated: boolean;
 
   setEnergy: (date: ISODate, tier: EnergyTier) => void;
@@ -24,6 +25,7 @@ interface WeekPlanState {
   swapPick: (date: ISODate) => void;
   commitSelection: (date: ISODate) => void;
   appendRecipeAndSelect: (date: ISODate, recipe: Recipe) => void;
+  toggleSavedRecipe: (id: string) => void;
   clearDay: (date: ISODate) => void;
   clearFuture: () => void;
   clearAll: () => void;
@@ -35,6 +37,7 @@ export const useWeekPlan = create<WeekPlanState>()(
   persist(
     (set, get) => ({
       plan: {},
+      savedRecipeIds: [],
       hasHydrated: false,
 
       setEnergy: (date, energy) =>
@@ -144,6 +147,13 @@ export const useWeekPlan = create<WeekPlanState>()(
         }));
       },
 
+      toggleSavedRecipe: (id) =>
+        set((state) => ({
+          savedRecipeIds: state.savedRecipeIds.includes(id)
+            ? state.savedRecipeIds.filter((x) => x !== id)
+            : [...state.savedRecipeIds, id],
+        })),
+
       clearDay: (date) =>
         set((state) => {
           const next = { ...state.plan };
@@ -169,12 +179,14 @@ export const useWeekPlan = create<WeekPlanState>()(
     {
       name: 'qook.weekPlan.v1',
       storage: createJSONStorage(() => AsyncStorage),
-      // v2 (2026-04-23): added Recipe.nutritionalEstimate to fixtures; bumping
-      // invalidates cached picks so the next reload rehydrates with fresh
-      // recipes that carry the new field. Safe to bump any time schema
-      // changes — zustand persist discards mismatched versions.
-      version: 2,
-      partialize: (state) => ({ plan: state.plan }),
+      // v3 (2026-07-06): added savedRecipeIds. Bumping discards v2 caches so
+      // rehydration starts with an empty saved list rather than an undefined
+      // field. Safe to bump any time the persisted shape changes.
+      version: 3,
+      partialize: (state) => ({
+        plan: state.plan,
+        savedRecipeIds: state.savedRecipeIds,
+      }),
       merge: (persistedState, currentState) => {
         const persistedPlan = (persistedState as Partial<WeekPlanState> | undefined)?.plan ?? {};
         const mergedPlan: Record<ISODate, DayPlan> = { ...persistedPlan };
@@ -183,10 +195,14 @@ export const useWeekPlan = create<WeekPlanState>()(
           mergedPlan[date] = { ...mergedPlan[date], ...day };
         }
 
+        const persistedSaved =
+          (persistedState as Partial<WeekPlanState> | undefined)?.savedRecipeIds ?? [];
+
         return {
           ...currentState,
           ...(persistedState as object),
           plan: mergedPlan,
+          savedRecipeIds: persistedSaved,
         };
       },
       onRehydrateStorage: () => (state) => {

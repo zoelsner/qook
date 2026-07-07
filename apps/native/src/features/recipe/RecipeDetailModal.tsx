@@ -46,7 +46,9 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     queryFn: () => api.getRecipeById(recipeId),
   });
 
-  const [saved, setSaved] = useState(false);
+  const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
+  const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
+  const saved = savedRecipeIds.includes(recipeId);
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
 
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
@@ -96,9 +98,9 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
             <IconPill
               onPress={() => {
                 press();
-                setSaved((s) => !s);
+                toggleSavedRecipe(recipeId);
               }}
-              accessibilityLabel="Save recipe"
+              accessibilityLabel={saved ? 'Unsave recipe' : 'Save recipe'}
             >
               <Bookmark
                 size={16}
