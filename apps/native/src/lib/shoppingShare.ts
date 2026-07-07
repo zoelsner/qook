@@ -43,7 +43,10 @@ function openUrl(url: string) {
 
 export function openInstacart(items: GroceryItem[]) {
   const q = formatSearchQuery(items);
-  if (!q) return;
+  if (!q) {
+    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
+    return;
+  }
   // Instacart public search URL — each item isn't deduped/quantified,
   // but the comma-joined query lands the user on a search results page
   // where they can add items to their cart. Real cart prefill needs
@@ -54,7 +57,10 @@ export function openInstacart(items: GroceryItem[]) {
 
 export function openAmazonFresh(items: GroceryItem[]) {
   const q = formatSearchQuery(items);
-  if (!q) return;
+  if (!q) {
+    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
+    return;
+  }
   const url = `https://www.amazon.com/s?k=${encodeURIComponent(
     q
   )}&i=amazonfresh`;
