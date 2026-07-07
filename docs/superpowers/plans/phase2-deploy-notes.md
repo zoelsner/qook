@@ -46,7 +46,17 @@ Date: 2026-07-07. Executed by Claude (SDD Task 11, adapted cloud-first — no Do
 - Sim walk (idb-driven; computer-use screenshots were broken by a macOS screen-capture permission): Tonight → After Work → "Something easy with chicken" → loading → review landed a real AI recipe ("Pan-Seared Chicken with Garlic Butter and Asparagus"); DB shows the anonymous session `ready` with matching voice_context. First walk accidentally exercised the MOCK path (app was on a cached bundle from an older Metro) — detected because the DB showed no new session; forced a fresh bundle load from the worktree Metro (port 8082) and re-walked live.
 - **Carried finding (Important, fix by Task 20):** GenerationLoadingScreen renders no text at runtime — no "Cooking up ideas…", no stage labels, no streamed titles; only the spinner and step dots show (verified in two captures at 15s/25s). Title SSE events are confirmed emitted server-side.
 
-## Still owed (recorded in SDD ledger)
+## Task 18 [COST] image smoke — PASSED 2026-07-07
 
-- Task 18 [COST] image smoke (STOP-CONFIRM), loading-screen text fix, Task 20 final verification.
-- Post-deploy hard gate: delete-account cascade smoke — reuse the Task 13 smoke user.
+- Caught a real bug: comparing `Authorization` to env `SUPABASE_SERVICE_ROLE_KEY` fails on new-API-key projects (platform-injected key ≠ dashboard key; gateway also rejects key-shaped Authorization headers). Auth is now capability-based: callers send a service key via `x-internal-secret`; the function proves it with an `auth.admin.listUsers` probe. Anon key → 401 (verified).
+- Paid smoke: 19s, `{"ok":true}`, 1024px PNG in `meal-images`, `image_status` ready, canon watercolor style transferred (visually verified). Note: nothing calls generate-image in-app yet (wiring open).
+
+## Task 19 hard gate — delete-account cascade smoke PASSED 2026-07-07
+
+- Deployed fn deleted the Task 13 smoke user: auth user, profile, preferences, and all 7 generation_sessions cascaded to zero; the 9 global cache recipes (user_id null) correctly retained. Smoke-user credentials are now dead.
+
+## Task 20 — final whole-branch review (opus) 2026-07-07
+
+- Verdict: READY WITH FIXES → fix commit `a19a20b` landed for all three Important findings: refusal path restored under structured outputs (envelope gained a required-nullable `refusal`; prompt + handler updated; paid confirm smoke passed post-deploy, 28s), pre-stream typed errors now reach the user via a buffered-fetch fallback (replaces the broken `functions.invoke` path; pure `parseBufferedSse` + bun tests), plus minors (context capped at 500 chars, image extension follows MIME, malformed-error-frame settle guard).
+- Anonymous-spend exposure: app-level quota is per-user and anonymous users are mintable; platform default caps signups at 30/hour/IP. Tightening it and/or CAPTCHA needs Zach's decision (classifier requires his explicit OK for the config change).
+- Open items carried out of Phase 2: GenerationLoadingScreen renders no text (needs interactive Metro debug; repro + evidence in ledger), generate-image and createInstacartShoppingList call-site wiring, nutrition columns product decision.
