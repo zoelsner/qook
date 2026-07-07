@@ -145,11 +145,28 @@ export async function generateRecipesForEnergy(
     await lag(1500);
     return pickForTier(tier, 3);
   }
-  const { data, error } = await supabase.functions.invoke('generate-recipe', {
-    body: { tier, context: context?.trim() || undefined },
-  });
-  if (error) throw error;
-  return (data as { recipes: Recipe[] }).recipes;
+  const { streamRecipes, normalizeFinalRecipes } = await import(
+    './generateRecipeStream'
+  );
+  const { useGenerationSession } = await import('../stores/generationSession');
+  try {
+    return await streamRecipes(tier, context, {
+      onTitle: (index, title) =>
+        useGenerationSession.getState().pushTitle(index, title),
+      onError: () => {
+        /* surfaced via thrown error below */
+      },
+    });
+  } catch (streamErr) {
+    if ((streamErr as Error).message !== 'stream_connection_error') throw streamErr;
+    // Fallback: non-stream invoke (same edge fn returns SSE, so use a plain
+    // fetch that reads the `final` event out of the buffered stream).
+    const { data, error } = await supabase.functions.invoke('generate-recipe', {
+      body: { tier, context: context?.trim() || undefined },
+    });
+    if (error) throw error;
+    return normalizeFinalRecipes((data as { recipes: unknown[] }).recipes);
+  }
 }
 
 export const api = {

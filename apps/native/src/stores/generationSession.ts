@@ -14,12 +14,14 @@ interface GenerationSessionState {
   context: string;
   state: GenerationState;
   recipes: Recipe[];
+  streamedTitles: string[];
   error: string | null;
 
   start: (tier: EnergyTier) => void;
   setContext: (context: string) => void;
   beginGeneration: () => void;
   setStreaming: (recipes: Recipe[]) => void;
+  pushTitle: (index: number, title: string) => void;
   finish: (recipes: Recipe[]) => void;
   fail: (message: string) => void;
   reset: () => void;
@@ -30,6 +32,7 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
   context: '',
   state: 'idle',
   recipes: [],
+  streamedTitles: [],
   error: null,
 
   start: (tier) =>
@@ -38,11 +41,18 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
       context: '',
       state: 'collecting_context',
       recipes: [],
+      streamedTitles: [],
       error: null,
     }),
   setContext: (context) => set({ context }),
   beginGeneration: () => set({ state: 'generating_text' }),
   setStreaming: (recipes) => set({ state: 'streaming_recipes', recipes }),
+  pushTitle: (index, title) =>
+    set((s) => {
+      const next = s.streamedTitles.slice();
+      next[index] = title;
+      return { streamedTitles: next };
+    }),
   finish: (recipes) => set({ state: 'ready', recipes, error: null }),
   fail: (message) => set({ state: 'error', error: message }),
   reset: () =>
@@ -51,6 +61,7 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
       context: '',
       state: 'idle',
       recipes: [],
+      streamedTitles: [],
       error: null,
     }),
 }));

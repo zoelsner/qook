@@ -21,7 +21,7 @@ export type GroceryCategory =
   | 'Frozen'
   | 'Bakery'
   | 'Other';
-export type RecipeSource = 'cohort' | 'live' | 'user' | 'fallback';
+export type RecipeSource = 'cohort' | 'live' | 'user' | 'fallback' | 'ai';
 export type ImageStatus = 'pending' | 'generating' | 'ready' | 'failed';
 export type UnitSystem = 'imperial' | 'metric';
 export type DietaryTag =

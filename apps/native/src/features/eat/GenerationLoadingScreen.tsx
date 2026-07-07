@@ -25,6 +25,7 @@ export function GenerationLoadingScreen() {
   const context = useGenerationSession((s) => s.context);
   const finish = useGenerationSession((s) => s.finish);
   const fail = useGenerationSession((s) => s.fail);
+  const streamedTitles = useGenerationSession((s) => s.streamedTitles);
   const [stage, setStage] = useState(0);
   const ran = useRef(false);
 
@@ -79,9 +80,22 @@ export function GenerationLoadingScreen() {
         <View style={{ height: spacing.xl + spacing.md }} />
         <PaintedArcSpinner size={64} color={palette.accent} strokeWidth={3.2} />
         <View style={{ height: spacing.lg }} />
-        <BodyText size={14} color={palette.textSecondary} weight="medium">
-          {STAGES[stage].label}
-        </BodyText>
+        {streamedTitles.filter(Boolean).length > 0 ? (
+          streamedTitles.filter(Boolean).map((t, i) => (
+            <BodyText
+              key={i}
+              size={15}
+              color={palette.textSecondary}
+              weight="medium"
+            >
+              {t}
+            </BodyText>
+          ))
+        ) : (
+          <BodyText size={14} color={palette.textSecondary} weight="medium">
+            {STAGES[stage].label}
+          </BodyText>
+        )}
         <View style={{ height: spacing.md }} />
         <StepDots total={STAGES.length} current={stage} />
       </View>
