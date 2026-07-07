@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Pressable,
   ScrollView,
+  Share as RNShare,
   StyleSheet,
   View,
 } from 'react-native';
@@ -67,6 +68,19 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     router.replace('/(tabs)/tonight');
   };
 
+  const onShare = async () => {
+    if (!recipe) return;
+    tap();
+    try {
+      await RNShare.share({
+        title: recipe.title,
+        message: `${recipe.title} — cooked with Qook\nhttps://qook.app/r/${recipe.slug}`,
+      });
+    } catch {
+      /* user dismissed the share sheet */
+    }
+  };
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -109,7 +123,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
                 strokeWidth={1.8}
               />
             </IconPill>
-            <IconPill onPress={() => tap()} accessibilityLabel="Share recipe">
+            <IconPill onPress={onShare} accessibilityLabel="Share recipe">
               <Share size={16} color={palette.ink} strokeWidth={1.8} />
             </IconPill>
           </View>
