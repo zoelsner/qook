@@ -12,7 +12,7 @@ import { ProteinChip } from '../../components/ProteinChip';
 import { BodyText, DisplayText, Mono, ItalicText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight, ChevronRight } from 'lucide-react-native';
-import { palette, spacing } from '../../design';
+import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import {
   useWeekPlan,
@@ -76,6 +76,7 @@ export function TonightScreen() {
   return (
     <ScreenShell horizontalPadding={24}>
       <TonightHeader
+        hasPick={Boolean(todayPick)}
         pickIndex={pickIndex}
         totalPicks={recipes.length}
       />
@@ -109,9 +110,11 @@ export function TonightScreen() {
 }
 
 function TonightHeader({
+  hasPick,
   pickIndex,
   totalPicks,
 }: {
+  hasPick: boolean;
   pickIndex: number;
   totalPicks: number;
 }) {
@@ -130,28 +133,36 @@ function TonightHeader({
           {weekday} · {month} {day}
         </Mono>
       </View>
-      <View style={{ height: spacing.md }} />
-      <View style={styles.kickerRow}>
-        <Mono size={10} bold color={palette.accentDeep}>
-          TONIGHT
-        </Mono>
-        <View style={styles.kickerDot} />
-        <Mono size={10} color={palette.textSecondary}>
-          {subtitle}
-        </Mono>
-      </View>
-      <View style={{ height: 4 }} />
-      <View style={styles.titleWrap}>
-        <DisplayText size={44} color={palette.primary} style={styles.brandTitle}>
-          Tonight
-        </DisplayText>
-        <BrushstrokeUnderline
-          width={180}
-          color={palette.accent}
-          strokeWidth={2.6}
-          style={styles.brandUnderline}
-        />
-      </View>
+      <View style={styles.mastheadRule} />
+      {/* When a pick exists, the recipe title becomes the screen's headline
+          (see HeroPopulated) — the static "Tonight" title/kicker/brushstroke
+          only render here for the no-pick/empty state. */}
+      {hasPick ? null : (
+        <>
+          <View style={{ height: spacing.md }} />
+          <View style={styles.kickerRow}>
+            <Mono size={10} bold color={palette.accentDeep}>
+              TONIGHT
+            </Mono>
+            <View style={styles.kickerDot} />
+            <Mono size={10} color={palette.textSecondary}>
+              {subtitle}
+            </Mono>
+          </View>
+          <View style={{ height: 4 }} />
+          <View style={styles.titleWrap}>
+            <DisplayText size={44} color={palette.primary} style={styles.brandTitle}>
+              Tonight
+            </DisplayText>
+            <BrushstrokeUnderline
+              width={180}
+              color={palette.accent}
+              strokeWidth={2.6}
+              style={styles.brandUnderline}
+            />
+          </View>
+        </>
+      )}
       <View style={{ height: spacing.lg }} />
     </View>
   );
@@ -186,13 +197,37 @@ function HeroPopulated({
   onOpen: () => void;
 }) {
   const protein = pick.nutritionalEstimate?.proteinG;
+  const words = pick.title.trim().split(/\s+/);
+  const lastWord = words[words.length - 1];
+  const leadWords = words.slice(0, -1).join(' ');
   return (
-    <View style={styles.heroWell}>
+    <View>
       <View style={styles.heroArtRow}>
         <View style={styles.heroTitleCol}>
-          <DisplayText size={30} color={palette.ink} style={styles.heroTitle}>
-            {pick.title}
-          </DisplayText>
+          <Mono size={10} bold color={palette.accentDeep}>
+            TONIGHT&rsquo;S TABLE
+          </Mono>
+          <View style={{ height: 6 }} />
+          <View style={styles.titleWrap}>
+            {leadWords ? (
+              <DisplayText size={38} color={palette.primary} style={styles.heroTitle}>
+                {leadWords}
+              </DisplayText>
+            ) : null}
+            <DisplayText
+              size={38}
+              color={palette.accent}
+              style={[styles.heroTitle, styles.heroTitleItalic]}
+            >
+              {lastWord}
+            </DisplayText>
+            <BrushstrokeUnderline
+              width={180}
+              color={palette.accent}
+              strokeWidth={2.6}
+              style={styles.heroUnderline}
+            />
+          </View>
         </View>
         <View>
           <Vignette
@@ -239,9 +274,13 @@ function MorePicks({
   return (
     <View>
       <View style={{ height: spacing.xl }} />
-      <Mono size={10} bold color={palette.accentDeep}>
-        ALSO ON THE MENU
-      </Mono>
+      <View style={styles.sectionDivider}>
+        <View style={styles.sectionRule} />
+        <Mono size={10} bold color={palette.accentDeep}>
+          ALSO ON THE MENU
+        </Mono>
+        <View style={styles.sectionRule} />
+      </View>
       <View style={{ height: spacing.sm }} />
       {picks.map(({ recipe, idx }) => (
         <Pressable
@@ -430,6 +469,11 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
+  },
   kickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -467,12 +511,14 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     letterSpacing: -0.5,
-    lineHeight: 36,
   },
-  heroWell: {
-    borderRadius: 18,
-    padding: spacing.lg,
-    backgroundColor: palette.well,
+  heroTitleItalic: {
+    fontFamily: fontFamily.displayItalic,
+  },
+  heroUnderline: {
+    position: 'absolute',
+    left: -4,
+    bottom: -8,
   },
   heroArtRow: {
     flexDirection: 'row',
@@ -483,6 +529,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: -6,
     bottom: -6,
+    transform: [{ rotate: '-6deg' }],
   },
   heroTitleCol: {
     flex: 1,
@@ -490,6 +537,16 @@ const styles = StyleSheet.create({
   },
   heroAside: {
     textAlign: 'left',
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
   },
   menuRowPress: {
     flexDirection: 'row',

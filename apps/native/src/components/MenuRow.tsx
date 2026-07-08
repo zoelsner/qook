@@ -53,5 +53,6 @@ const styles = StyleSheet.create({
   value: {
     flexShrink: 0,
     letterSpacing: 0.4,
+    textTransform: 'none',
   },
 });
