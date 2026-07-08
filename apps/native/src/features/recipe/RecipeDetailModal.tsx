@@ -18,11 +18,13 @@ import type {
 import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
+import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
+import { MenuRow } from '../../components/MenuRow';
+import { ProteinChip } from '../../components/ProteinChip';
+import { SquareCheckbox } from '../../components/SquareCheckbox';
 import {
-  PaintedCheckbox,
   PaintedDivider,
   IconPill,
-  GlassChip,
   IconCookingSteam,
 } from '../../components/painted';
 import { X, Bookmark, Share } from 'lucide-react-native';
@@ -178,50 +180,50 @@ function RecipeBody({
   return (
     <View>
       <View style={styles.hero}>
-        <FoodHeroImage
-          localKey={recipe.localImageKey as SeedMealKey | undefined}
-          remoteUrl={recipe.heroImageUrl}
-          blurhash={recipe.blurhash}
-          height={340}
-          cornerRadius={0}
-          style={styles.heroImage}
-        />
+        {recipe.imageStatus === 'failed' ? (
+          <View style={[styles.heroImage, styles.heroLetter]}>
+            <DisplayText size={140} color={palette.accentDeep}>
+              {(recipe.title.trim().charAt(0) || '·').toUpperCase()}
+            </DisplayText>
+          </View>
+        ) : (
+          <FoodHeroImage
+            localKey={recipe.localImageKey as SeedMealKey | undefined}
+            remoteUrl={recipe.heroImageUrl}
+            blurhash={recipe.blurhash}
+            height={340}
+            cornerRadius={0}
+            style={styles.heroImage}
+          />
+        )}
       </View>
 
       <View style={styles.titleBlock}>
-        <View style={styles.chipRow}>
-          <GlassChip>
-            <View style={styles.tierDot} />
-            <Mono size={10} bold color={palette.accentDeep}>
-              {ENERGY_TIER_SUBTITLE[recipe.tier].toUpperCase()}
-            </Mono>
-          </GlassChip>
-          <GlassChip>
-            <Mono size={10} color={palette.textSecondary}>
-              {recipe.cuisine.toUpperCase()}
-            </Mono>
-          </GlassChip>
+        <Mono size={10} bold color={palette.accentDeep}>
+          {ENERGY_TIER_SUBTITLE[recipe.tier].toUpperCase()} · {recipe.cuisine.toUpperCase()}
+        </Mono>
+        <View style={styles.titleRow}>
+          <View style={styles.titleCol}>
+            <DisplayText size={34} style={styles.title}>
+              {recipe.title}
+            </DisplayText>
+            <BrushstrokeUnderline
+              width={200}
+              color={palette.accent}
+              strokeWidth={2.6}
+              style={styles.titleUnderline}
+            />
+          </View>
+          {recipe.nutritionalEstimate?.proteinG != null ? (
+            <ProteinChip proteinG={recipe.nutritionalEstimate.proteinG} size="md" />
+          ) : null}
         </View>
-        <DisplayText size={34} style={styles.title}>
-          {recipe.title}
-        </DisplayText>
       </View>
 
-      <View style={styles.statsRow}>
-        <Stat value={String(recipe.timeMinutes)} label="minutes" />
-        {recipe.nutritionalEstimate?.proteinG != null ? (
-          <>
-            <View style={styles.statRule} />
-            <Stat
-              value={`${recipe.nutritionalEstimate.proteinG}g`}
-              label="protein"
-            />
-          </>
-        ) : null}
-        <View style={styles.statRule} />
-        <Stat value={String(recipe.servings)} label="serves" />
-        <View style={styles.statRule} />
-        <Stat value={String(ingredientCount)} label="ingredients" />
+      <View style={styles.statsSection}>
+        <MenuRow label="Active time" value={`${recipe.timeMinutes} min`} />
+        <MenuRow label="Serves" value={String(recipe.servings)} />
+        <MenuRow label="Ingredients" value={String(ingredientCount)} />
       </View>
 
       <View style={styles.section}>
@@ -262,7 +264,7 @@ function RecipeBody({
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Mono size={10} bold color={palette.accentDeep}>
-              steps
+              the moves
             </Mono>
             <Mono size={10} color={palette.textSecondary}>
               {recipe.steps.length} sections · {recipe.timeMinutes} min
@@ -275,9 +277,9 @@ function RecipeBody({
               style={[styles.stepSection, idx > 0 ? { marginTop: spacing.md } : null]}
             >
               <View style={styles.stepHeaderRow}>
-                <Mono size={11} bold color={palette.accent}>
+                <DisplayText size={22} color={palette.accent} style={styles.moveNumeral}>
                   {String(idx + 1).padStart(2, '0')}
-                </Mono>
+                </DisplayText>
                 <DisplayText size={20} style={styles.stepTitle}>
                   {section.title}
                 </DisplayText>
@@ -357,19 +359,6 @@ function RecipeBody({
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.stat}>
-      <DisplayText size={26} color={palette.primary} style={styles.statValue}>
-        {value}
-      </DisplayText>
-      <Mono size={9} bold color={palette.textSecondary} style={styles.statLabel}>
-        {label.toUpperCase()}
-      </Mono>
-    </View>
-  );
-}
-
 function IngredientRow({
   id,
   ingredient,
@@ -389,7 +378,7 @@ function IngredientRow({
         pressed ? { opacity: 0.78 } : null,
       ]}
     >
-      <PaintedCheckbox checked={checked} size={22} />
+      <SquareCheckbox checked={checked} size={22} />
       <BodyText
         size={16}
         weight="semi"
@@ -460,6 +449,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 340,
   },
+  heroLetter: {
+    backgroundColor: palette.well,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroNav: {
     position: 'absolute',
     top: 0,
@@ -482,45 +476,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 10,
   },
-  chipRow: {
+  titleRow: {
     flexDirection: 'row',
-    gap: spacing.xs + 2,
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  tierDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: palette.accent,
+  titleCol: {
+    flex: 1,
   },
   title: {
     letterSpacing: -1,
     lineHeight: 38,
   },
-  statsRow: {
+  titleUnderline: {
+    marginTop: 4,
+  },
+  statsSection: {
     marginTop: spacing.lg,
-    marginHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 14,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontVariant: ['tabular-nums'],
-  },
-  statLabel: {
-    letterSpacing: 1.8,
-  },
-  statRule: {
-    width: 1,
-    height: 36,
-    backgroundColor: palette.statRuleColor,
+    paddingHorizontal: 24,
   },
   section: {
     marginTop: spacing.lg,
@@ -562,6 +535,10 @@ const styles = StyleSheet.create({
   stepTitle: {
     flex: 1,
     lineHeight: 22,
+  },
+  moveNumeral: {
+    letterSpacing: -0.5,
+    lineHeight: 24,
   },
   substepRow: {
     flexDirection: 'row',
