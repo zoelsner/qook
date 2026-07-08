@@ -178,7 +178,13 @@ export function dbRowToRecipe(
     timeline: (row.timeline as RecipeTimelineItem[] | null) ?? [],
     notes: (row.notes as string | undefined) ?? undefined,
     ...(nutritionalEstimate ? { nutritionalEstimate } : {}),
-    heroImageUrl: path ? `${mealImagesBase}/${path}` : undefined,
+    // ?v= cache-buster: storage path is stable per recipe and cached for a
+    // year, so regenerated art needs a new URL to actually display.
+    heroImageUrl: path
+      ? `${mealImagesBase}/${path}${
+          row.image_updated_at ? `?v=${Date.parse(String(row.image_updated_at))}` : ''
+        }`
+      : undefined,
     ownerId,
     imageStatus: String(row.image_status ?? 'pending') as ImageStatus,
     source: String(row.source ?? 'ai') as RecipeSource,

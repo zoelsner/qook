@@ -3,13 +3,13 @@ export function buildImagePrompt(
 ): string {
   return [
     `Hand-painted watercolor illustration, editorial cookbook style, of ${recipe.title}.`,
-    // §3 tweak (a): composition
-    `Composition: a single plate, one serving, the dish centered.`,
-    // §3 tweak (b): clean margin
-    `The outer 15% of the canvas stays clean cream paper on all sides.`,
-    // §3 tweak (c): accents
-    `At most two small watercolor accents outside the plate.`,
-    `Soft cream paper background, restrained sage and rust watercolor accents, prussian blue for shadow only, used sparingly. Visible paper texture; light brush-stroke edges so the food reads as the subject.`,
+    // Regen round (2026-07-08): first-round art read as a tiny plate lost on
+    // a table — unreadable at thumbnail size and inside circular crops. The
+    // dish must dominate the frame.
+    `Composition: overhead view, one generous serving on a single plate, and the plate nearly fills the square canvas, touching the edges of the frame.`,
+    `The food is the hero: large, richly colored, high contrast against the plate, identifiable at a glance even at thumbnail size.`,
+    `No props, no cutlery, no table setting, nothing outside the plate.`,
+    `Soft cream paper visible only at the extreme corners. Restrained sage and rust watercolor accents, prussian blue for shadow only, used sparingly. Visible paper texture; light brush-stroke edges.`,
     `No text, no signature, no watermark, no people, no hands.`,
     `Square 1:1 aspect ratio.`,
     // style-reference directive (spec §3 step 2)

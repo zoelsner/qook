@@ -226,7 +226,13 @@ export function dbRowToClientRecipe(
     steps: (row.workflow_sections as WorkflowSectionShape) ?? [],
     timeline: (row.timeline as unknown[]) ?? [],
     notes: (row.notes as string | undefined) ?? undefined,
-    heroImageUrl: path ? `${mealImagesBase()}/${path}` : undefined,
+    // ?v= cache-buster: storage path is stable per recipe and cached for a
+    // year, so regenerated art needs a new URL to actually display.
+    heroImageUrl: path
+      ? `${mealImagesBase()}/${path}${
+        row.image_updated_at ? `?v=${Date.parse(String(row.image_updated_at))}` : ""
+      }`
+      : undefined,
     ownerId,
     imageStatus: String(row.image_status ?? "pending"),
     source: String(row.source ?? "ai"),
