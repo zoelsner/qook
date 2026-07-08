@@ -196,6 +196,22 @@ export async function generateRecipesForEnergy(
   }
 }
 
+// Save-gated hero art (spec §10 budget; Zach 2026-07-07: fire on save, not on
+// cook-commit). Called but NOT awaited when the user saves a recipe. The
+// server's atomic pending→generating lock makes repeat/duplicate/cross-user
+// calls cheap no-ops, so the client needs no dedup or polling — image_status
+// is simply re-read on next open (spec §6). No-op in mock mode: fixture
+// recipes have no DB row, so a request would 404.
+export async function requestRecipeImage(recipeId: string): Promise<void> {
+  if (mode === 'mock') return;
+  try {
+    await ensureSession();
+    await supabase.functions.invoke('generate-image', { body: { recipeId } });
+  } catch {
+    /* fire-and-forget — a failed request just leaves image_status untouched */
+  }
+}
+
 export const api = {
   getTonightPlan,
   getRecipeById,
@@ -205,4 +221,5 @@ export const api = {
   getGroceries,
   toggleGrocery,
   generateRecipesForEnergy,
+  requestRecipeImage,
 };

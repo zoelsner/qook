@@ -120,6 +120,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
             <IconPill
               onPress={() => {
                 press();
+                if (!saved) void api.requestRecipeImage(recipeId);
                 toggleSavedRecipe(recipeId);
               }}
               accessibilityLabel={saved ? 'Unsave recipe' : 'Save recipe'}
