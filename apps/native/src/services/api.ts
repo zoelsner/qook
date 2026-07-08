@@ -199,12 +199,13 @@ export async function generateRecipesForEnergy(
   }
 }
 
-// Save-gated hero art (spec §10 budget; Zach 2026-07-07: fire on save, not on
-// cook-commit). Called but NOT awaited when the user saves a recipe. The
-// server's atomic pending→generating lock makes repeat/duplicate/cross-user
-// calls cheap no-ops, so the client needs no dedup or polling — image_status
-// is simply re-read on next open (spec §6). No-op in mock mode: fixture
-// recipes have no DB row, so a request would 404.
+// Save-gated hero art (Zach 2026-07-07: fire on save, not on cook-commit).
+// Called but NOT awaited. The server's atomic pending|failed→generating lock
+// means at most one paid generation per recipe row ever (retry-on-open only
+// re-fires a 'failed' row), so the spend ceiling is the global pending/failed
+// recipe count × ~6.8¢ — NOT a per-user quota. The client needs no dedup or
+// polling: image_status is re-read on next open, and a 'failed' open re-fires
+// this once (spec §6). No-op in mock mode: fixture recipes have no DB row.
 export async function requestRecipeImage(recipeId: string): Promise<void> {
   if (mode === 'mock') return;
   try {

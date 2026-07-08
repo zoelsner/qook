@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -46,6 +46,15 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     queryKey: ['recipe', recipeId],
     queryFn: () => api.getRecipeById(recipeId),
   });
+
+  // Retry-on-open (spec §6): if the previous image attempt failed, re-request
+  // once when the recipe opens. The server's pending|failed→generating lock
+  // makes duplicate fires cheap no-ops, so no polling/dedup is needed here.
+  useEffect(() => {
+    if (recipe?.imageStatus === 'failed') {
+      void api.requestRecipeImage(recipeId);
+    }
+  }, [recipe?.imageStatus, recipeId]);
 
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
