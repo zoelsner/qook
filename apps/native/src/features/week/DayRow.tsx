@@ -88,26 +88,32 @@ export function DayRow({
           </Mono>
         </View>
         {isToday(date) ? (
-          <Vignette
-            size={52}
-            localKey={art?.localImageKey as SeedMealKey | undefined}
-            remoteUrl={art?.heroImageUrl}
-            blurhash={art?.blurhash}
-            imageStatus={art?.imageStatus}
-            title={pick.title}
-          />
+          <View>
+            <Vignette
+              size={52}
+              localKey={art?.localImageKey as SeedMealKey | undefined}
+              remoteUrl={art?.heroImageUrl}
+              blurhash={art?.blurhash}
+              imageStatus={art?.imageStatus}
+              title={pick.title}
+            />
+            {pick.nutritionalEstimate?.proteinG != null ? (
+              <ProteinChip
+                proteinG={pick.nutritionalEstimate.proteinG}
+                size="mini"
+                style={styles.todayProtein}
+              />
+            ) : null}
+          </View>
         ) : null}
         <View style={styles.pickArea}>
           <BodyText size={14} weight="semi" color={palette.ink} numberOfLines={1}>
             {pick.title}
           </BodyText>
-          <Mono size={10} color={palette.textSecondary}>
+          <Mono size={10} color={palette.textSecondary} numberOfLines={1}>
             {pick.cuisine} · {pick.timeMinutes} min
           </Mono>
         </View>
-        {isToday(date) && pick.nutritionalEstimate?.proteinG != null ? (
-          <ProteinChip proteinG={pick.nutritionalEstimate.proteinG} size="mini" />
-        ) : null}
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
@@ -229,6 +235,12 @@ const styles = StyleSheet.create({
   pickArea: {
     flex: 1,
     gap: 2,
+  },
+  todayProtein: {
+    position: 'absolute',
+    left: -8,
+    bottom: -8,
+    transform: [{ rotate: '-6deg' }],
   },
   swapBtn: {
     width: 32,
