@@ -7,7 +7,7 @@ import type { GroceryCategory, GroceryItem, Timestamp } from '@qook/shared';
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { PaintedCheckbox } from '../../components/painted';
+import { SquareCheckbox } from '../../components/SquareCheckbox';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight } from 'lucide-react-native';
 import { palette, screen, spacing } from '../../design';
@@ -254,7 +254,7 @@ function ShopRow({
       accessibilityLabel={`${item.name}, ${quantity}${checked ? ', checked' : ''}`}
       accessibilityState={{ checked }}
     >
-      <PaintedCheckbox checked={checked} size={22} />
+      <SquareCheckbox checked={checked} size={22} />
       <View style={styles.rowText}>
         <BodyText
           size={16}
@@ -323,7 +323,7 @@ function ShopDock({
           </DisplayText>
           <View style={{ height: 2 }} />
           <BodyText size={13} color={palette.textSecondary} weight="medium">
-            {remaining} items left · delivered via Instacart
+            Your list, ready to check out.
           </BodyText>
         </View>
         <View style={styles.dockEst}>
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
-    backgroundColor: palette.surface,
+    backgroundColor: palette.well,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
     shadowColor: '#2A3A26',
