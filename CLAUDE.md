@@ -4,9 +4,22 @@
 
 Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
-**Target:** v1 TestFlight 2026-05-24.
+**Target:** TestFlight via the 2026-07 revival (auth is Phase 5, TestFlight after). The original 2026-05-24 date lapsed.
+
+## Backend live state (2026-07-08 — supersedes anything below that contradicts it)
+
+- **Supabase project `eehjclffugngogbvctib`** (org "Zach's Qook" `mmidcvwztglgjlgrynpx`, free, us-west-2) on Zach's dedicated account. Do NOT touch the FTP project on the old account. Ops log: `docs/superpowers/plans/phase2-deploy-notes.md`.
+- **`apiMode` is `"live"`** in `app.json`; mock fixtures remain behind the flag.
+- **4 Edge Functions deployed** with `--no-verify-jwt` (auth enforced in-code by `requireUser`): `generate-recipe` (SSE stream, structured outputs, signature-dedup global cache), `generate-image` (save-gated, atomic `image_status pending→generating` spend lock), `shopping-share` (keyless Instacart search-fallback — the IDP program is closed), `delete-account` (cascade verified).
+- **Auth today:** anonymous sign-ins enabled; client `ensureSession()` bootstraps an anon session. Anon signups capped 10/hr/IP. Real auth (Apple + email) is Phase 5.
+- **Images:** `google/gemini-3.1-flash-image` (~$0.068/image) via OpenRouter, style-locked by the canon reference at `apps/native/assets/meals-seed/canon/canon-v1.png`. Seedream is GONE from OpenRouter. One image per recipe ever: saving a recipe fires `api.requestRecipeImage` → lock → generate → `meal-images` storage. Verified E2E 2026-07-08.
+- **Quotas:** 10 generations/user/day (failed generations excluded); recipes persist tags + nutrition (migration `20260707000001`).
+- **Secrets/tokens:** `OPENROUTER_API_KEY` lives ONLY in Supabase function secrets. `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` live in `~/Projects/qook/.env.local` (gitignored) — load with `set -a; source …; set +a`, NEVER cat/echo/print them (rotation pending — they transited chat once). The anon key in `app.json` is public by design.
+- **DB row ↔ client mapping:** edge `supabase/functions/_shared/recipe-map.ts` and client `apps/native/src/services/recipeRow.ts` must stay in sync — never cast a raw snake_case row `as Recipe`.
 
 ## Start every session by reading
+
+0. **Revival docs first (2026-07):** `docs/superpowers/specs/2026-07-06-qook-revival-design.md` + the latest plan in `docs/superpowers/plans/`. The April docs below describe the pre-revival state.
 
 1. `docs/plan/START-HERE.md` — current phase + what's done vs pending
 2. `docs/plan/PLAN.md` — 32-day execution plan (especially §9 Day 1 checklist + §4 timeline)
@@ -26,8 +39,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **One unified product-loop store** `useWeekPlan` (Zustand + `persist` to AsyncStorage, key `qook.weekPlan.v1`). Tonight reads `plan[today]`, Week writes `plan[*]`, Shop aggregates ingredients across future days. `activePickFor(day)`, `recentSelectedDays(plan, today, N)` are the selector helpers.
 - **Prefs sidebar store** `usePrefs` (key `qook.prefs.v1`) — cuisines, proteins, avoid list, servings, unit system, default tier, planning start day. Lives alongside `useWeekPlan` so plan resets (including `clearAll`) don't nuke user preferences. Summary lines on More read from here.
 - **`clearFuture()` keeps today + past; wipes dates > today.** There's no `clearFutureOnly` — it's `clearFuture`. `clearAll` wipes everything. Persisted state survives sim reloads; to reset, call `useWeekPlan.getState().clearAll()` from the JS debugger or uninstall the app.
-- **Mock vs live** — `app.json.extra.apiMode` = `'mock' | 'live'`. Mock mode reads `apps/native/src/services/fixtures/recipes.ts` — **24 recipes** (6 brain-is-fried / 9 after-work / 6 got-energy / 3 weekend-project), each tied to a Seedream PNG at `apps/native/assets/meals-seed/v2/`. `generateRecipesForEnergy(tier)` filters by tier + Fisher-Yates shuffles. `getTonightPlan()` returns a random 3.
-- **Supabase Edge Functions are scaffolded but empty** (`generate-recipe`, `generate-deck-batch`, `generate-image`, `delete-account`, `warm-start-import`). Live path is not wired; `section-ai.md` is the spec.
+- **Mock vs live** — `app.json.extra.apiMode` = `'mock' | 'live'`. **Live since 2026-07-07** (see "Backend live state" above). Mock mode still reads `apps/native/src/services/fixtures/recipes.ts` — 24 recipes tied to watercolor PNGs at `apps/native/assets/meals-seed/v2/`.
 
 ## Routes (Expo Router v5, file-based)
 
@@ -44,7 +56,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Expo:** 54 + Expo Router v5, TypeScript
 - **State:** TanStack Query (server) + Zustand (UX)
 - **Backend:** Supabase CLI, migrations at `supabase/migrations/`
-- **AI:** OpenRouter (Haiku 4.5 draft, Sonnet 4.6 polish, Seedream 4.5 image)
+- **AI:** OpenRouter — recipe generation via structured outputs (SSE-streamed from `generate-recipe`); images via `google/gemini-3.1-flash-image`, canon-locked. (Seedream no longer exists on OpenRouter.)
 
 ## Key locked decisions
 
@@ -57,7 +69,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Save-gated live images** (cohort eager, live lazy) — keeps 100-tester OpenRouter ≈ $109/mo
 - **Mock/live toggle** — `app.json.extra.apiMode` flips between fixtures and Supabase
 
-## Design system (last touched 2026-04-23)
+## Design system (last touched 2026-04-23; **Phase 3b "Menu" restyle planned** — see `docs/superpowers/plans/2026-07-08-phase3b-menu-restyle.md`: cream ground moves to `#FBF7EE`, `well #F1E9D9` token added, dot-leader MenuRows, circular Vignettes, text-only mono tab bar)
 
 - Palette: cream `#FCF9F1` / surface `#FEFBF3` / text `#26241C` / forest `#2A3A26` / rust `#C36A48` / prussian `#3D5469`
 - Fraunces Bold (display) · DM Sans (body) · JetBrains Mono (kickers)
@@ -79,7 +91,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 ## Rules
 
 - **Do NOT merge PRs to main** — Zach handles merges himself
-- **External API cost:** always test with 1-2 items before batch (Seedream is $0.04/image)
+- **External API cost:** always test with 1-2 items before batch (Gemini 3.1 Flash Image is ~$0.068/image; a text generation is a few cents)
 - **OpenRouter key:** lives ONLY in Supabase Edge Function secrets. Never in client bundle, never in EAS.
 - **RLS is the security model:** every client query must pass RLS. Edge Functions hold service role key for admin ops.
 - **Signature dedup:** SHA-256 over canonical `{title, cuisine, tier, sorted ingredients}` → global recipe cache
