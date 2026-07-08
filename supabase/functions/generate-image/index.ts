@@ -71,24 +71,27 @@ Deno.serve(async (req) => {
   // Atomic double-spend guard: exactly one caller flips pending → generating.
   // Repeat saves / duplicate fires and cross-user saves of the same global
   // recipe find status != 'pending' and no-op without paying again.
-  const { data: locked } = await admin
+  const { data: locked, error: lockError } = await admin
     .from("recipes")
     .update({ image_status: "generating" })
     .eq("id", recipeId)
     .eq("image_status", "pending")
     .select("id");
+  if (lockError) {
+    console.error("generate-image lock error", lockError.message);
+    return errorResponse(ERRORS.GENERATION_FAILED, "Could not start image generation.", 500);
+  }
   if (lockOutcome(locked) === "skip") {
     return new Response(JSON.stringify({ ok: true, skipped: true }), {
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const prompt = buildImagePrompt({
-    title: row.title as string,
-    ingredientGroups: row.ingredient_groups,
-  });
-
   try {
+    const prompt = buildImagePrompt({
+      title: row.title as string,
+      ingredientGroups: row.ingredient_groups,
+    });
     const resp = await fetch(OR_ENDPOINT, {
       method: "POST",
       headers: orHeaders(),
