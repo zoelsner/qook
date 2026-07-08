@@ -1,16 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import type { GroceryCategory, GroceryItem, Timestamp } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { SquareCheckbox } from '../../components/SquareCheckbox';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight } from 'lucide-react-native';
-import { palette, screen, spacing } from '../../design';
+import { palette, screen, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
@@ -107,33 +106,21 @@ export function ShopScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScreenShell horizontalPadding={24}>
-        <View style={styles.header}>
-          <View style={styles.headerTitleGroup}>
-            <View style={styles.kickerRow}>
-              <Mono size={10} bold color={palette.accentDeep}>
-                shop
-              </Mono>
-              <View style={styles.kickerDot} />
-              <Mono size={10} color={palette.textSecondary}>
-                {totalItems} items · {recipeCount} {recipeCount === 1 ? 'recipe' : 'recipes'}
-              </Mono>
-            </View>
-            <View style={styles.displayTitleWrap}>
-              <DisplayText size={44} color={palette.primary} style={styles.displayTitle}>
-                Grocery list
-              </DisplayText>
-              <BrushstrokeUnderline
-                width={220}
-                color={palette.accent}
-                pathVariant="v3"
-                strokeWidth={2.4}
-                style={styles.displayUnderline}
-              />
-            </View>
-          </View>
+        <View style={styles.masthead}>
+          <DisplayText size={20} color={palette.ink}>qook</DisplayText>
+          <Mono size={10} color={palette.textSecondary}>
+            {totalItems} items · {recipeCount} {recipeCount === 1 ? 'recipe' : 'recipes'}
+          </Mono>
         </View>
+        <View style={styles.mastheadRule} />
 
-        <View style={{ height: spacing.xl - 4 }} />
+        <View style={{ height: spacing.md + 2 }} />
+        <DisplayText size={34} color={palette.primary} style={styles.displayTitle}>
+          Shopping{' '}
+          <Text style={styles.titleItalic}>list</Text>
+        </DisplayText>
+
+        <View style={{ height: spacing.sm }} />
 
         {!hasHydrated ? null : totalItems === 0 ? (
           <EmptyShop
@@ -144,12 +131,13 @@ export function ShopScreen() {
           />
         ) : (
           grouped.map(({ category, items: groupItems }, idx) => (
-            <View key={category} style={idx > 0 ? { marginTop: spacing.lg } : null}>
-              <View style={styles.sectionHeader}>
+            <View key={category} style={idx > 0 ? { marginTop: spacing.md } : null}>
+              <View style={styles.sectionDivider}>
+                <View style={styles.sectionRule} />
                 <Mono size={10} bold color={palette.accentDeep}>
-                  {category} · {groupItems.length}
+                  {category}
                 </Mono>
-                <View style={styles.sectionHeaderRule} />
+                <View style={styles.sectionRule} />
               </View>
               {groupItems.map((item) => (
                 <ShopRow
@@ -157,7 +145,6 @@ export function ShopScreen() {
                   item={item}
                   checked={!!checked[item.key]}
                   onToggle={() => handleToggle(item.key)}
-                  hideRecipeSource={recipeCount <= 1}
                 />
               ))}
             </View>
@@ -224,27 +211,20 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
   );
 }
 
+// Middle-dot leader, clipped per row (same device as MenuRow) — the mockup's
+// grocery rows are menu lines: box · name ····· qty, all on one baseline.
+const DOT_LEADER = '·'.repeat(80);
+
 function ShopRow({
   item,
   checked,
   onToggle,
-  hideRecipeSource,
 }: {
   item: ShopItem;
   checked: boolean;
   onToggle: () => void;
-  hideRecipeSource?: boolean;
 }) {
   const quantity = formatQuantity(item);
-  const firstRecipe = item.recipeTitles[0];
-  const extra = item.recipeTitles.length - 1;
-  const subText =
-    hideRecipeSource || !firstRecipe
-      ? quantity
-      : extra > 0
-        ? `${quantity} · ${firstRecipe} +${extra}`
-        : `${quantity} · ${firstRecipe}`;
-  const shortQty = item.quantities[0] ?? (item.recipeCount > 1 ? `×${item.recipeCount}` : '');
 
   return (
     <Pressable
@@ -254,34 +234,29 @@ function ShopRow({
       accessibilityLabel={`${item.name}, ${quantity}${checked ? ', checked' : ''}`}
       accessibilityState={{ checked }}
     >
-      <SquareCheckbox checked={checked} size={22} />
-      <View style={styles.rowText}>
-        <BodyText
-          size={16}
-          weight="semi"
-          color={checked ? palette.textTertiary : palette.ink}
-          style={[
-            styles.rowName,
-            checked ? { textDecorationLine: 'line-through' } : null,
-          ]}
-          numberOfLines={1}
-        >
-          {item.name}
-        </BodyText>
-        <Mono
-          size={11}
-          color={checked ? palette.textTertiary : palette.textSecondary}
-          numberOfLines={1}
-        >
-          {subText}
-        </Mono>
-      </View>
+      <SquareCheckbox checked={checked} size={19} style={styles.rowBox} />
+      <BodyText
+        size={15}
+        weight="medium"
+        color={checked ? palette.textTertiary : palette.ink}
+        style={[
+          styles.rowName,
+          checked ? { textDecorationLine: 'line-through' } : null,
+        ]}
+        numberOfLines={1}
+      >
+        {item.name}
+      </BodyText>
+      <Text style={styles.rowLeader} numberOfLines={1} ellipsizeMode="clip">
+        {DOT_LEADER}
+      </Text>
       <Mono
         size={12}
-        color={palette.textSecondary}
-        style={[styles.rowQty, checked ? { opacity: 0.55 } : null]}
+        color={checked ? palette.textTertiary : palette.textSecondary}
+        style={styles.rowQty}
+        numberOfLines={1}
       >
-        {shortQty}
+        {quantity}
       </Mono>
     </Pressable>
   );
@@ -306,8 +281,6 @@ function ShopDock({
   copied: boolean;
   onCopiedExpire: () => void;
 }) {
-  const estimatedDollars = Math.max(8, remaining * 3.5).toFixed(0);
-
   React.useEffect(() => {
     if (!copied) return;
     const id = setTimeout(onCopiedExpire, 1600);
@@ -316,34 +289,18 @@ function ShopDock({
 
   return (
     <View style={styles.dock}>
-      <View style={styles.dockHeader}>
-        <View style={{ flex: 1 }}>
-          <DisplayText size={20} color={palette.ink} style={styles.dockTitle}>
-            Ready to shop
-          </DisplayText>
-          <View style={{ height: 2 }} />
-          <BodyText size={13} color={palette.textSecondary} weight="medium">
-            Your list, ready to check out.
-          </BodyText>
-        </View>
-        <View style={styles.dockEst}>
-          <Mono size={9} bold color={palette.textSecondary}>
-            EST
-          </Mono>
-          <DisplayText size={20} color={palette.accent} style={styles.dockEstValue}>
-            ${estimatedDollars}
-          </DisplayText>
-        </View>
-      </View>
-      <View style={{ height: spacing.sm }} />
       <PolishedButton
-        label="Shop with Instacart"
+        label="Send to Instacart"
         tone="forest"
         onPress={onShop}
         disabled={disabled}
         trailingIcon={<ArrowRight size={14} color={palette.surface} />}
       />
-      <View style={{ height: spacing.sm + 2 }} />
+      <View style={{ height: spacing.sm }} />
+      <Mono size={9} color={palette.textSecondary} style={styles.dockSub}>
+        {remaining === 0 ? 'ALL CHECKED OFF' : 'YOUR LIST, READY TO CHECK OUT'}
+      </Mono>
+      <View style={{ height: spacing.sm }} />
       <View style={styles.fallbackRow}>
         <Pressable hitSlop={6} onPress={onCopy} disabled={disabled}>
           <BodyText
@@ -372,72 +329,62 @@ function ShopDock({
 }
 
 const styles = StyleSheet.create({
-  header: {
+  masthead: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
-    gap: spacing.md,
   },
-  headerTitleGroup: {
-    gap: 6,
-    flexShrink: 1,
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
   },
-  kickerRow: {
+  displayTitle: {
+    letterSpacing: -0.8,
+    lineHeight: 40,
+  },
+  titleItalic: {
+    fontFamily: fontFamily.displayItalic,
+    color: palette.accent,
+  },
+  sectionDivider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom: 2,
   },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  displayTitleWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-  },
-  displayTitle: {
-    letterSpacing: -1.2,
-    lineHeight: 48,
-  },
-  displayUnderline: {
-    position: 'absolute',
-    left: -6,
-    bottom: -8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    marginBottom: 4,
-  },
-  sectionHeaderRule: {
+  sectionRule: {
     flex: 1,
-    height: 1,
-    marginLeft: 10,
-    backgroundColor: palette.ingredientRowBorder,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
   },
+  // Menu-line grocery row: box · name ····· qty, on one text baseline (the
+  // checkbox is a View, so its baseline is its bottom edge — same effect as
+  // the mockup's translateY on the box).
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: palette.ingredientRowBorder,
+    alignItems: 'baseline',
+    paddingVertical: 9,
   },
-  rowText: {
-    flex: 1,
-    gap: 2,
+  rowBox: {
+    marginRight: 11,
+    transform: [{ rotate: '-2deg' }],
   },
   rowName: {
+    flexShrink: 1,
     letterSpacing: -0.15,
-    lineHeight: 20,
+  },
+  rowLeader: {
+    flex: 1,
+    marginHorizontal: 8,
+    fontSize: 13,
+    letterSpacing: 3,
+    color: palette.statRuleColor,
   },
   rowQty: {
-    letterSpacing: 1.2,
+    flexShrink: 0,
+    letterSpacing: 0.4,
+    textTransform: 'none',
   },
   empty: {
     borderRadius: 22,
@@ -450,15 +397,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     lineHeight: 28,
   },
+  // Aligned to the screen's 24px content padding — the dock is part of the
+  // page, not a wider floating sheet.
   stickyDockWrap: {
     position: 'absolute',
-    left: 12,
-    right: 12,
+    left: 24,
+    right: 24,
   },
   dock: {
-    borderRadius: 22,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    borderRadius: 18,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md - 2,
     backgroundColor: palette.well,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
@@ -468,21 +418,9 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 10,
   },
-  dockHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  dockTitle: {
-    letterSpacing: -0.6,
-    lineHeight: 22,
-  },
-  dockEst: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  dockEstValue: {
-    letterSpacing: -0.6,
-    lineHeight: 22,
+  dockSub: {
+    textAlign: 'center',
+    letterSpacing: 1.6,
   },
   fallbackRow: {
     flexDirection: 'row',
