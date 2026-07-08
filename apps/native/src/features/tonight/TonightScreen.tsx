@@ -6,7 +6,10 @@ import type { Recipe } from '@qook/shared';
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { FoodHeroImage } from '../../components/FoodHeroImage';
-import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { Vignette } from '../../components/Vignette';
+import { MenuRow } from '../../components/MenuRow';
+import { ProteinChip } from '../../components/ProteinChip';
+import { BodyText, DisplayText, Mono, ItalicText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight, ChevronRight } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
@@ -17,7 +20,6 @@ import {
   recentSelectedDays,
   type DayPlan,
 } from '../../stores/weekPlan';
-import { fontFamily } from '../../design/typography';
 import {
   todayISO,
   upcomingDays,
@@ -119,8 +121,16 @@ function TonightHeader({
       : totalPicks === 1
         ? 'READY TO COOK'
         : 'NOTHING YET';
+  const { weekday, month, day } = formatDayShort(todayISO());
   return (
     <View style={styles.headerBlock}>
+      <View style={styles.masthead}>
+        <DisplayText size={20} color={palette.ink}>qook</DisplayText>
+        <Mono size={10} color={palette.textSecondary}>
+          {weekday} · {month} {day}
+        </Mono>
+      </View>
+      <View style={{ height: spacing.md }} />
       <View style={styles.kickerRow}>
         <Mono size={10} bold color={palette.accentDeep}>
           TONIGHT
@@ -175,45 +185,46 @@ function HeroPopulated({
   pick: Recipe;
   onOpen: () => void;
 }) {
+  const protein = pick.nutritionalEstimate?.proteinG;
   return (
-    <View>
-      <View style={styles.heroCard}>
-        <FoodHeroImage
-          localKey={pick.localImageKey as SeedMealKey | undefined}
-          remoteUrl={pick.heroImageUrl}
-          blurhash={pick.blurhash}
-          height={260}
-          cornerRadius={22}
-          style={{ width: '100%', height: 260 }}
-        />
-      </View>
-      <View style={{ height: spacing.md }} />
-      <DisplayText size={32} color={palette.ink} style={styles.heroTitle}>
-        {pick.title}
-      </DisplayText>
-      <View style={{ height: 6 }} />
-      <BodyText size={14} weight="medium" color={palette.textSecondary}>
-        {pick.cuisine} · {pick.timeMinutes} min
-        {pick.nutritionalEstimate?.proteinG != null
-          ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
-          : ''}
-        {' '}· serves {pick.servings}
-      </BodyText>
-      <View style={{ height: spacing.md }} />
-      <View style={styles.heroCtaRow}>
-        <View style={styles.readyChip}>
-          <View style={styles.readyDot} />
-          <Mono size={10} bold color={palette.accentDeep}>
-            READY TO COOK
-          </Mono>
+    <View style={styles.heroWell}>
+      <View style={styles.heroArtRow}>
+        <View style={styles.heroTitleCol}>
+          <DisplayText size={30} color={palette.ink} style={styles.heroTitle}>
+            {pick.title}
+          </DisplayText>
         </View>
-        <PolishedButton
-          label="Cook tonight"
-          tone="forest"
-          onPress={onOpen}
-          trailingIcon={<ArrowRight size={14} color={palette.surface} />}
-        />
+        <View>
+          <Vignette
+            size={114}
+            localKey={pick.localImageKey as SeedMealKey | undefined}
+            remoteUrl={pick.heroImageUrl}
+            blurhash={pick.blurhash}
+            imageStatus={pick.imageStatus}
+            title={pick.title}
+          />
+          {protein != null ? (
+            <ProteinChip proteinG={protein} size="sm" style={styles.heroProtein} />
+          ) : null}
+        </View>
       </View>
+
+      <View style={{ height: spacing.md }} />
+      <MenuRow label="Active time" value={`${pick.timeMinutes} min`} />
+      <MenuRow label="Serves" value={String(pick.servings)} />
+      <MenuRow label="Cuisine" value={pick.cuisine} />
+
+      <View style={{ height: spacing.md }} />
+      <PolishedButton
+        label="Cook tonight"
+        tone="ghost"
+        onPress={onOpen}
+        trailingIcon={<ArrowRight size={14} color={palette.primary} />}
+      />
+      <View style={{ height: spacing.sm }} />
+      <ItalicText size={14} style={styles.heroAside}>
+        Tonight&rsquo;s pick — you&rsquo;re one tap from the stove.
+      </ItalicText>
     </View>
   );
 }
@@ -228,55 +239,31 @@ function MorePicks({
   return (
     <View>
       <View style={{ height: spacing.xl }} />
-      <View style={styles.morePicksHeader}>
-        <Mono size={10} bold color={palette.accentDeep}>
-          MORE PICKS
-        </Mono>
-        <BodyText
-          size={12}
-          weight="medium"
-          color={palette.textTertiary}
-          style={styles.morePicksHint}
-        >
-          Tap to spotlight
-        </BodyText>
-      </View>
+      <Mono size={10} bold color={palette.accentDeep}>
+        ALSO ON THE MENU
+      </Mono>
       <View style={{ height: spacing.sm }} />
-      <View style={styles.morePicksRow}>
-        {picks.map(({ recipe, idx }) => (
-          <Pressable
-            key={recipe.id}
-            onPress={() => onSpotlight(idx)}
-            style={styles.morePickCard}
-            accessibilityRole="button"
-            accessibilityLabel={`Spotlight ${recipe.title}`}
-          >
-            <View style={styles.morePickThumb}>
-              <FoodHeroImage
-                localKey={recipe.localImageKey as SeedMealKey | undefined}
-                remoteUrl={recipe.heroImageUrl}
-                blurhash={recipe.blurhash}
-                height={90}
-                cornerRadius={12}
-                style={{ width: '100%', height: 90 }}
-              />
-            </View>
-            <View style={{ height: spacing.xs }} />
-            <DisplayText size={18} color={palette.ink} style={styles.morePickTitle}>
-              {recipe.title}
-            </DisplayText>
-            <View style={{ height: 2 }} />
-            <BodyText
-              size={12}
-              weight="medium"
-              color={palette.textSecondary}
-              numberOfLines={1}
-            >
-              {recipe.cuisine} · {recipe.timeMinutes} min
-            </BodyText>
-          </Pressable>
-        ))}
-      </View>
+      {picks.map(({ recipe, idx }) => (
+        <Pressable
+          key={recipe.id}
+          onPress={() => onSpotlight(idx)}
+          style={styles.menuRowPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Spotlight ${recipe.title}`}
+        >
+          <Vignette
+            size={52}
+            localKey={recipe.localImageKey as SeedMealKey | undefined}
+            remoteUrl={recipe.heroImageUrl}
+            blurhash={recipe.blurhash}
+            imageStatus={recipe.imageStatus}
+            title={recipe.title}
+          />
+          <View style={styles.menuRowLeader}>
+            <MenuRow label={recipe.title} value={`${recipe.timeMinutes} min`} />
+          </View>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -438,6 +425,11 @@ const styles = StyleSheet.create({
   headerBlock: {
     marginBottom: spacing.sm,
   },
+  masthead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
   kickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,67 +465,40 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     lineHeight: 30,
   },
-  heroCard: {
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
-  },
   heroTitle: {
     letterSpacing: -0.5,
     lineHeight: 36,
   },
-  heroCtaRow: {
+  heroWell: {
+    borderRadius: 18,
+    padding: spacing.lg,
+    backgroundColor: palette.well,
+  },
+  heroArtRow: {
     flexDirection: 'row',
+    gap: spacing.md,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
   },
-  readyChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
-    backgroundColor: palette.surface,
+  heroProtein: {
+    position: 'absolute',
+    left: -6,
+    bottom: -6,
   },
-  readyDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: palette.accent,
-  },
-  morePicksHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  morePicksHint: {
-    fontFamily: fontFamily.display,
-    fontStyle: 'italic',
-  },
-  morePicksRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  morePickCard: {
+  heroTitleCol: {
     flex: 1,
-    padding: spacing.sm + 2,
-    borderRadius: 14,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
+    justifyContent: 'center',
   },
-  morePickThumb: {
-    borderRadius: 12,
-    overflow: 'hidden',
+  heroAside: {
+    textAlign: 'left',
   },
-  morePickTitle: {
-    letterSpacing: -0.2,
-    lineHeight: 20,
+  menuRowPress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 6,
+  },
+  menuRowLeader: {
+    flex: 1,
   },
   upcomingCard: {
     width: 132,

@@ -6,13 +6,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { palette, screen, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
 import { useHaptics } from '../hooks/useHaptics';
-import { BodyText } from './Text';
-import {
-  IconTabTonight,
-  IconTabWeek,
-  IconTabShop,
-  IconTabMore,
-} from './painted';
+import { Mono } from './Text';
 
 type TabName = 'tonight' | 'week' | 'shop' | 'more';
 
@@ -63,38 +57,21 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
               accessibilityState={focused ? { selected: true } : undefined}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             >
-              <TabIcon name={name} focused={focused} />
-              <BodyText
+              <View style={[styles.tabDot, focused ? styles.tabDotActive : null]} />
+              <Mono
                 size={11}
-                weight={focused ? 'semi' : 'medium'}
-                color={focused ? palette.accent : palette.textSecondary}
+                bold={focused}
+                color={focused ? palette.primary : palette.textSecondary}
                 style={styles.tabLabel}
               >
                 {label}
-              </BodyText>
+              </Mono>
             </Pressable>
           );
         })}
       </BlurView>
     </View>
   );
-}
-
-function TabIcon({ name, focused }: { name: TabName; focused: boolean }) {
-  const tint = focused ? palette.accent : palette.textSecondary;
-  const size = 24; // 10% bump over the 22px default (was 26; dialed back)
-  switch (name) {
-    case 'tonight':
-      return <IconTabTonight size={size} color={tint} />;
-    case 'week':
-      return <IconTabWeek size={size} color={tint} />;
-    case 'shop':
-      return <IconTabShop size={size} color={tint} />;
-    case 'more':
-      return <IconTabMore size={size} color={tint} />;
-    default:
-      return null;
-  }
 }
 
 const styles = StyleSheet.create({
@@ -119,10 +96,19 @@ const styles = StyleSheet.create({
     width: 58,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 5,
+  },
+  tabDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  tabDotActive: {
+    backgroundColor: palette.accent,
   },
   tabLabel: {
-    letterSpacing: 0.2,
+    letterSpacing: 0.6,
     lineHeight: 13,
   },
 });
