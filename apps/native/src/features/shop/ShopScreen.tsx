@@ -16,8 +16,8 @@ import { useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
 import {
   copyList,
+  createInstacartShoppingList,
   openAmazonFresh,
-  openInstacart,
   shareList,
 } from '../../lib/shoppingShare';
 import {
@@ -174,7 +174,7 @@ export function ShopScreen() {
             disabled={remaining === 0}
             onShop={() => {
               press();
-              openInstacart(uncheckedGrocery);
+              void createInstacartShoppingList(uncheckedGrocery);
             }}
             onCopy={async () => {
               select();
