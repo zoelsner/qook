@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -269,45 +268,31 @@ export function MoreScreen() {
 
   return (
     <ScreenShell horizontalPadding={24}>
-      <View style={styles.header}>
-        <View style={styles.kickerRow}>
-          <Mono size={10} bold color={palette.accentDeep}>
-            more
-          </Mono>
-          <View style={styles.kickerDot} />
-          <Mono size={10} color={palette.textSecondary}>
-            settings · account · about
-          </Mono>
-        </View>
-        <View style={styles.displayTitleWrap}>
-          <DisplayText size={44} color={palette.primary} style={styles.displayTitle}>
-            Settings
-          </DisplayText>
-          <BrushstrokeUnderline
-            width={170}
-            color={palette.utility}
-            strokeWidth={2.4}
-            style={styles.displayUnderline}
-          />
-        </View>
+      <View style={styles.masthead}>
+        <DisplayText size={20} color={palette.ink}>qook</DisplayText>
+        <Mono size={10} color={palette.textSecondary}>
+          settings · account · about
+        </Mono>
       </View>
+      <View style={styles.mastheadRule} />
 
-      {groups.map((group, gIdx) => (
-        <View
-          key={group.title}
-          style={gIdx === 0 ? { marginTop: spacing.xl + spacing.sm } : { marginTop: spacing.lg }}
-        >
-          <View style={styles.groupHeader}>
+      <View style={{ height: spacing.md + 2 }} />
+      <DisplayText size={34} color={palette.primary} style={styles.displayTitle}>
+        Settings
+      </DisplayText>
+
+      {groups.map((group) => (
+        <View key={group.title} style={{ marginTop: spacing.md }}>
+          <View style={styles.sectionDivider}>
+            <View style={styles.sectionRule} />
             <Mono size={10} bold color={palette.accentDeep}>
               {group.title}
             </Mono>
-            <View style={styles.groupHeaderRule} />
+            <View style={styles.sectionRule} />
           </View>
-          <View style={styles.rowList}>
-            {group.rows.map((row, idx) => (
-              <MoreRowView key={row.label} row={row} showDivider={idx > 0} />
-            ))}
-          </View>
+          {group.rows.map((row, idx) => (
+            <MoreRowView key={row.label} row={row} showDivider={idx > 0} />
+          ))}
         </View>
       ))}
 
@@ -370,63 +355,41 @@ function MoreRowView({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: 6,
+  masthead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
   },
-  kickerRow: {
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
+  },
+  displayTitle: {
+    letterSpacing: -0.8,
+    lineHeight: 40,
+  },
+  sectionDivider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom: 4,
   },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  displayTitleWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-  },
-  displayTitle: {
-    letterSpacing: -1.2,
-    lineHeight: 48,
-  },
-  displayUnderline: {
-    position: 'absolute',
-    left: -6,
-    bottom: -8,
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  groupHeaderRule: {
+  sectionRule: {
     flex: 1,
-    height: 1,
-    marginLeft: 10,
-    backgroundColor: palette.ingredientRowBorder,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
   },
-  rowList: {
-    borderRadius: 22,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
-    overflow: 'hidden',
-  },
+  // Menu lines on the cream ground — no card chrome.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md - 2,
   },
   rowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.ingredientRowBorder,
+    borderTopColor: 'rgba(42, 58, 38, 0.08)',
   },
   rowKickerWrap: {
     width: 40,
