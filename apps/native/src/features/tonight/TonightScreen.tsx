@@ -232,7 +232,7 @@ function HeroPopulated({
         </View>
         <View>
           <Vignette
-            size={114}
+            size={148}
             localKey={art?.localImageKey as SeedMealKey | undefined}
             remoteUrl={art?.heroImageUrl}
             blurhash={art?.blurhash}
@@ -284,27 +284,43 @@ function MorePicks({
       </View>
       <View style={{ height: spacing.sm }} />
       {picks.map(({ recipe, idx }) => (
-        <Pressable
+        <MorePickRow
           key={recipe.id}
-          onPress={() => onSpotlight(idx)}
-          style={styles.menuRowPress}
-          accessibilityRole="button"
-          accessibilityLabel={`Spotlight ${recipe.title}`}
-        >
-          <Vignette
-            size={52}
-            localKey={recipe.localImageKey as SeedMealKey | undefined}
-            remoteUrl={recipe.heroImageUrl}
-            blurhash={recipe.blurhash}
-            imageStatus={recipe.imageStatus}
-            title={recipe.title}
-          />
-          <View style={styles.menuRowLeader}>
-            <MenuRow label={recipe.title} value={`${recipe.timeMinutes} min`} />
-          </View>
-        </Pressable>
+          recipe={recipe}
+          onSpotlight={() => onSpotlight(idx)}
+        />
       ))}
     </View>
+  );
+}
+
+function MorePickRow({
+  recipe,
+  onSpotlight,
+}: {
+  recipe: Recipe;
+  onSpotlight: () => void;
+}) {
+  const art = useRecipeArt(recipe);
+  return (
+    <Pressable
+      onPress={onSpotlight}
+      style={styles.menuRowPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Spotlight ${recipe.title}`}
+    >
+      <Vignette
+        size={72}
+        localKey={art?.localImageKey as SeedMealKey | undefined}
+        remoteUrl={art?.heroImageUrl}
+        blurhash={art?.blurhash}
+        imageStatus={art?.imageStatus}
+        title={recipe.title}
+      />
+      <View style={styles.menuRowLeader}>
+        <MenuRow label={recipe.title} value={`${recipe.timeMinutes} min`} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -383,7 +399,7 @@ function UpcomingCard({
       {pick ? (
         <>
           <Vignette
-            size={48}
+            size={58}
             localKey={art?.localImageKey as SeedMealKey | undefined}
             remoteUrl={art?.heroImageUrl}
             blurhash={art?.blurhash}
@@ -482,7 +498,7 @@ function RecentRow({
       accessibilityLabel={`${weekday}: ${pick.title}`}
     >
       <Vignette
-        size={40}
+        size={48}
         localKey={art?.localImageKey as SeedMealKey | undefined}
         remoteUrl={art?.heroImageUrl}
         blurhash={art?.blurhash}

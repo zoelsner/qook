@@ -30,11 +30,9 @@ export function MenuRow({
       <BodyText size={15} weight="medium" color={labelColor} numberOfLines={1} style={styles.label}>
         {label}
       </BodyText>
-      <View style={styles.leader}>
-        <Text style={styles.leaderText} numberOfLines={1}>
-          {DOT_LEADER}
-        </Text>
-      </View>
+      <Text style={styles.leaderText} numberOfLines={1} ellipsizeMode="clip">
+        {DOT_LEADER}
+      </Text>
       <Mono size={13} color={valueColor} style={styles.value}>
         {value}
       </Mono>
@@ -45,21 +43,18 @@ export function MenuRow({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    // True text-baseline alignment: label, leader, and value are all direct
+    // Text children, so the dots sit on the same baseline as the value.
+    alignItems: 'baseline',
     paddingVertical: 7,
   },
   label: {
     flexShrink: 1,
   },
-  leader: {
+  leaderText: {
     flex: 1,
     marginHorizontal: 8,
-    marginBottom: 5,
-    overflow: 'hidden',
-  },
-  leaderText: {
     fontSize: 13,
-    lineHeight: 14,
     letterSpacing: 3,
     color: palette.statRuleColor,
   },

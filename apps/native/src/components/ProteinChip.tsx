@@ -43,10 +43,10 @@ const SIZE_PRESETS: Record<
     strokeWidth: number;
   }
 > = {
-  mini: { box: 40, radius: 11, number: 15, kicker: 6, kickerTop: 1, strokeWidth: 1.5 },
-  sm: { box: 52, radius: 14, number: 20, kicker: 8, kickerTop: 1, strokeWidth: 1.8 },
-  md: { box: 64, radius: 17, number: 26, kicker: 9, kickerTop: 2, strokeWidth: 2.0 },
-  lg: { box: 78, radius: 20, number: 32, kicker: 10, kickerTop: 3, strokeWidth: 2.2 },
+  mini: { box: 40, radius: 11, number: 15, kicker: 6, kickerTop: 1, strokeWidth: 2.2 },
+  sm: { box: 52, radius: 14, number: 20, kicker: 8, kickerTop: 1, strokeWidth: 2.6 },
+  md: { box: 64, radius: 17, number: 26, kicker: 9, kickerTop: 2, strokeWidth: 2.8 },
+  lg: { box: 78, radius: 20, number: 32, kicker: 10, kickerTop: 3, strokeWidth: 3.0 },
 };
 
 export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) {
@@ -70,7 +70,7 @@ export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) 
       >
         <Path
           d={BAKED_SQUARE}
-          stroke={palette.accentDeep}
+          stroke={palette.accent}
           strokeWidth={preset.strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"

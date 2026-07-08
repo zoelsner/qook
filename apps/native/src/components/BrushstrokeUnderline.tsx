@@ -46,14 +46,14 @@ export function BrushstrokeUnderline({
         <Path
           d={BAKED_PATHS[pathVariant]}
           stroke={color}
-          strokeWidth={strokeWidth * 0.75}
+          strokeWidth={strokeWidth * 1.1}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <Path
           d={BAKED_TAPER_PATHS[pathVariant]}
           stroke={color}
-          strokeWidth={strokeWidth * 1.15}
+          strokeWidth={strokeWidth * 2}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
