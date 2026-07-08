@@ -287,18 +287,21 @@ function ShopDock({
     return () => clearTimeout(id);
   }, [copied, onCopiedExpire]);
 
+  // Share is the primary handoff (works with any store, partner, or app).
+  // Instacart has no real cart integration yet — it opens a search page —
+  // so it lives in the quiet secondary row until the Connect API lands.
   return (
     <View style={styles.dock}>
       <PolishedButton
-        label="Send to Instacart"
+        label="Share the list"
         tone="forest"
-        onPress={onShop}
+        onPress={onShare}
         disabled={disabled}
         trailingIcon={<ArrowRight size={14} color={palette.surface} />}
       />
       <View style={{ height: spacing.sm }} />
       <Mono size={9} color={palette.textSecondary} style={styles.dockSub}>
-        {remaining === 0 ? 'ALL CHECKED OFF' : 'YOUR LIST, READY TO CHECK OUT'}
+        {remaining === 0 ? 'ALL CHECKED OFF' : 'YOUR LIST, WHEREVER YOU SHOP'}
       </Mono>
       <View style={{ height: spacing.sm }} />
       <View style={styles.fallbackRow}>
@@ -312,15 +315,15 @@ function ShopDock({
           </BodyText>
         </Pressable>
         <View style={styles.fallbackDot} />
-        <Pressable hitSlop={6} onPress={onShare} disabled={disabled}>
+        <Pressable hitSlop={6} onPress={onShop} disabled={disabled}>
           <BodyText size={12} weight="semi" color={palette.textSecondary}>
-            Share
+            Instacart
           </BodyText>
         </Pressable>
         <View style={styles.fallbackDot} />
         <Pressable hitSlop={6} onPress={onAmazonFresh} disabled={disabled}>
           <BodyText size={12} weight="semi" color={palette.textSecondary}>
-            AmazonFresh
+            Amazon Fresh
           </BodyText>
         </Pressable>
       </View>

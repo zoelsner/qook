@@ -54,7 +54,7 @@ const SLIDES: Slide[] = [
     kicker: 'THE LOOP',
     headline: 'Swipe · save · shop.',
     underlineFocus: 'all',
-    body: 'Swipe through picks, save the ones that click, and send the grocery list straight to Instacart — one tap.',
+    body: 'Swipe through picks, save the ones that click, and walk out with one grocery list for the whole week.',
   },
 ];
 
@@ -262,7 +262,7 @@ function TiersVisual() {
 const FLOW_STEPS = [
   { kicker: '01', title: 'Swipe', body: 'See three draft dinners tuned to tonight.' },
   { kicker: '02', title: 'Save', body: 'Tap the ones that click — they land in your week.' },
-  { kicker: '03', title: 'Shop', body: 'One tap sends the grocery list to Instacart.' },
+  { kicker: '03', title: 'Shop', body: 'Every ingredient lands on one shareable list.' },
 ];
 
 function FlowVisual() {
