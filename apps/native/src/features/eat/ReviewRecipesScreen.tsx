@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
-import { FoodHeroImage } from '../../components/FoodHeroImage';
-import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { Vignette } from '../../components/Vignette';
+import { DisplayText, Mono, ItalicText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
-import { X, ArrowRight, RefreshCw } from 'lucide-react-native';
+import { X, RefreshCw } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -42,12 +42,6 @@ export function ReviewRecipesScreen() {
     press();
     start(tier);
     router.replace('/(eat)/loading');
-  };
-
-  const handleSwap = () => {
-    if (recipes.length === 0) return;
-    select();
-    setPickIdx((i) => (i + 1) % recipes.length);
   };
 
   const handleCook = () => {
@@ -114,64 +108,60 @@ export function ReviewRecipesScreen() {
         />
       ) : !pick ? null : (
         <>
-          <View style={styles.card}>
-            <FoodHeroImage
-              localKey={pick.localImageKey as SeedMealKey | undefined}
-              remoteUrl={pick.heroImageUrl}
-              blurhash={pick.blurhash}
-              height={320}
-              cornerRadius={22}
-              style={{ width: '100%', height: 320 }}
-            />
-          </View>
-          <View style={{ height: spacing.md }} />
-          <DisplayText size={32} color={palette.ink} style={styles.cardTitle}>
-            {pick.title}
-          </DisplayText>
-          <View style={{ height: 4 }} />
-          <Mono size={11} color={palette.textSecondary}>
-            {pick.cuisine} · {pick.timeMinutes} min
-            {pick.nutritionalEstimate?.proteinG != null
-              ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
-              : ''}
-            {' '}· serves {pick.servings}
+          <Mono size={10} bold color={palette.accentDeep}>
+            THE KITCHEN PROPOSES
           </Mono>
-          {pick.notes ? (
-            <>
-              <View style={{ height: spacing.sm }} />
-              <BodyText
-                size={14}
-                color={palette.textSecondary}
-                weight="medium"
-                numberOfLines={3}
+          <View style={{ height: spacing.sm }} />
+          {recipes.map((r, i) => {
+            const selected = i === pickIdx;
+            return (
+              <Pressable
+                key={r.id}
+                onPress={() => {
+                  if (i !== pickIdx) { select(); setPickIdx(i); }
+                }}
+                style={[styles.proposalRow, selected ? styles.proposalSelected : null]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${r.title}${selected ? ', selected' : ''}`}
               >
-                {pick.notes}
-              </BodyText>
-            </>
-          ) : null}
+                <Vignette
+                  size={58}
+                  localKey={r.localImageKey as SeedMealKey | undefined}
+                  remoteUrl={r.heroImageUrl}
+                  blurhash={r.blurhash}
+                  imageStatus={r.imageStatus}
+                  title={r.title}
+                />
+                <View style={styles.proposalText}>
+                  <DisplayText size={19} color={palette.ink} numberOfLines={1} style={styles.proposalTitle}>
+                    {r.title}
+                  </DisplayText>
+                  <Mono size={10} color={palette.textSecondary} numberOfLines={1}>
+                    {r.cuisine} · {r.timeMinutes} min · serves {r.servings}
+                  </Mono>
+                </View>
+              </Pressable>
+            );
+          })}
           <View style={{ height: spacing.lg }} />
           <PolishedButton
-            label="Cook tonight"
+            label={`Cook the ${firstWord(pick.title)} →`}
             tone="forest"
             onPress={handleCook}
-            trailingIcon={<ArrowRight size={14} color={palette.surface} />}
           />
-          <View style={{ height: spacing.sm + 2 }} />
-          <Pressable
-            hitSlop={6}
-            onPress={handleSwap}
-            style={{ alignSelf: 'center' }}
-            accessibilityRole="button"
-            accessibilityLabel="Try another pick"
-          >
-            <BodyText size={13} weight="semi" color={palette.textSecondary}>
-              Try another
-            </BodyText>
-          </Pressable>
+          <View style={{ height: spacing.sm }} />
+          <ItalicText size={14} style={{ textAlign: 'center' }}>
+            swaps are free — try another.
+          </ItalicText>
         </>
       )}
     </ScreenShell>
   );
+}
+
+function firstWord(title: string): string {
+  return title.trim().split(/\s+/)[0]?.toLowerCase() || 'this';
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -226,16 +216,24 @@ const styles = StyleSheet.create({
     left: -6,
     bottom: -8,
   },
-  card: {
-    borderRadius: 22,
-    overflow: 'hidden',
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
+  proposalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: 16,
   },
-  cardTitle: {
-    letterSpacing: -0.5,
-    lineHeight: 36,
+  proposalSelected: {
+    backgroundColor: palette.well,
+  },
+  proposalText: {
+    flex: 1,
+    gap: 2,
+  },
+  proposalTitle: {
+    letterSpacing: -0.3,
+    lineHeight: 22,
   },
   errorCard: {
     borderRadius: 22,
