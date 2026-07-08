@@ -16,9 +16,6 @@ export function ScreenShell({
   children,
 }: PropsWithChildren<ScreenShellProps>) {
   const insets = useSafeAreaInsets();
-  const content = (
-    <View style={{ paddingHorizontal: horizontalPadding }}>{children}</View>
-  );
 
   return (
     <View style={styles.root}>
@@ -32,7 +29,7 @@ export function ScreenShell({
             }}
             {...scrollProps}
           >
-            {content}
+            <View style={{ paddingHorizontal: horizontalPadding }}>{children}</View>
           </ScrollView>
         ) : (
           // Children go directly under a flex:1 view — nesting them in the
