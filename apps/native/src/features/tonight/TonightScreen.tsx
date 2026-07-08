@@ -211,28 +211,28 @@ function HeroPopulated({
           <View style={{ height: 6 }} />
           <View style={styles.titleWrap}>
             {leadWords ? (
-              <DisplayText size={38} color={palette.primary} style={styles.heroTitle}>
+              <DisplayText size={33} color={palette.primary} style={styles.heroTitle}>
                 {leadWords}
               </DisplayText>
             ) : null}
             <DisplayText
-              size={38}
+              size={33}
               color={palette.accent}
               style={[styles.heroTitle, styles.heroTitleItalic]}
             >
               {lastWord}
             </DisplayText>
             <BrushstrokeUnderline
-              width={180}
+              width={200}
               color={palette.accent}
-              strokeWidth={2.6}
+              strokeWidth={3.4}
               style={styles.heroUnderline}
             />
           </View>
         </View>
-        <View>
+        <View style={styles.heroArtWrap}>
           <Vignette
-            size={148}
+            size={190}
             localKey={art?.localImageKey as SeedMealKey | undefined}
             remoteUrl={art?.heroImageUrl}
             blurhash={art?.blurhash}
@@ -310,7 +310,7 @@ function MorePickRow({
       accessibilityLabel={`Spotlight ${recipe.title}`}
     >
       <Vignette
-        size={72}
+        size={80}
         localKey={art?.localImageKey as SeedMealKey | undefined}
         remoteUrl={art?.heroImageUrl}
         blurhash={art?.blurhash}
@@ -399,7 +399,7 @@ function UpcomingCard({
       {pick ? (
         <>
           <Vignette
-            size={58}
+            size={64}
             localKey={art?.localImageKey as SeedMealKey | undefined}
             remoteUrl={art?.heroImageUrl}
             blurhash={art?.blurhash}
@@ -498,7 +498,7 @@ function RecentRow({
       accessibilityLabel={`${weekday}: ${pick.title}`}
     >
       <Vignette
-        size={48}
+        size={53}
         localKey={art?.localImageKey as SeedMealKey | undefined}
         remoteUrl={art?.heroImageUrl}
         blurhash={art?.blurhash}
@@ -586,8 +586,13 @@ const styles = StyleSheet.create({
   },
   heroArtRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     alignItems: 'center',
+  },
+  // The big hero vignette bleeds into the right screen gutter so the title
+  // column keeps enough width for whole words at display size.
+  heroArtWrap: {
+    marginRight: -20,
   },
   heroProtein: {
     position: 'absolute',

@@ -90,7 +90,7 @@ export function DayRow({
         {isToday(date) ? (
           <View>
             <Vignette
-              size={64}
+              size={70}
               localKey={art?.localImageKey as SeedMealKey | undefined}
               remoteUrl={art?.heroImageUrl}
               blurhash={art?.blurhash}
