@@ -6,6 +6,7 @@ import type {
   Recipe,
 } from '@qook/shared';
 import { supabase, ensureSession } from './supabase';
+import { dbRowToRecipe } from './recipeRow';
 import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
@@ -13,6 +14,8 @@ import { mockGroceries } from './fixtures/groceries';
 type ApiMode = 'mock' | 'live';
 
 const mode = (Constants.expoConfig?.extra?.apiMode ?? 'mock') as ApiMode;
+const supabaseUrl = (Constants.expoConfig?.extra?.supabaseUrl ?? '') as string;
+const mealImagesBase = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/meal-images`;
 const lag = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
 // Fisher-Yates shuffle (pure; no mutation of input).
@@ -59,7 +62,7 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return (data as Recipe | null) ?? null;
+  return data ? dbRowToRecipe(data, mealImagesBase) : null;
 }
 
 export async function getCurrentDeck(): Promise<CohortDeck | null> {
