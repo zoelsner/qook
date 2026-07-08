@@ -4,17 +4,20 @@ import { palette } from '../design';
 import { DisplayText, Mono } from './Text';
 
 export interface EnergyChipProps {
-  minutes: number;
+  minutes: number | string;
   tierWord: string;
   active: boolean;
-  color: string;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
 // Chunky pressed-shadow chip — the app's single toy (spec §1.2), energy picker
-// ONLY. A colored base sits under the face; pressing sinks the face onto it.
-export function EnergyChip({ minutes, tierWord, active, color, onPress, style }: EnergyChipProps) {
+// ONLY. Menu mockup §04: inactive chips sit directly on cream with a forest
+// border; the selected chip is rust with a darker-rust base underneath.
+// Pressing sinks the face onto the base.
+const BASE_SHADOW = '#9C4F31';
+
+export function EnergyChip({ minutes, tierWord, active, onPress, style }: EnergyChipProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -24,20 +27,20 @@ export function EnergyChip({ minutes, tierWord, active, color, onPress, style }:
       style={[styles.wrap, style]}
     >
       {({ pressed }) => (
-        <View style={[styles.base, { backgroundColor: active ? color : palette.glassBorder }]}>
+        <View style={[styles.base, { backgroundColor: active ? BASE_SHADOW : 'transparent' }]}>
           <View
             style={[
               styles.face,
               active
-                ? { backgroundColor: color, borderColor: color }
-                : { backgroundColor: palette.surface, borderColor: palette.glassBorder },
+                ? { backgroundColor: palette.accentDeep, borderColor: palette.accentDeep }
+                : { backgroundColor: palette.background, borderColor: 'rgba(42, 58, 38, 0.30)' },
               { transform: [{ translateY: pressed ? 4 : 0 }] },
             ]}
           >
-            <DisplayText size={30} color={active ? palette.surface : palette.ink} style={styles.number}>
+            <DisplayText size={30} color={active ? palette.background : palette.primary} style={styles.number}>
               {minutes}
             </DisplayText>
-            <Mono size={9} bold color={active ? palette.surface : palette.textTertiary} style={styles.word}>
+            <Mono size={9} bold color={active ? palette.background : palette.textSecondary} style={styles.word}>
               {tierWord}
             </Mono>
           </View>
@@ -55,7 +58,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     gap: 2,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.6,
   },
   number: { letterSpacing: -1, lineHeight: 32 },
   word: { letterSpacing: 1 },

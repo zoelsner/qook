@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text as RNText,
   TextInput,
   TouchableWithoutFeedback,
   View,
@@ -12,7 +13,6 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
@@ -85,39 +85,27 @@ export function ContextStep() {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.content}>
-              <View style={styles.topBar}>
+              <View style={styles.masthead}>
+                <DisplayText size={20} color={palette.ink}>qook</DisplayText>
                 <IconPill onPress={handleCancel} accessibilityLabel="Cancel">
                   <X size={16} color={palette.ink} strokeWidth={2.2} />
                 </IconPill>
               </View>
+              <View style={styles.mastheadRule} />
 
-              <View style={{ height: spacing.md }} />
+              <View style={{ height: spacing.md + 2 }} />
 
-              <View style={styles.kickerRow}>
-                <Mono size={10} bold color={palette.accentDeep}>
-                  step 2 of 2
-                </Mono>
-                <View style={styles.kickerDot} />
-                <Mono size={10} color={palette.textSecondary}>
-                  optional · 10 seconds
-                </Mono>
-              </View>
-
-              <View style={styles.headlineWrap}>
-                <DisplayText
-                  size={38}
-                  color={palette.primary}
-                  style={styles.headline}
-                >
-                  Anything specific?
-                </DisplayText>
-                <BrushstrokeUnderline
-                  width={240}
-                  strokeWidth={2.4}
-                  color={palette.accent}
-                  style={styles.underline}
-                />
-              </View>
+              <Mono size={10} bold color={palette.accentDeep}>
+                step 2 of 2 · optional
+              </Mono>
+              <View style={{ height: 6 }} />
+              <DisplayText
+                size={34}
+                color={palette.primary}
+                style={styles.headline}
+              >
+                Anything <RNText style={styles.titleItalic}>specific?</RNText>
+              </DisplayText>
 
               <View style={{ height: spacing.md }} />
               <BodyText
@@ -224,41 +212,29 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: HORIZONTAL_PADDING,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    paddingTop: spacing.sm,
-  },
-  kickerRow: {
+  masthead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: spacing.xs + 2,
+    justifyContent: 'space-between',
+    paddingTop: spacing.sm,
   },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  headlineWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
   },
   headline: {
-    letterSpacing: -1.2,
-    lineHeight: 42,
+    letterSpacing: -0.8,
+    lineHeight: 40,
   },
-  underline: {
-    position: 'absolute',
-    left: -4,
-    bottom: -8,
+  titleItalic: {
+    fontFamily: fontFamily.displayItalic,
+    color: palette.accent,
   },
+  // The well is the one "alive" surface — the input sits in it, no border.
   inputCard: {
-    borderRadius: 22,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
+    borderRadius: 18,
+    backgroundColor: palette.well,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
@@ -286,9 +262,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: palette.surfaceTranslucent,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
+    borderWidth: 1,
+    borderColor: 'rgba(42, 58, 38, 0.22)',
   },
   flexSpacer: {
     flex: 1,

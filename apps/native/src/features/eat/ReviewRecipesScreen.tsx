@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { ScreenShell } from '../../components/ScreenShell';
@@ -10,12 +10,17 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
 import { X, RefreshCw } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
+import { fontFamily } from '../../design/typography';
 import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useRecipeArt } from '../../hooks/useRecipeArt';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
+import type { Recipe } from '@qook/shared';
 import type { SeedMealKey } from '../../lib/assets';
+
+const DOT_LEADER = '·'.repeat(80);
 
 export function ReviewRecipesScreen() {
   const router = useRouter();
@@ -57,49 +62,43 @@ export function ReviewRecipesScreen() {
   };
 
   const pick = recipes[pickIdx];
-  const totalPicks = recipes.length;
 
   return (
     <ScreenShell horizontalPadding={24}>
-      <View style={styles.topBar}>
-        <IconPill onPress={handleClose} accessibilityLabel="Close">
-          <X size={16} color={palette.ink} strokeWidth={2.2} />
-        </IconPill>
-        <IconPill
-          onPress={handleRegenerate}
-          accessibilityLabel="Regenerate"
-          disabled={!tier}
-        >
-          <RefreshCw size={18} color={palette.primary} strokeWidth={2} />
-        </IconPill>
-      </View>
-      <View style={{ height: spacing.md }} />
-
-      <View style={styles.header}>
-        <View style={styles.kickerRow}>
-          <Mono size={10} bold color={palette.accentDeep}>
-            review
-          </Mono>
-          <View style={styles.kickerDot} />
-          <Mono size={10} color={palette.textSecondary}>
-            {tier ? ENERGY_TIER_LABEL[tier].toUpperCase() : '—'} · pick{' '}
-            {totalPicks === 0 ? 0 : pickIdx + 1} of {totalPicks}
-          </Mono>
-        </View>
-        <View style={styles.displayTitleWrap}>
-          <DisplayText size={38} color={palette.primary} style={styles.displayTitle}>
-            Tonight&rsquo;s pick.
-          </DisplayText>
-          <BrushstrokeUnderline
-            width={240}
-            color={palette.accent}
-            strokeWidth={2.4}
-            style={styles.displayUnderline}
-          />
+      <View style={styles.masthead}>
+        <DisplayText size={20} color={palette.ink}>qook</DisplayText>
+        <View style={styles.mastheadPills}>
+          <IconPill
+            onPress={handleRegenerate}
+            accessibilityLabel="Regenerate"
+            disabled={!tier}
+          >
+            <RefreshCw size={18} color={palette.primary} strokeWidth={2} />
+          </IconPill>
+          <IconPill onPress={handleClose} accessibilityLabel="Close">
+            <X size={16} color={palette.ink} strokeWidth={2.2} />
+          </IconPill>
         </View>
       </View>
+      <View style={styles.mastheadRule} />
 
-      <View style={{ height: spacing.md }} />
+      <View style={{ height: spacing.md + 2 }} />
+      <Mono size={10} bold color={palette.accentDeep}>
+        review · {tier ? ENERGY_TIER_LABEL[tier].toLowerCase() : '—'}
+      </Mono>
+      <View style={{ height: 6 }} />
+      <View style={styles.displayTitleWrap}>
+        <DisplayText size={34} color={palette.primary} style={styles.displayTitle}>
+          Tonight&rsquo;s <Text style={styles.titleItalic}>pick.</Text>
+        </DisplayText>
+        <BrushstrokeUnderline
+          width={210}
+          color={palette.accent}
+          style={styles.displayUnderline}
+        />
+      </View>
+
+      <View style={{ height: spacing.lg }} />
 
       {sessionState === 'error' ? (
         <ErrorState
@@ -108,42 +107,24 @@ export function ReviewRecipesScreen() {
         />
       ) : !pick ? null : (
         <>
-          <Mono size={10} bold color={palette.accentDeep}>
-            THE KITCHEN PROPOSES
-          </Mono>
-          <View style={{ height: spacing.sm }} />
-          {recipes.map((r, i) => {
-            const selected = i === pickIdx;
-            return (
-              <Pressable
-                key={r.id}
-                onPress={() => {
-                  if (i !== pickIdx) { select(); setPickIdx(i); }
-                }}
-                style={[styles.proposalRow, selected ? styles.proposalSelected : null]}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`${r.title}${selected ? ', selected' : ''}`}
-              >
-                <Vignette
-                  size={58}
-                  localKey={r.localImageKey as SeedMealKey | undefined}
-                  remoteUrl={r.heroImageUrl}
-                  blurhash={r.blurhash}
-                  imageStatus={r.imageStatus}
-                  title={r.title}
-                />
-                <View style={styles.proposalText}>
-                  <DisplayText size={19} color={palette.ink} numberOfLines={1} style={styles.proposalTitle}>
-                    {r.title}
-                  </DisplayText>
-                  <Mono size={10} color={palette.textSecondary} numberOfLines={1}>
-                    {r.cuisine} · {r.timeMinutes} min · serves {r.servings}
-                  </Mono>
-                </View>
-              </Pressable>
-            );
-          })}
+          <View style={styles.sectionDivider}>
+            <View style={styles.sectionRule} />
+            <Mono size={10} bold color={palette.accentDeep}>
+              the kitchen proposes
+            </Mono>
+            <View style={styles.sectionRule} />
+          </View>
+          <View style={{ height: 2 }} />
+          {recipes.map((r, i) => (
+            <ProposalRow
+              key={r.id}
+              recipe={r}
+              selected={i === pickIdx}
+              onPress={() => {
+                if (i !== pickIdx) { select(); setPickIdx(i); }
+              }}
+            />
+          ))}
           <View style={{ height: spacing.lg }} />
           <PolishedButton
             label={`Cook the ${firstWord(pick.title)} →`}
@@ -160,13 +141,67 @@ export function ReviewRecipesScreen() {
   );
 }
 
+// One proposal as a menu line: vignette, title, "N min ···· value" sub-row.
+// The selected proposal sits in the beige well with a rust dot on its corner.
+// Art polls while the draft-time image is still generating.
+function ProposalRow({
+  recipe,
+  selected,
+  onPress,
+}: {
+  recipe: Recipe;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const art = useRecipeArt(recipe, { poll: true });
+  const proteinG = recipe.nutritionalEstimate?.proteinG;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.proposalRow, selected ? styles.proposalSelected : null]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${recipe.title}${selected ? ', selected' : ''}`}
+    >
+      <View style={selected ? styles.vignetteRing : null}>
+        <Vignette
+          size={58}
+          localKey={art?.localImageKey as SeedMealKey | undefined}
+          remoteUrl={art?.heroImageUrl}
+          blurhash={art?.blurhash}
+          imageStatus={art?.imageStatus ?? recipe.imageStatus}
+          title={recipe.title}
+        />
+      </View>
+      <View style={styles.proposalText}>
+        <DisplayText size={17} color={palette.ink} numberOfLines={2} style={styles.proposalTitle}>
+          {recipe.title}
+        </DisplayText>
+        <View style={styles.proposalSub}>
+          <Mono size={10} color={palette.textSecondary}>
+            {recipe.timeMinutes} min
+          </Mono>
+          <Text style={styles.leaderText} numberOfLines={1} ellipsizeMode="clip">
+            {DOT_LEADER}
+          </Text>
+          <Mono size={10} color={palette.textSecondary}>
+            {proteinG ? `${proteinG}g pro` : recipe.cuisine.toLowerCase()}
+          </Mono>
+        </View>
+      </View>
+      {selected ? <View style={styles.selDot} /> : null}
+    </Pressable>
+  );
+}
+
 function firstWord(title: string): string {
   return title.trim().split(/\s+/)[0]?.toLowerCase() || 'this';
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <View style={styles.errorCard}>
+    <View style={styles.errorWell}>
       <Mono size={10} bold color={palette.destructive}>
         {"couldn't draft"}
       </Mono>
@@ -185,61 +220,96 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 const styles = StyleSheet.create({
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  header: {
-    gap: 6,
-  },
-  kickerRow: {
+  masthead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
   },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
+  mastheadPills: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
   },
   displayTitleWrap: {
     position: 'relative',
     alignSelf: 'flex-start',
   },
   displayTitle: {
-    letterSpacing: -1.2,
-    lineHeight: 42,
+    letterSpacing: -0.8,
+    lineHeight: 40,
+  },
+  titleItalic: {
+    fontFamily: fontFamily.displayItalic,
+    color: palette.accent,
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
+  },
+  sectionRule: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
   },
   displayUnderline: {
     position: 'absolute',
-    left: -6,
-    bottom: -8,
+    left: -4,
+    bottom: -9,
   },
   proposalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.sm,
-    borderRadius: 16,
   },
   proposalSelected: {
     backgroundColor: palette.well,
+    borderRadius: 18,
+    marginHorizontal: -spacing.sm,
+  },
+  vignetteRing: {
+    borderRadius: 999,
+    borderWidth: 3,
+    borderColor: palette.background,
   },
   proposalText: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   proposalTitle: {
     letterSpacing: -0.3,
-    lineHeight: 22,
+    lineHeight: 21,
   },
-  errorCard: {
-    borderRadius: 22,
+  proposalSub: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  leaderText: {
+    flex: 1,
+    marginHorizontal: 8,
+    fontSize: 12,
+    letterSpacing: 3,
+    color: palette.statRuleColor,
+  },
+  selDot: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: palette.accentDeep,
+  },
+  errorWell: {
+    borderRadius: 18,
     padding: spacing.lg,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
+    backgroundColor: palette.well,
   },
 });

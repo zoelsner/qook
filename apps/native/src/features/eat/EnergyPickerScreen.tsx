@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EnergyTier } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { EnergyPicker } from '../../components/EnergyPicker';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
 import { X, ArrowRight } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
+import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
+
+const WEEKDAY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 export function EnergyPickerScreen() {
   const router = useRouter();
@@ -33,35 +35,22 @@ export function EnergyPickerScreen() {
 
   return (
     <ScreenShell horizontalPadding={24}>
-      <View style={styles.topBar}>
+      <View style={styles.masthead}>
+        <DisplayText size={20} color={palette.ink}>qook</DisplayText>
         <IconPill onPress={handleCancel} accessibilityLabel="Cancel">
           <X size={16} color={palette.ink} strokeWidth={2.2} />
         </IconPill>
       </View>
-      <View style={{ height: spacing.md }} />
+      <View style={styles.mastheadRule} />
 
-      <View style={styles.header}>
-        <View style={styles.kickerRow}>
-          <Mono size={10} bold color={palette.accentDeep}>
-            generate
-          </Mono>
-          <View style={styles.kickerDot} />
-          <Mono size={10} color={palette.textSecondary}>
-            draft 3 recipes · 1 of 10 today
-          </Mono>
-        </View>
-        <View style={styles.displayTitleWrap}>
-          <DisplayText size={38} color={palette.primary} style={styles.displayTitle}>
-            How much energy?
-          </DisplayText>
-          <BrushstrokeUnderline
-            width={260}
-            color={palette.accent}
-            strokeWidth={2.4}
-            style={styles.displayUnderline}
-          />
-        </View>
-      </View>
+      <View style={{ height: spacing.md + 2 }} />
+      <Mono size={10} bold color={palette.accentDeep}>
+        tonight · {WEEKDAY[new Date().getDay()]}
+      </Mono>
+      <View style={{ height: 6 }} />
+      <DisplayText size={34} color={palette.primary} style={styles.displayTitle}>
+        How much <Text style={styles.titleItalic}>energy?</Text>
+      </DisplayText>
 
       <View style={{ height: spacing.md }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
@@ -70,13 +59,7 @@ export function EnergyPickerScreen() {
 
       <View style={{ height: spacing.xl }} />
 
-      <View style={styles.pickerCard}>
-        <Mono size={10} bold color={palette.accentDeep}>
-          {"tonight's level"}
-        </Mono>
-        <View style={{ height: spacing.md }} />
-        <EnergyPicker value={tier} onChange={setTier} />
-      </View>
+      <EnergyPicker value={tier} onChange={setTier} />
 
       <View style={{ height: spacing.xl }} />
 
@@ -87,58 +70,34 @@ export function EnergyPickerScreen() {
         trailingIcon={<ArrowRight size={14} color={palette.surface} />}
       />
       <View style={{ height: spacing.sm + 2 }} />
-      <BodyText
-        size={12}
-        color={palette.textTertiary}
-        weight="medium"
-        style={{ textAlign: 'center' }}
-      >
-        Fresh picks in about 10 seconds.
-      </BodyText>
+      <Mono size={9} color={palette.textTertiary} style={styles.caption}>
+        FRESH PICKS IN ABOUT 10 SECONDS
+      </Mono>
     </ScreenShell>
   );
 }
 
-// keep Pressable in bundle for future use
-void Pressable;
-
 const styles = StyleSheet.create({
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-  },
-  header: {
-    gap: 6,
-  },
-  kickerRow: {
+  masthead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
   },
-  kickerDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: palette.textSecondary,
-  },
-  displayTitleWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
   },
   displayTitle: {
-    letterSpacing: -1.2,
-    lineHeight: 42,
+    letterSpacing: -0.8,
+    lineHeight: 40,
   },
-  displayUnderline: {
-    position: 'absolute',
-    left: -6,
-    bottom: -8,
+  titleItalic: {
+    fontFamily: fontFamily.displayItalic,
+    color: palette.accent,
   },
-  pickerCard: {
-    borderRadius: 22,
-    padding: spacing.md,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.haloRing,
+  caption: {
+    textAlign: 'center',
+    letterSpacing: 1.5,
   },
 });
