@@ -4,12 +4,15 @@ import React from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { Vignette } from '../../components/Vignette';
+import { ProteinChip } from '../../components/ProteinChip';
 import { palette } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useBatchSession } from '../../stores/batchSession';
 import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
 import { energyTierColors } from '../../types/energy';
 import { formatDayShort, isToday, type ISODate } from './weekDates';
+import type { SeedMealKey } from '../../lib/assets';
 
 const WEEK_TIERS: { tier: EnergyTier; minutes: number }[] = [
   { tier: 'brain-is-fried', minutes: 15 },
@@ -70,7 +73,7 @@ export function DayRow({
         onPress={() => onOpenRecipe(pick.id)}
         onLongPress={onClearDay}
         delayLongPress={400}
-        style={styles.row}
+        style={[styles.row, isToday(date) ? styles.todayRow : null]}
         accessibilityRole="button"
         accessibilityLabel={`${weekday}: ${pick.title}. Long-press to clear.`}
       >
@@ -80,17 +83,27 @@ export function DayRow({
             {weekday}
           </Mono>
         </View>
+        {isToday(date) ? (
+          <Vignette
+            size={52}
+            localKey={pick.localImageKey as SeedMealKey | undefined}
+            remoteUrl={pick.heroImageUrl}
+            blurhash={pick.blurhash}
+            imageStatus={pick.imageStatus}
+            title={pick.title}
+          />
+        ) : null}
         <View style={styles.pickArea}>
           <BodyText size={14} weight="semi" color={palette.ink} numberOfLines={1}>
             {pick.title}
           </BodyText>
           <Mono size={10} color={palette.textSecondary}>
             {pick.cuisine} · {pick.timeMinutes} min
-            {pick.nutritionalEstimate?.proteinG != null
-              ? ` · ${pick.nutritionalEstimate.proteinG} g of protein`
-              : ''}
           </Mono>
         </View>
+        {isToday(date) && pick.nutritionalEstimate?.proteinG != null ? (
+          <ProteinChip proteinG={pick.nutritionalEstimate.proteinG} size="mini" />
+        ) : null}
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
@@ -160,6 +173,13 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(42, 58, 38, 0.08)',
+  },
+  todayRow: {
+    backgroundColor: palette.well,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0,
+    marginVertical: 4,
   },
   dayLabel: {
     width: 56,

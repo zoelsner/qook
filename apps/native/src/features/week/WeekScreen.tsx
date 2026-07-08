@@ -206,9 +206,6 @@ const styles = StyleSheet.create({
   card: {
     maxHeight: 380,
     borderRadius: 22,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
   },
   summary: {
     flexDirection: 'row',
