@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { Platform, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { palette } from '../design';
 import { DisplayText, Mono } from './Text';
@@ -14,26 +14,51 @@ export interface ProteinChipProps {
 
 // Hand-drawn-feel rounded-square border, baked path.
 // Viewbox 72x72 — scales cleanly at every size below.
-// The path is a single closed stroke with subtle jitter in the straight runs
-// so it reads as "drawn" rather than "CSS border."
+// Soft, meaningfully rounded corners (radius 18 of 72) to match the
+// artifact's rounded-square badge, rather than the tighter original corners.
 const BAKED_SQUARE =
-  'M 8.4 4.6 C 18 3.8, 30 4.3, 40.5 3.9 C 52 4.1, 62.5 4.4, 66 5.1 C 67.7 14, 68.2 26, 67.6 38 C 68.1 50, 67.9 60, 66.6 66 C 56.5 67.6, 44 67.3, 32 67.8 C 20 67.5, 10.5 67.9, 5.8 66.4 C 4.6 55, 4.3 44, 4.7 32 C 4.3 22, 4.7 12.5, 5.6 5.4 C 6.1 5.1, 7.1 4.8, 8.4 4.6 Z';
+  'M 24 6 L 48 6 C 58 6, 66 14, 66 24 L 66 48 C 66 58, 58 66, 48 66 L 24 66 C 14 66, 6 58, 6 48 L 6 24 C 6 14, 14 6, 24 6 Z';
+
+// Soft drop shadow behind the cream-filled badge — reads as shading behind
+// both the number and the "PROTEIN" kicker beneath it.
+const badgeShadow: ViewStyle = Platform.select({
+  ios: {
+    shadowColor: palette.ink,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  android: { elevation: 4 },
+  default: {},
+})!;
 
 const SIZE_PRESETS: Record<
   ProteinChipSize,
-  { box: number; number: number; kicker: number; kickerTop: number; strokeWidth: number }
+  {
+    box: number;
+    radius: number;
+    number: number;
+    kicker: number;
+    kickerTop: number;
+    strokeWidth: number;
+  }
 > = {
-  mini: { box: 40, number: 15, kicker: 6, kickerTop: 1, strokeWidth: 1.5 },
-  sm: { box: 52, number: 20, kicker: 8, kickerTop: 1, strokeWidth: 1.8 },
-  md: { box: 64, number: 26, kicker: 9, kickerTop: 2, strokeWidth: 2.0 },
-  lg: { box: 78, number: 32, kicker: 10, kickerTop: 3, strokeWidth: 2.2 },
+  mini: { box: 40, radius: 11, number: 15, kicker: 6, kickerTop: 1, strokeWidth: 1.5 },
+  sm: { box: 52, radius: 14, number: 20, kicker: 8, kickerTop: 1, strokeWidth: 1.8 },
+  md: { box: 64, radius: 17, number: 26, kicker: 9, kickerTop: 2, strokeWidth: 2.0 },
+  lg: { box: 78, radius: 20, number: 32, kicker: 10, kickerTop: 3, strokeWidth: 2.2 },
 };
 
 export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) {
   const preset = SIZE_PRESETS[size];
   return (
     <View
-      style={[{ width: preset.box, height: preset.box }, styles.wrap, style]}
+      style={[
+        { width: preset.box, height: preset.box, borderRadius: preset.radius },
+        styles.wrap,
+        badgeShadow,
+        style,
+      ]}
       accessibilityLabel={`${proteinG} grams protein per serving`}
     >
       <Svg
@@ -49,7 +74,7 @@ export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) 
           strokeWidth={preset.strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
-          fill="none"
+          fill={palette.background}
         />
       </Svg>
       <DisplayText
@@ -71,6 +96,7 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: palette.background,
   },
   number: {
     letterSpacing: -0.8,

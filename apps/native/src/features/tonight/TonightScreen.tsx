@@ -5,7 +5,6 @@ import type { Recipe } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
-import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { Vignette } from '../../components/Vignette';
 import { MenuRow } from '../../components/MenuRow';
 import { ProteinChip } from '../../components/ProteinChip';
@@ -337,73 +336,91 @@ function UpcomingStrip({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 10 }}
       >
-        {days.map((date) => {
-          const day = plan[date];
-          const pick = activePickFor(day);
-          const { weekday, month, day: d } = formatDayShort(date);
-          const accessibilityLabel = pick
-            ? `${weekday}: ${pick.title}`
-            : day?.energy
-              ? `${weekday}: tagged, not drafted yet`
-              : `${weekday}: no plans`;
-          return (
-            <Pressable
-              key={date}
-              onPress={() => (pick ? onOpenRecipe(pick.id) : onOpenWeek())}
-              style={styles.upcomingCard}
-              accessibilityRole="button"
-              accessibilityLabel={accessibilityLabel}
-            >
-              <Mono size={9} bold color={palette.accentDeep}>
-                {weekday} · {month} {d}
-              </Mono>
-              <View style={{ height: spacing.xs }} />
-              {pick ? (
-                <>
-                  <View style={styles.upcomingThumb}>
-                    <FoodHeroImage
-                      localKey={pick.localImageKey as SeedMealKey | undefined}
-                      remoteUrl={pick.heroImageUrl}
-                      blurhash={pick.blurhash}
-                      height={72}
-                      cornerRadius={10}
-                      style={{ width: '100%', height: 72 }}
-                    />
-                  </View>
-                  <View style={{ height: spacing.xs }} />
-                  <BodyText
-                    size={12}
-                    weight="semi"
-                    color={palette.ink}
-                    numberOfLines={2}
-                  >
-                    {pick.title}
-                  </BodyText>
-                </>
-              ) : day?.energy ? (
-                <BodyText
-                  size={12}
-                  weight="medium"
-                  color={palette.textSecondary}
-                  numberOfLines={2}
-                >
-                  tagged · not drafted yet
-                </BodyText>
-              ) : (
-                <BodyText
-                  size={12}
-                  weight="medium"
-                  color={palette.textTertiary}
-                  numberOfLines={2}
-                >
-                  no plans
-                </BodyText>
-              )}
-            </Pressable>
-          );
-        })}
+        {days.map((date) => (
+          <UpcomingCard
+            key={date}
+            date={date}
+            day={plan[date]}
+            onOpenRecipe={onOpenRecipe}
+            onOpenWeek={onOpenWeek}
+          />
+        ))}
       </ScrollView>
     </View>
+  );
+}
+
+function UpcomingCard({
+  date,
+  day,
+  onOpenRecipe,
+  onOpenWeek,
+}: {
+  date: ISODate;
+  day: DayPlan | undefined;
+  onOpenRecipe: (id: string) => void;
+  onOpenWeek: () => void;
+}) {
+  const pick = activePickFor(day);
+  const art = useRecipeArt(pick ?? undefined);
+  const { weekday, month, day: d } = formatDayShort(date);
+  const accessibilityLabel = pick
+    ? `${weekday}: ${pick.title}`
+    : day?.energy
+      ? `${weekday}: tagged, not drafted yet`
+      : `${weekday}: no plans`;
+  return (
+    <Pressable
+      onPress={() => (pick ? onOpenRecipe(pick.id) : onOpenWeek())}
+      style={styles.upcomingCard}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Mono size={9} bold color={palette.accentDeep}>
+        {weekday} · {month} {d}
+      </Mono>
+      <View style={{ height: spacing.xs }} />
+      {pick ? (
+        <>
+          <Vignette
+            size={48}
+            localKey={art?.localImageKey as SeedMealKey | undefined}
+            remoteUrl={art?.heroImageUrl}
+            blurhash={art?.blurhash}
+            imageStatus={art?.imageStatus}
+            title={pick.title}
+            style={styles.upcomingVignette}
+          />
+          <View style={{ height: spacing.xs }} />
+          <BodyText
+            size={12}
+            weight="semi"
+            color={palette.ink}
+            numberOfLines={2}
+          >
+            {pick.title}
+          </BodyText>
+        </>
+      ) : day?.energy ? (
+        <BodyText
+          size={12}
+          weight="medium"
+          color={palette.textSecondary}
+          numberOfLines={2}
+        >
+          tagged · not drafted yet
+        </BodyText>
+      ) : (
+        <BodyText
+          size={12}
+          weight="medium"
+          color={palette.textTertiary}
+          numberOfLines={2}
+        >
+          no plans
+        </BodyText>
+      )}
+    </Pressable>
   );
 }
 
@@ -429,36 +446,65 @@ function RecentCooks({
         {days.map((date, idx) => {
           const pick = activePickFor(plan[date]);
           if (!pick) return null;
-          const { weekday, month, day: d } = formatDayShort(date);
-          const last = idx === days.length - 1;
           return (
-            <Pressable
+            <RecentRow
               key={date}
-              onPress={() => onOpenRecipe(pick.id)}
-              style={[styles.recentRow, last ? styles.recentRowLast : null]}
-              accessibilityRole="button"
-              accessibilityLabel={`${weekday}: ${pick.title}`}
-            >
-              <View style={{ flex: 1 }}>
-                <Mono size={9} color={palette.textSecondary}>
-                  {weekday} · {month} {d}
-                </Mono>
-                <View style={{ height: 2 }} />
-                <BodyText
-                  size={14}
-                  weight="semi"
-                  color={palette.ink}
-                  numberOfLines={1}
-                >
-                  {pick.title}
-                </BodyText>
-              </View>
-              <ChevronRight size={16} color={palette.textTertiary} strokeWidth={2} />
-            </Pressable>
+              date={date}
+              pick={pick}
+              isLast={idx === days.length - 1}
+              onOpenRecipe={onOpenRecipe}
+            />
           );
         })}
       </View>
     </View>
+  );
+}
+
+function RecentRow({
+  date,
+  pick,
+  isLast,
+  onOpenRecipe,
+}: {
+  date: ISODate;
+  pick: Recipe;
+  isLast: boolean;
+  onOpenRecipe: (id: string) => void;
+}) {
+  const art = useRecipeArt(pick);
+  const { weekday, month, day: d } = formatDayShort(date);
+  return (
+    <Pressable
+      onPress={() => onOpenRecipe(pick.id)}
+      style={[styles.recentRow, isLast ? styles.recentRowLast : null]}
+      accessibilityRole="button"
+      accessibilityLabel={`${weekday}: ${pick.title}`}
+    >
+      <Vignette
+        size={40}
+        localKey={art?.localImageKey as SeedMealKey | undefined}
+        remoteUrl={art?.heroImageUrl}
+        blurhash={art?.blurhash}
+        imageStatus={art?.imageStatus}
+        title={pick.title}
+      />
+      <View style={{ flex: 1 }}>
+        <Mono size={9} color={palette.textSecondary}>
+          {weekday} · {month} {d}
+        </Mono>
+        <View style={{ height: 2 }} />
+        <BodyText
+          size={14}
+          weight="semi"
+          color={palette.ink}
+          numberOfLines={1}
+        >
+          {pick.title}
+        </BodyText>
+      </View>
+      <ChevronRight size={16} color={palette.textTertiary} strokeWidth={2} />
+    </Pressable>
   );
 }
 
@@ -567,9 +613,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.glassBorder,
   },
-  upcomingThumb: {
-    borderRadius: 10,
-    overflow: 'hidden',
+  upcomingVignette: {
+    alignSelf: 'center',
   },
   recentList: {
     borderRadius: 18,
@@ -581,6 +626,7 @@ const styles = StyleSheet.create({
   recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(42, 58, 38, 0.08)',

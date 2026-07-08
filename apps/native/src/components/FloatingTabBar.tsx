@@ -59,7 +59,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             >
               <View style={[styles.tabDot, focused ? styles.tabDotActive : null]} />
               <Mono
-                size={11}
+                size={focused ? 11 : 12}
                 bold={focused}
                 color={focused ? palette.primary : palette.textSecondary}
                 style={styles.tabLabel}
