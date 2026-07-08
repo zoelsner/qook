@@ -8,6 +8,7 @@ import { Vignette } from '../../components/Vignette';
 import { ProteinChip } from '../../components/ProteinChip';
 import { palette } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useRecipeArt } from '../../hooks/useRecipeArt';
 import { useBatchSession } from '../../stores/batchSession';
 import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
 import { energyTierColors } from '../../types/energy';
@@ -41,6 +42,9 @@ export function DayRow({
   const { weekday } = formatDayShort(date);
   const activeTier = day?.energy;
   const pick = activePickFor(day);
+  // Hooks can't be conditional — call unconditionally with the day's pick
+  // even though only the TODAY row's Vignette below consumes the result.
+  const art = useRecipeArt(pick ?? undefined);
 
   const onClearDay = () => {
     if (!pick) return;
@@ -86,10 +90,10 @@ export function DayRow({
         {isToday(date) ? (
           <Vignette
             size={52}
-            localKey={pick.localImageKey as SeedMealKey | undefined}
-            remoteUrl={pick.heroImageUrl}
-            blurhash={pick.blurhash}
-            imageStatus={pick.imageStatus}
+            localKey={art?.localImageKey as SeedMealKey | undefined}
+            remoteUrl={art?.heroImageUrl}
+            blurhash={art?.blurhash}
+            imageStatus={art?.imageStatus}
             title={pick.title}
           />
         ) : null}

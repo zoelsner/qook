@@ -14,6 +14,7 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight, ChevronRight } from 'lucide-react-native';
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
+import { useRecipeArt } from '../../hooks/useRecipeArt';
 import {
   useWeekPlan,
   activePickFor,
@@ -196,6 +197,7 @@ function HeroPopulated({
   pick: Recipe;
   onOpen: () => void;
 }) {
+  const art = useRecipeArt(pick);
   const protein = pick.nutritionalEstimate?.proteinG;
   const words = pick.title.trim().split(/\s+/);
   const lastWord = words[words.length - 1];
@@ -232,10 +234,10 @@ function HeroPopulated({
         <View>
           <Vignette
             size={114}
-            localKey={pick.localImageKey as SeedMealKey | undefined}
-            remoteUrl={pick.heroImageUrl}
-            blurhash={pick.blurhash}
-            imageStatus={pick.imageStatus}
+            localKey={art?.localImageKey as SeedMealKey | undefined}
+            remoteUrl={art?.heroImageUrl}
+            blurhash={art?.blurhash}
+            imageStatus={art?.imageStatus}
             title={pick.title}
           />
           {protein != null ? (

@@ -57,7 +57,7 @@ export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) 
         color={palette.ink}
         style={styles.number}
       >
-        {proteinG}
+        {proteinG}g
       </DisplayText>
       <View style={{ height: preset.kickerTop }} />
       <Mono size={preset.kicker} bold color={palette.accentDeep} style={styles.kicker}>
