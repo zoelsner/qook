@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 import { palette } from '../design';
 import { DisplayText, Mono } from './Text';
 
-export type ProteinChipSize = 'sm' | 'md' | 'lg';
+export type ProteinChipSize = 'mini' | 'sm' | 'md' | 'lg';
 
 export interface ProteinChipProps {
   proteinG: number;
@@ -23,6 +23,7 @@ const SIZE_PRESETS: Record<
   ProteinChipSize,
   { box: number; number: number; kicker: number; kickerTop: number; strokeWidth: number }
 > = {
+  mini: { box: 40, number: 15, kicker: 6, kickerTop: 1, strokeWidth: 1.5 },
   sm: { box: 52, number: 20, kicker: 8, kickerTop: 1, strokeWidth: 1.8 },
   md: { box: 64, number: 26, kicker: 9, kickerTop: 2, strokeWidth: 2.0 },
   lg: { box: 78, number: 32, kicker: 10, kickerTop: 3, strokeWidth: 2.2 },

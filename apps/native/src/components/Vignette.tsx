@@ -1,0 +1,79 @@
+import React from 'react';
+import { StyleSheet, View, type ViewStyle, type StyleProp } from 'react-native';
+import type { ImageStatus } from '@qook/shared';
+import { FoodHeroImage } from './FoodHeroImage';
+import { DisplayText } from './Text';
+import { palette } from '../design';
+import type { SeedMealKey } from '../lib/assets';
+
+export interface VignetteProps {
+  size: number;
+  localKey?: SeedMealKey;
+  remoteUrl?: string;
+  blurhash?: string;
+  imageStatus?: ImageStatus;
+  title?: string;
+  style?: StyleProp<ViewStyle>;
+}
+
+// Circular art crop — how meal art appears on every surface except the recipe
+// page (spec §1.2). No real art, or a failed generation → cream circle with the
+// dish's first letter in Fraunces (spec §6); retry-on-open is handled by the
+// recipe modal, not here.
+export function Vignette({
+  size,
+  localKey,
+  remoteUrl,
+  blurhash,
+  imageStatus,
+  title,
+  style,
+}: VignetteProps) {
+  const hasArt = !!remoteUrl || !!localKey;
+  const showLetter = !hasArt || imageStatus === 'failed';
+  const radius = size / 2;
+
+  if (showLetter) {
+    const letter = (title?.trim().charAt(0) || '·').toUpperCase();
+    return (
+      <View
+        style={[
+          { width: size, height: size, borderRadius: radius },
+          styles.letterWrap,
+          style,
+        ]}
+        accessibilityLabel={title ? `${title}, no image yet` : 'no image yet'}
+      >
+        <DisplayText size={Math.round(size * 0.42)} color={palette.accentDeep}>
+          {letter}
+        </DisplayText>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[{ width: size, height: size, borderRadius: radius }, styles.crop, style]}>
+      <FoodHeroImage
+        localKey={localKey}
+        remoteUrl={remoteUrl}
+        blurhash={blurhash}
+        width={size}
+        height={size}
+        cornerRadius={radius}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  crop: {
+    overflow: 'hidden',
+  },
+  letterWrap: {
+    backgroundColor: palette.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.glassBorder,
+  },
+});
