@@ -151,11 +151,11 @@ export function ShopScreen() {
           ))
         )}
 
-        <View style={{ height: 200 }} />
+        <View style={{ height: spacing.lg }} />
       </ScreenShell>
 
       {totalItems > 0 ? (
-        <View style={[styles.stickyDockWrap, { bottom: dockBottom }]} pointerEvents="box-none">
+        <View style={[styles.dockFooter, { paddingBottom: dockBottom }]}>
           <ShopDock
             remaining={remaining}
             disabled={remaining === 0}
@@ -397,12 +397,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     lineHeight: 28,
   },
-  // Aligned to the screen's 24px content padding — the dock is part of the
-  // page, not a wider floating sheet.
-  stickyDockWrap: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
+  // In-flow footer on the cream ground (mockup: the dock is part of the
+  // page's bottom, list rows never scroll behind it), aligned to the 24px
+  // content gutter.
+  dockFooter: {
+    paddingHorizontal: 24,
+    paddingTop: spacing.sm,
+    backgroundColor: palette.background,
   },
   dock: {
     borderRadius: 18,
@@ -412,11 +413,6 @@ const styles = StyleSheet.create({
     backgroundColor: palette.well,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
-    shadowColor: '#2A3A26',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 10,
   },
   dockSub: {
     textAlign: 'center',
