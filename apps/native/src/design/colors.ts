@@ -4,8 +4,11 @@
 // Source of truth for all surface, text, accent, and wash colors.
 
 export const palette = {
-  // Grounds — lightened ~20% toward white for a quieter / airier feel
-  background: '#FCF9F1',
+  // Grounds — cream is the Menu ground on every screen (spec §1.1).
+  background: '#FBF7EE',
+  // "Alive right now" surface: today's card, selected proposal, shop dock.
+  // Never decoration (spec §1.1 one-job rule).
+  well: '#F1E9D9',
   surface: '#FFFCF6',
   surfaceTranslucent: 'rgba(255, 252, 246, 0.85)',
   surfaceTranslucentSoft: 'rgba(255, 252, 246, 0.78)',

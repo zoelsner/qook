@@ -5,6 +5,7 @@ export const fontFamily = {
   bodySemi: 'DMSans_600SemiBold',
   monoRegular: 'JetBrainsMono_400Regular',
   monoBold: 'JetBrainsMono_700Bold',
+  displayItalic: 'Fraunces_500Medium_Italic',
 } as const;
 
 export const typeScale = {

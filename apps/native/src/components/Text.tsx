@@ -22,6 +22,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     includeFontPadding: false,
   },
+  italic: {
+    fontFamily: fontFamily.displayItalic,
+    color: palette.accent,
+    includeFontPadding: false,
+  },
 });
 
 export interface DisplayTextProps extends TextProps {
@@ -108,6 +113,26 @@ export function Mono({
           fontSize: size,
           lineHeight: Math.round(size * 1.3),
         },
+        color ? { color } : null,
+        style,
+      ]}
+      {...rest}
+    />
+  );
+}
+
+// Italic aside — one per screen max (spec §1.2). Rust Fraunces italic.
+export function ItalicText({
+  size = typeScale.bodyMD,
+  color,
+  style,
+  ...rest
+}: DisplayTextProps) {
+  return (
+    <Text
+      style={[
+        styles.italic,
+        { fontSize: size, lineHeight: Math.round(size * 1.4) },
         color ? { color } : null,
         style,
       ]}
