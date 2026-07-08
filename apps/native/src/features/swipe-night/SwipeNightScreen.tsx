@@ -5,10 +5,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import {
-  PaintedButton,
-  PaintedDivider,
-} from '../../components/painted';
+import { PaintedDivider } from '../../components/painted';
+import { PolishedButton } from '../../components/PolishedButton';
 import { Heart } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
@@ -127,9 +125,8 @@ export function SwipeNightScreen() {
               skip
             </Mono>
           </Pressable>
-          <PaintedButton
+          <PolishedButton
             label="Save"
-            size="md"
             tone="forest"
             onPress={() => {
               select();
@@ -168,12 +165,7 @@ function EmptyState({
       <View style={{ height: spacing.md }} />
       <PaintedDivider />
       <View style={{ height: spacing.md }} />
-      <PaintedButton
-        label="Shuffle again"
-        size="md"
-        tone="rust"
-        onPress={onReset}
-      />
+      <PolishedButton label="Shuffle again" tone="rust" onPress={onReset} />
     </View>
   );
 }
