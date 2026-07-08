@@ -1,9 +1,9 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { serviceClient } from "../_shared/supabase.ts";
+import { requireUser, serviceClient } from "../_shared/supabase.ts";
 import { buildImagePrompt } from "../_shared/prompts/image.ts";
 import { CANON_IMAGE_DATA_URL } from "../_shared/assets/canon-b64.ts";
 import { MODELS, OR_ENDPOINT, orHeaders } from "../_shared/openrouter.ts";
 import { ERRORS, errorResponse } from "../_shared/errors.ts";
+import { lockOutcome } from "./lock.ts";
 
 const IMAGE_PRICE_USD = 0.068; // google/gemini-3.1-flash-image, spec §3
 
@@ -35,26 +35,17 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
-  // Internal-only (fired by another edge fn or ops tooling). The caller
-  // proves it holds a service-role key by capability — only service keys
-  // can call auth.admin — rather than byte-comparing against env (the
-  // platform-injected SUPABASE_SERVICE_ROLE_KEY differs from the dashboard
-  // key on new-API-key projects). The key rides x-internal-secret because
-  // the gateway rejects new-format keys in the Authorization header.
-  const presented = req.headers.get("x-internal-secret") ??
-    (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!presented) {
-    return errorResponse(ERRORS.UNAUTHORIZED, "Internal secret required.", 401);
-  }
-  const probe = createClient(Deno.env.get("SUPABASE_URL")!, presented, {
-    auth: { persistSession: false },
-  });
-  const { error: probeError } = await probe.auth.admin.listUsers({
-    page: 1,
-    perPage: 1,
-  });
-  if (probeError) {
-    return errorResponse(ERRORS.UNAUTHORIZED, "Internal secret required.", 401);
+
+  // Save-gated client call: any signed-in user (including the pre-Phase-5
+  // anonymous session) may request art for a recipe they saved. "Saved" is a
+  // client-local zustand set with no server representation (recipes are global
+  // cache rows with user_id null), so it cannot be verified here. The cost
+  // control is instead the once-only atomic lock below, bounded by the
+  // per-user generation quota (spec §10).
+  try {
+    await requireUser(req);
+  } catch (resp) {
+    return resp as Response;
   }
 
   const { recipeId } = (await req.json().catch(() => ({}))) as {
@@ -65,22 +56,31 @@ Deno.serve(async (req) => {
   }
 
   const admin = serviceClient();
-  await admin.from("recipes").update({ image_status: "generating" }).eq(
-    "id",
-    recipeId,
-  );
 
+  // Fetch prompt inputs first so a genuinely missing recipe is a clean 404
+  // (distinct from the "already claimed" no-op below).
   const { data: row, error } = await admin
     .from("recipes")
     .select("id, title, ingredient_groups")
     .eq("id", recipeId)
     .single();
   if (error || !row) {
-    await admin.from("recipes").update({
-      image_status: "failed",
-      image_error: "recipe_not_found",
-    }).eq("id", recipeId);
     return errorResponse(ERRORS.NOT_FOUND, "Recipe not found.", 404);
+  }
+
+  // Atomic double-spend guard: exactly one caller flips pending → generating.
+  // Repeat saves / duplicate fires and cross-user saves of the same global
+  // recipe find status != 'pending' and no-op without paying again.
+  const { data: locked } = await admin
+    .from("recipes")
+    .update({ image_status: "generating" })
+    .eq("id", recipeId)
+    .eq("image_status", "pending")
+    .select("id");
+  if (lockOutcome(locked) === "skip") {
+    return new Response(JSON.stringify({ ok: true, skipped: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const prompt = buildImagePrompt({
