@@ -40,8 +40,10 @@ Deno.serve(async (req) => {
   // anonymous session) may request art for a recipe they saved. "Saved" is a
   // client-local zustand set with no server representation (recipes are global
   // cache rows with user_id null), so it cannot be verified here. The cost
-  // control is instead the once-only atomic lock below, bounded by the
-  // per-user generation quota (spec §10).
+  // control is instead the atomic lock below: at most one paid generation per
+  // recipe row ever (retry-on-open only re-fires the 'failed' state), so the
+  // spend ceiling is the global pending/failed recipe count × ~6.8¢ — NOT a
+  // per-user quota.
   try {
     await requireUser(req);
   } catch (resp) {
@@ -68,14 +70,16 @@ Deno.serve(async (req) => {
     return errorResponse(ERRORS.NOT_FOUND, "Recipe not found.", 404);
   }
 
-  // Atomic double-spend guard: exactly one caller flips pending → generating.
-  // Repeat saves / duplicate fires and cross-user saves of the same global
-  // recipe find status != 'pending' and no-op without paying again.
+  // Atomic double-spend guard: exactly one caller flips pending|failed →
+  // generating. Repeat saves / duplicate fires / cross-user saves of the same
+  // global recipe find status NOT IN ('pending','failed') and no-op without
+  // paying again. 'failed' is included so retry-on-open (spec §6) re-generates
+  // an image that previously errored; 'ready'/'generating' still no-op.
   const { data: locked, error: lockError } = await admin
     .from("recipes")
     .update({ image_status: "generating" })
     .eq("id", recipeId)
-    .eq("image_status", "pending")
+    .in("image_status", ["pending", "failed"])
     .select("id");
   if (lockError) {
     console.error("generate-image lock error", lockError.message);
@@ -94,6 +98,9 @@ Deno.serve(async (req) => {
     });
     const resp = await fetch(OR_ENDPOINT, {
       method: "POST",
+      // 60s hard cap: observed generations run ~19s; a hung fetch must not
+      // strand image_status='generating'. On abort the catch below marks 'failed'.
+      signal: AbortSignal.timeout(60_000),
       headers: orHeaders(),
       body: JSON.stringify({
         model: MODELS.image(),
