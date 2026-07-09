@@ -4,9 +4,10 @@ import { useRouter } from 'expo-router';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { PaintedArcSpinner } from '../../components/painted';
+import { CircledWord } from '../../components/CircledWord';
 import { StepDots } from '../../components/StepDots';
 import { palette, spacing } from '../../design';
+import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { api } from '../../services/api';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -82,7 +83,14 @@ export function GenerationLoadingScreen() {
           Cooking up ideas…
         </DisplayText>
         <View style={{ height: spacing.xl + spacing.md }} />
-        <PaintedArcSpinner size={64} color={palette.accent} strokeWidth={3.2} />
+        <CircledWord
+          words={[
+            'tonight',
+            tier ? ENERGY_TIER_LABEL[tier].toLowerCase() : 'your taste',
+            'the fridge',
+            'no repeats',
+          ]}
+        />
         <View style={{ height: spacing.lg }} />
         {streamedTitles.filter(Boolean).length > 0 ? (
           streamedTitles.filter(Boolean).map((t, i) => (

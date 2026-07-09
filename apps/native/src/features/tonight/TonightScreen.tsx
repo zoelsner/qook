@@ -203,7 +203,13 @@ function HeroPopulated({
   const leadWords = words.slice(0, -1).join(' ');
   return (
     <View>
-      <View style={styles.heroArtRow}>
+      {/* The dish itself is tappable — title or plate opens the recipe. */}
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${pick.title}`}
+        style={({ pressed }) => [styles.heroArtRow, pressed ? { opacity: 0.88 } : null]}
+      >
         <View style={styles.heroTitleCol}>
           <Mono size={10} bold color={palette.accentDeep}>
             TONIGHT&rsquo;S TABLE
@@ -243,7 +249,7 @@ function HeroPopulated({
             <ProteinChip proteinG={protein} size="sm" style={styles.heroProtein} />
           ) : null}
         </View>
-      </View>
+      </Pressable>
 
       <View style={{ height: spacing.md }} />
       <MenuRow label="Active time" value={`${pick.timeMinutes} min`} />

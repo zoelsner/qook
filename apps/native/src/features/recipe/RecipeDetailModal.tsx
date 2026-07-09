@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -27,12 +27,14 @@ import {
   IconPill,
   IconCookingSteam,
 } from '../../components/painted';
-import { X, Bookmark, Share } from 'lucide-react-native';
+import { X, Bookmark, Share, Minus, Plus } from 'lucide-react-native';
 import { palette, spacing } from '../../design';
 import { ENERGY_TIER_SUBTITLE } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { useCookSession } from '../../stores/cookSession';
+import { scaledIngredientQuantity } from '../../lib/scaleQuantity';
 import { todayISO } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 
@@ -61,7 +63,14 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
   const saved = savedRecipeIds.includes(recipeId);
-  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
+
+  // Checklist + serving override live in the persisted cook session so they
+  // survive closing the modal mid-cook.
+  const cookState = useCookSession((s) => s.byRecipe[recipeId]);
+  const toggleChecked = useCookSession((s) => s.toggleChecked);
+  const setServings = useCookSession((s) => s.setServings);
+  const checkedIds = cookState?.checked ?? EMPTY_CHECKED;
+  const servings = cookState?.servings ?? recipe?.servings ?? 2;
 
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const todaysPick = useWeekPlan((s) => activePickFor(s.plan[todayISO()]));
@@ -113,9 +122,14 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
           <RecipeBody
             recipe={recipe}
             checkedIds={checkedIds}
+            servings={servings}
+            onServingsChange={(n) => {
+              select();
+              setServings(recipeId, n);
+            }}
             onToggleIngredient={(id) => {
               select();
-              setCheckedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+              toggleChecked(recipeId, id);
             }}
             onAddAll={onAddAllToList}
           />
@@ -164,11 +178,15 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
 function RecipeBody({
   recipe,
   checkedIds,
+  servings,
+  onServingsChange,
   onToggleIngredient,
   onAddAll,
 }: {
   recipe: Recipe;
   checkedIds: Record<string, boolean>;
+  servings: number;
+  onServingsChange: (n: number) => void;
   onToggleIngredient: (id: string) => void;
   onAddAll: () => void;
 }) {
@@ -176,6 +194,7 @@ function RecipeBody({
     (acc, group) => acc + group.items.length,
     0
   );
+  const factor = recipe.servings > 0 ? servings / recipe.servings : 1;
 
   return (
     <View>
@@ -222,7 +241,7 @@ function RecipeBody({
 
       <View style={styles.statsSection}>
         <MenuRow label="Active time" value={`${recipe.timeMinutes} min`} />
-        <MenuRow label="Serves" value={String(recipe.servings)} />
+        <ServesStepperRow servings={servings} onChange={onServingsChange} />
         <MenuRow label="Ingredients" value={String(ingredientCount)} />
       </View>
 
@@ -251,6 +270,7 @@ function RecipeBody({
                   key={rowId}
                   id={rowId}
                   ingredient={ing}
+                  factor={factor}
                   checked={!!checkedIds[rowId]}
                   onToggle={onToggleIngredient}
                 />
@@ -362,14 +382,17 @@ function RecipeBody({
 function IngredientRow({
   id,
   ingredient,
+  factor,
   checked,
   onToggle,
 }: {
   id: string;
   ingredient: Ingredient;
+  factor: number;
   checked: boolean;
   onToggle: (id: string) => void;
 }) {
+  const quantity = scaledIngredientQuantity(ingredient, factor);
   return (
     <Pressable
       onPress={() => onToggle(id)}
@@ -390,12 +413,71 @@ function IngredientRow({
       >
         {ingredient.item}
       </BodyText>
-      {ingredient.quantity ? (
+      {quantity ? (
         <Mono size={12} color={palette.textSecondary} style={styles.ingredientQty}>
-          {ingredient.quantity}
+          {quantity}
         </Mono>
       ) : null}
     </Pressable>
+  );
+}
+
+// "Serves ····· − 4 +" — the stats row doubles as the scaling calculator.
+// Scaling multiplies every parsed ingredient quantity; prose steps keep the
+// original amounts (known limit).
+const MIN_SERVINGS = 1;
+const MAX_SERVINGS = 12;
+
+function ServesStepperRow({
+  servings,
+  onChange,
+}: {
+  servings: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <View style={styles.servesRow}>
+      <BodyText size={16} weight="medium" color={palette.ink}>
+        Serves
+      </BodyText>
+      <BodyText
+        style={styles.servesLeader}
+        numberOfLines={1}
+      >
+        {'·'.repeat(80)}
+      </BodyText>
+      <View style={styles.stepper}>
+        <Pressable
+          hitSlop={8}
+          disabled={servings <= MIN_SERVINGS}
+          onPress={() => onChange(servings - 1)}
+          accessibilityLabel="Fewer servings"
+          style={({ pressed }) => [
+            styles.stepperBtn,
+            servings <= MIN_SERVINGS ? { opacity: 0.3 } : null,
+            pressed ? { opacity: 0.6 } : null,
+          ]}
+        >
+          <Minus size={13} color={palette.primary} strokeWidth={2.6} />
+        </Pressable>
+        <Mono size={13} bold color={palette.ink} style={styles.stepperValue}>
+          {String(servings)}
+        </Mono>
+        <Pressable
+          hitSlop={8}
+          disabled={servings >= MAX_SERVINGS}
+          onPress={() => onChange(servings + 1)}
+          accessibilityLabel="More servings"
+          style={({ pressed }) => [
+            styles.stepperBtn,
+            servings >= MAX_SERVINGS ? { opacity: 0.3 } : null,
+            pressed ? { opacity: 0.6 } : null,
+          ]}
+        >
+          <Plus size={13} color={palette.primary} strokeWidth={2.6} />
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -438,6 +520,8 @@ function CookDock({
 function rowKeyFor(group: IngredientGroup, ing: Ingredient, gIdx: number, iIdx: number): string {
   return `${group.role}-${gIdx}-${iIdx}-${ing.item}`;
 }
+
+const EMPTY_CHECKED: Record<string, boolean> = {};
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.background },
@@ -525,6 +609,37 @@ const styles = StyleSheet.create({
   },
   ingredientQty: {
     letterSpacing: 1.2,
+  },
+  servesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  servesLeader: {
+    flex: 1,
+    marginHorizontal: 8,
+    fontSize: 13,
+    letterSpacing: 3,
+    color: palette.statRuleColor,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  stepperBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.4,
+    borderColor: 'rgba(42, 58, 38, 0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    minWidth: 26,
+    textAlign: 'center',
+    letterSpacing: 1,
   },
   stepSection: {},
   stepHeaderRow: {
