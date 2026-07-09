@@ -102,7 +102,7 @@ const SEED_DISHES: SeedDish[] = [
 
 const SERVINGS_OPTIONS: { value: number; word: string }[] = [
   { value: 1, word: 'JUST ME' },
-  { value: 2, word: 'THE TWO OF US' },
+  { value: 2, word: 'US TWO' },
   { value: 4, word: 'FAMILY' },
   { value: 6, word: 'CROWD' },
 ];
