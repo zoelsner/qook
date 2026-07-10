@@ -199,20 +199,27 @@ export async function generateRecipesForEnergy(
   }
 }
 
-// Save-gated hero art (Zach 2026-07-07: fire on save, not on cook-commit).
-// Called but NOT awaited. The server's atomic pending|failed→generating lock
+// Draft-time hero art, also re-fired on save/retry for pending or failed rows.
+// Called but NOT awaited by the UI. The server's atomic pending|failed→generating lock
 // means at most one paid generation per recipe row ever (retry-on-open only
 // re-fires a 'failed' row), so the spend ceiling is the global pending/failed
-// recipe count × ~6.8¢ — NOT a per-user quota. The client needs no dedup or
-// polling: image_status is re-read on next open, and a 'failed' open re-fires
+// recipe count × ~6.8¢ — NOT a per-user quota. The client polls the recipe row
+// only while image_status is pending/generating, and a 'failed' open re-fires
 // this once (spec §6). No-op in mock mode: fixture recipes have no DB row.
 export async function requestRecipeImage(recipeId: string): Promise<void> {
   if (mode === 'mock') return;
   try {
     await ensureSession();
-    await supabase.functions.invoke('generate-image', { body: { recipeId } });
-  } catch {
-    /* fire-and-forget — a failed request just leaves image_status untouched */
+    const { error } = await supabase.functions.invoke('generate-image', {
+      body: { recipeId },
+    });
+    if (error && __DEV__) {
+      console.warn(`[recipe-image] ${recipeId}: ${error.message}`);
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(`[recipe-image] ${recipeId}: request failed`, error);
+    }
   }
 }
 

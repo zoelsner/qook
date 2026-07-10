@@ -27,11 +27,11 @@ export function FoodHeroImage({
   cornerRadius = radius.card,
   style,
 }: FoodHeroImageProps) {
-  const source: ImageSource = remoteUrl
+  const source: ImageSource | undefined = remoteUrl
     ? { uri: remoteUrl }
     : localKey
       ? (seedMeals[localKey] as ImageSource)
-      : (seedMeals['miso-salmon'] as ImageSource);
+      : undefined;
 
   return (
     <ExpoImage
