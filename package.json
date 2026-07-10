@@ -4,5 +4,8 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "patchedDependencies": {
+    "expo-constants@18.0.13": "patches/expo-constants@18.0.13.patch"
+  }
 }
