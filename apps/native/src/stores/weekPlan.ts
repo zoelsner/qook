@@ -195,7 +195,7 @@ export const useWeekPlan = create<WeekPlanState>()(
         });
       },
 
-      clearAll: () => set({ plan: {}, shopStaging: [] }),
+      clearAll: () => set({ plan: {}, shopStaging: [], savedRecipeIds: [] }),
 
       _setHydrated: () => set({ hasHydrated: true }),
     }),

@@ -5,6 +5,7 @@ import {
   isRecipeArtMissing,
   markRecipeArtRequested,
   shouldPollRecipeArt,
+  unmarkRecipeArtRequested,
 } from './recipeArtState';
 
 afterEach(() => _resetRequestedArtIds());
@@ -44,5 +45,11 @@ describe('recipe art poll state (spotlight-first)', () => {
     expect(hasRequestedRecipeArt('r5')).toBe(false);
     markRecipeArtRequested('r5');
     expect(hasRequestedRecipeArt('r5')).toBe(true);
+  });
+
+  test('unmark stops a pending row from polling (failed request never reached the server)', () => {
+    markRecipeArtRequested('r6');
+    unmarkRecipeArtRequested('r6');
+    expect(shouldPollRecipeArt({ id: 'r6', imageStatus: 'pending' })).toBe(false);
   });
 });

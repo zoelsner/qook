@@ -112,7 +112,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     try {
       await RNShare.share({
         title: recipe.title,
-        message: `${recipe.title} — cooked with Qook\nhttps://qook.app/r/${recipe.slug}`,
+        message: `${recipe.title} — cooked with Qook`,
       });
     } catch {
       /* user dismissed the share sheet */

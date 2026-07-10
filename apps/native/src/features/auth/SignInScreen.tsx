@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { PolishedButton } from '../../components/PolishedButton';
-import { IconApple } from '../../components/painted';
 import { palette, spacing, typeScale } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { StorageKeys, writeFlag, writeString } from '../../lib/storage';
@@ -103,14 +102,12 @@ export function SignInScreen() {
 
           <View style={styles.flexSpacer} />
 
-          <PolishedButton
-            label="Continue with Apple"
-            tone="forest"
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={14}
+            style={styles.appleButton}
             onPress={handleApple}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Continue with Apple"
-            leadingIcon={<IconApple size={18} color={palette.surface} />}
           />
 
           <View style={{ height: spacing.md }} />
@@ -212,6 +209,10 @@ const styles = StyleSheet.create({
   flexSpacer: {
     flex: 1,
     minHeight: spacing.xxl,
+  },
+  appleButton: {
+    width: '100%',
+    height: 52,
   },
   ghost: {
     alignSelf: 'center',

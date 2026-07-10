@@ -20,6 +20,10 @@ export function markRecipeArtRequested(id: string): void {
   requestedArtIds.add(id);
 }
 
+export function unmarkRecipeArtRequested(id: string): void {
+  requestedArtIds.delete(id);
+}
+
 export function hasRequestedRecipeArt(id: string): boolean {
   return requestedArtIds.has(id);
 }

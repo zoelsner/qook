@@ -125,17 +125,20 @@ export function MoreScreen() {
           onPress: async () => {
             if (accountBusy) return;
             setAccountBusy(true);
-            try {
-              const { error } = await supabase.functions.invoke('delete-account');
-              if (error) throw error;
-            } catch (e) {
-              setAccountBusy(false);
-              if (__DEV__) console.warn('[account] delete failed', e);
-              Alert.alert(
-                'Could not delete',
-                'Something went wrong deleting your account. Your data was not changed. Please try again.',
-              );
-              return; // STOP — do not clear local state if the server call failed
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session) {
+              try {
+                const { error } = await supabase.functions.invoke('delete-account');
+                if (error) throw error;
+              } catch (e) {
+                setAccountBusy(false);
+                if (__DEV__) console.warn('[account] delete failed', e);
+                Alert.alert(
+                  'Could not delete',
+                  'Something went wrong deleting your account. Your data was not changed. Please try again.',
+                );
+                return; // STOP — do not clear local state if the server call failed
+              }
             }
             // Server row gone — tear down the local session and all local state.
             await supabase.auth.signOut();

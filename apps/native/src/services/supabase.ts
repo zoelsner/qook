@@ -33,8 +33,12 @@ export async function ensureSession(): Promise<string> {
 export type AppleSignInResult = 'ok' | 'canceled';
 
 /**
- * Native Sign in with Apple. Replaces the current (anon) session with a
- * permanent Apple-backed session. The anon user id is intentionally discarded:
+ * Native Sign in with Apple. Link-first: if an anon session exists, tries
+ * linkIdentity() so the anon user id (and its server rows — generation
+ * history, etc.) is preserved and gains an Apple identity. If linking fails
+ * (typically a returning user whose Apple identity already belongs to a
+ * different account) or there was no session to link from, falls back to
+ * signInWithIdToken(), which replaces the session outright — safe because
  * recipes are global-cache rows and all plan/prefs/cook state is client-local,
  * so nothing the user can see is lost. See design-apple-auth.md §0/§2.
  */
@@ -52,6 +56,17 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
     throw e;
   }
   if (!credential.identityToken) throw new Error('apple_no_identity_token');
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session) {
+    const { error: linkError } = await supabase.auth.linkIdentity({
+      provider: 'apple',
+      token: credential.identityToken,
+    });
+    if (!linkError) return 'ok';
+    if (__DEV__) console.warn('linkIdentity failed, falling back to signInWithIdToken', linkError);
+  }
+
   const { error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: credential.identityToken,
