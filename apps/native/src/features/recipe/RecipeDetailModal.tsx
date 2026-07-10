@@ -37,6 +37,7 @@ import { useCookSession } from '../../stores/cookSession';
 import { scaledIngredientQuantity } from '../../lib/scaleQuantity';
 import { todayISO } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
+import { shouldPollRecipeArt } from '../../hooks/recipeArtState';
 
 export interface RecipeDetailModalProps {
   recipeId: string;
@@ -49,6 +50,9 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['recipe', recipeId],
     queryFn: () => api.getRecipeById(recipeId),
+    refetchOnMount: 'always',
+    refetchInterval: (query) =>
+      shouldPollRecipeArt(query.state.data) ? 2500 : false,
   });
 
   // Retry-on-open (spec §6): if the previous image attempt failed, re-request
@@ -73,6 +77,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const servings = cookState?.servings ?? recipe?.servings ?? 2;
 
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
+  const stageRecipeForShop = useWeekPlan((s) => s.stageRecipeForShop);
   const todaysPick = useWeekPlan((s) => activePickFor(s.plan[todayISO()]));
   const isTodaysPick = todaysPick?.id === recipeId;
 
@@ -104,7 +109,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const onAddAllToList = () => {
     if (!recipe) return;
     press();
-    appendRecipeAndSelect(todayISO(), recipe);
+    stageRecipeForShop(recipe);
     router.push('/(tabs)/shop');
   };
 

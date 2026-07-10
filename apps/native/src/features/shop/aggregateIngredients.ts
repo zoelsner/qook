@@ -1,4 +1,8 @@
-import { categorizeIngredient, type GroceryCategory } from '@qook/shared';
+import {
+  categorizeIngredient,
+  type GroceryCategory,
+  type Recipe,
+} from '@qook/shared';
 
 import type { ISODate } from '../week/weekDates';
 import type { DayPlan } from '../../stores/weekPlan';
@@ -24,18 +28,32 @@ export interface ShopItem {
  * We do NOT attempt unit arithmetic (2 lb + 1 lb → 3 lb) in v1. We concat
  * distinct quantity strings and surface `recipeCount` so the user can infer
  * total demand.
+ *
+ * Recipes staged by "Add all to list" are included without changing the
+ * user's selected Tonight/Week meals. A staged recipe already present as an
+ * active pick is deduplicated by recipe id.
  */
 export function aggregateIngredients(
   plan: Record<ISODate, DayPlan>,
   todayIso: ISODate,
+  staged: Recipe[] = [],
 ): ShopItem[] {
   const map = new Map<string, ShopItem>();
 
+  const picks: Recipe[] = [];
   for (const [date, day] of Object.entries(plan)) {
     if (date < todayIso) continue;
-
     const pick = day.recipes?.[day.pickIndex ?? 0];
-    if (!pick?.ingredients?.length) continue;
+    if (pick) picks.push(pick);
+  }
+
+  const pickedIds = new Set(picks.map((pick) => pick.id));
+  for (const recipe of staged) {
+    if (!pickedIds.has(recipe.id)) picks.push(recipe);
+  }
+
+  for (const pick of picks) {
+    if (!pick.ingredients?.length) continue;
 
     const flatIngredients = pick.ingredients.flatMap((group) => group.items ?? []);
     for (const ingredient of flatIngredients) {

@@ -96,7 +96,10 @@ export function openAmazonFresh(items: GroceryItem[]) {
 
 export async function copyList(items: GroceryItem[]): Promise<boolean> {
   const text = formatListText(items);
-  if (!text) return false;
+  if (!text) {
+    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
+    return false;
+  }
   try {
     await Clipboard.setStringAsync(text);
     return true;
@@ -107,7 +110,10 @@ export async function copyList(items: GroceryItem[]): Promise<boolean> {
 
 export async function shareList(items: GroceryItem[]): Promise<void> {
   const text = formatListText(items);
-  if (!text) return;
+  if (!text) {
+    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
+    return;
+  }
   try {
     await Share.share({ message: text });
   } catch {

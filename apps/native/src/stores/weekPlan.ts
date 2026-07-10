@@ -3,7 +3,9 @@ import type { EnergyTier, Recipe } from '@qook/shared';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { todayISO, type ISODate } from '../features/week/weekDates';
+import { addDaysISO, todayISO, type ISODate } from '../features/week/weekDates';
+
+const STAGING_TTL_DAYS = 7;
 
 export interface DayPlan {
   energy?: EnergyTier;
@@ -13,9 +15,15 @@ export interface DayPlan {
   cookedAt?: string;
 }
 
+export interface StagedShopRecipe {
+  recipe: Recipe;
+  stagedAt: ISODate;
+}
+
 interface WeekPlanState {
   plan: Record<ISODate, DayPlan>;
   savedRecipeIds: string[];
+  shopStaging: StagedShopRecipe[];
   hasHydrated: boolean;
 
   setEnergy: (date: ISODate, tier: EnergyTier) => void;
@@ -25,6 +33,7 @@ interface WeekPlanState {
   swapPick: (date: ISODate) => void;
   commitSelection: (date: ISODate) => void;
   appendRecipeAndSelect: (date: ISODate, recipe: Recipe) => void;
+  stageRecipeForShop: (recipe: Recipe) => void;
   toggleSavedRecipe: (id: string) => void;
   clearDay: (date: ISODate) => void;
   clearFuture: () => void;
@@ -38,6 +47,7 @@ export const useWeekPlan = create<WeekPlanState>()(
     (set, get) => ({
       plan: {},
       savedRecipeIds: [],
+      shopStaging: [],
       hasHydrated: false,
 
       setEnergy: (date, energy) =>
@@ -147,6 +157,19 @@ export const useWeekPlan = create<WeekPlanState>()(
         }));
       },
 
+      stageRecipeForShop: (recipe) => {
+        const today = todayISO();
+        const cutoff = addDaysISO(today, -STAGING_TTL_DAYS);
+        set((state) => ({
+          shopStaging: [
+            ...state.shopStaging.filter(
+              (staged) => staged.stagedAt >= cutoff && staged.recipe.id !== recipe.id,
+            ),
+            { recipe, stagedAt: today },
+          ],
+        }));
+      },
+
       toggleSavedRecipe: (id) =>
         set((state) => ({
           savedRecipeIds: state.savedRecipeIds.includes(id)
@@ -172,7 +195,7 @@ export const useWeekPlan = create<WeekPlanState>()(
         });
       },
 
-      clearAll: () => set({ plan: {} }),
+      clearAll: () => set({ plan: {}, shopStaging: [] }),
 
       _setHydrated: () => set({ hasHydrated: true }),
     }),
@@ -186,6 +209,7 @@ export const useWeekPlan = create<WeekPlanState>()(
       partialize: (state) => ({
         plan: state.plan,
         savedRecipeIds: state.savedRecipeIds,
+        shopStaging: state.shopStaging,
       }),
       merge: (persistedState, currentState) => {
         const persistedPlan = (persistedState as Partial<WeekPlanState> | undefined)?.plan ?? {};
@@ -198,11 +222,15 @@ export const useWeekPlan = create<WeekPlanState>()(
         const persistedSaved =
           (persistedState as Partial<WeekPlanState> | undefined)?.savedRecipeIds ?? [];
 
+        const persistedStaging =
+          (persistedState as Partial<WeekPlanState> | undefined)?.shopStaging ?? [];
+
         return {
           ...currentState,
           ...(persistedState as object),
           plan: mergedPlan,
           savedRecipeIds: persistedSaved,
+          shopStaging: persistedStaging,
         };
       },
       onRehydrateStorage: () => (state) => {
@@ -235,4 +263,12 @@ export function recentSelectedDays(
 export function activePickFor(day: DayPlan | undefined): Recipe | null {
   if (!day?.recipes?.length) return null;
   return day.recipes[day.pickIndex ?? 0] ?? null;
+}
+
+export function activeStagedRecipes(
+  staging: StagedShopRecipe[],
+  todayIso: ISODate,
+): Recipe[] {
+  const cutoff = addDaysISO(todayIso, -STAGING_TTL_DAYS);
+  return staging.filter((item) => item.stagedAt >= cutoff).map((item) => item.recipe);
 }

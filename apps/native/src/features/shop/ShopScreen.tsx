@@ -11,7 +11,7 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight } from 'lucide-react-native';
 import { palette, screen, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
-import { useWeekPlan } from '../../stores/weekPlan';
+import { activeStagedRecipes, useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
 import {
   copyList,
@@ -60,12 +60,16 @@ export function ShopScreen() {
   const router = useRouter();
   const { press, select } = useHaptics();
   const plan = useWeekPlan((s) => s.plan);
+  const shopStaging = useWeekPlan((s) => s.shopStaging);
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
   const today = todayISO();
 
   const items = useMemo(
-    () => (hasHydrated ? aggregateIngredients(plan, today) : []),
-    [plan, today, hasHydrated],
+    () =>
+      hasHydrated
+        ? aggregateIngredients(plan, today, activeStagedRecipes(shopStaging, today))
+        : [],
+    [plan, shopStaging, today, hasHydrated],
   );
 
   const [checked, setChecked] = useState<Record<string, boolean>>({});
