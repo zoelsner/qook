@@ -132,9 +132,15 @@ for cook-tonight (button first, gesture as polish).
 2. **Voice-context pass-through: YES.** The hand inherits the context line
    the energy flow captures, passed into the phase-1 prompt unchanged.
 
-## Loading screen
+## Loading screen (decided 2026-07-10, Zach)
 
-The ~10–15s deal moment gets a designed loading experience (concepts explored
-in the card-treatments artifact `2270935e`, "deck forming / food" direction);
-final pick happens alongside the card mask decision. The existing
-circled-word loader is the fallback if none lands better.
+**"Dealing the hand" — the shuffle** (Loader 01 in artifact `2270935e`): five
+face-down cards deal into a fan with an overshoot settle; the center card
+flips face-up and paints itself (watercolor washes bloom on bare cream, then
+title + Ready chip); the hand sweeps away and re-deals. One unhurried
+~7s cycle, looping while the deal runs. Status copy changes exactly once:
+"the kitchen is thinking" → "five proposals, coming up". Guardrails: the
+rhythm stays slow (fast loop reads as churn) and the FINAL deal-out settles
+into the real deck instead of sweeping away — the loader's last cycle is the
+reveal. Reduced-motion fallback: static dealt hand + the two-beat copy.
+Alternate held in reserve (not built): "one becomes five" (Loader 01C).
