@@ -122,10 +122,19 @@ for cook-tonight (button first, gesture as polish).
 - Sim walk: deal → swipe → keep 2 → cook tonight exit → verify Tonight tab,
   Week allocation, Shop aggregation; circle vs square mask A/B happens here.
 
-## Open questions (fine to resolve during planning)
+## Resolved questions (Zach, 2026-07-10)
 
-1. Skeleton dedup at phase 1 — should identical *titles* short-circuit to an
-   existing full recipe before paying phase 2? (Lean yes if trivial: title
-   exact-match against global cache.)
-2. Does the hand inherit the context line (voice input) the current energy
-   flow captures? (Lean yes — pass through unchanged.)
+1. **Phase-1 title cache shortcut: YES.** On exact title match against the
+   global cache, the proposal points at the existing full row instead of a
+   skeleton — the card arrives with `content_status='full'` AND finished art
+   (`image_storage_path` lives on the same row), phase 2 and the image call
+   both skipped. $0, instant.
+2. **Voice-context pass-through: YES.** The hand inherits the context line
+   the energy flow captures, passed into the phase-1 prompt unchanged.
+
+## Loading screen
+
+The ~10–15s deal moment gets a designed loading experience (concepts explored
+in the card-treatments artifact `2270935e`, "deck forming / food" direction);
+final pick happens alongside the card mask decision. The existing
+circled-word loader is the fallback if none lands better.
