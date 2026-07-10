@@ -38,13 +38,17 @@
 
 ### 4. AI spend and anonymous-abuse decision
 
-- Current behavior generates 3 images per session: about `$0.204` before text cost.
-- With the current 10-session daily quota, theoretical image exposure is about `$2.04` per user/day; anonymous identities are mintable.
-- Choose one before external TestFlight:
-  1. keep proposal-time art and tighten signup/rate controls;
-  2. generate only the selected meal (lowest cost);
-  3. generate the spotlight immediately and the other two on demand (best compromise).
+- **DECIDED + SHIPPED 2026-07-11 (option 3):** spotlight-first art — default proposal at draft time, alternates on review-tap or detail-open. Typical session `$0.068–$0.136`.
+- `generate-image` still has no server-side ownership/quota check: any authenticated (incl. anonymous) client can enumerate `pending`/`failed` recipe ids and force paid generations (codex finding, 2026-07-11). Add a per-user rate cap or ownership check to the function before external TestFlight.
+- Retry-on-open of a `failed` recipe is a paid attempt each time — bounded by user behavior, but a chronically failing model would leak spend; keep an eye on `or_cost` logs.
 - Add an operational cost/error view or alert so image failures and spend are visible without opening Supabase logs.
+
+### 4b. Auth hardening (from the 2026-07-11 codex review — post-link-first fixes)
+
+- **Apple token revocation on account deletion:** Apple requires apps using Sign in with Apple to revoke the user's SIWA tokens when the account is deleted (App Store 5.1.1(v) enforcement since 2022). Revocation needs a client secret signed with a `.p8` Sign in with Apple key — which the native-only setup deliberately avoids today. Before **App Store** submission (not internal TestFlight): create the key in the developer portal, store it in Supabase function secrets, and have `delete-account` call Apple's revoke endpoint.
+- **Nonce hardening:** the native flow currently passes no nonce (matches Supabase's official Expo example, but not replay-safe). Add `expo-crypto` + hashed-nonce to `signInAsync`/`signInWithIdToken` in the auth hardening pass.
+- **Pre-link-first orphans:** any anon users created before the link-first flow shipped (plus returning-user fallbacks) leave undeletable `generation_sessions` rows, including free-text `voice_context`. Rows are RLS-protected from other users. Add a scheduled cleanup of anon users older than ~30 days, or a retention trim of `voice_context`.
+- **Stale privacy copy:** `apps/native/assets/privacy-policy.html` still mentions Whisper/Convex/Anthropic — factually wrong for the current stack. Rewrite alongside the P0 §2 legal-URL work.
 
 ### 5. Data-contract cleanup
 
