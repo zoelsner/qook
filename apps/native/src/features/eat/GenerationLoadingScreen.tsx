@@ -47,10 +47,10 @@ export function GenerationLoadingScreen() {
       try {
         const recipes = await api.generateRecipesForEnergy(tier, context);
         if (cancelled) return;
-        // Draft-time hero art (Zach 2026-07-08): fire for every proposal so
-        // pictures land while the user is still choosing. Fire-and-forget —
-        // the review screen polls until each image arrives.
-        for (const r of recipes) void api.requestRecipeImage(r.id);
+        // Spotlight-first (spec §1A): only the default proposal (index 0, the
+        // one review selects on mount) gets draft-time art. Alternates are fired
+        // when the user engages them (review tap / detail open). Fire-and-forget.
+        if (recipes[0]) void api.requestRecipeImage(recipes[0].id);
         finish(recipes);
         success();
         router.replace('/(eat)/review');

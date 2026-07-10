@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import type {
   IngredientGroup,
@@ -47,6 +47,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const router = useRouter();
   const { tap, press, select } = useHaptics();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { data: recipe, isLoading } = useQuery({
     queryKey: ['recipe', recipeId],
     queryFn: () => api.getRecipeById(recipeId),
@@ -55,14 +56,26 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
       shouldPollRecipeArt(query.state.data) ? 2500 : false,
   });
 
-  // Retry-on-open (spec §6): if the previous image attempt failed, re-request
-  // once when the recipe opens. The server's pending|failed→generating lock
-  // makes duplicate fires cheap no-ops, so no polling/dedup is needed here.
+  // Ensure art for any recipe the user actually opens (spotlight-first §1C):
+  // 'pending' = never-requested proposal reaching detail; 'failed' = retry.
+  // Duplicate fires are cheap server no-ops (pending|failed→generating lock).
+  // Fire at most once per modal open — re-firing on every status observation
+  // could loop paid retries on a permanently failing row. The delayed
+  // invalidate refetches after the server has flipped the row to 'generating'
+  // so the poll loop (gated by markRecipeArtRequested) restarts.
+  const artFiredFor = useRef<string | null>(null);
   useEffect(() => {
-    if (recipe?.imageStatus === 'failed') {
+    if (!recipe || artFiredFor.current === recipeId) return;
+    if (recipe.imageStatus === 'pending' || recipe.imageStatus === 'failed') {
+      artFiredFor.current = recipeId;
       void api.requestRecipeImage(recipeId);
+      const t = setTimeout(
+        () => queryClient.invalidateQueries({ queryKey: ['recipe', recipeId] }),
+        1500,
+      );
+      return () => clearTimeout(t);
     }
-  }, [recipe?.imageStatus, recipeId]);
+  }, [recipe, recipeId, queryClient]);
 
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
@@ -150,7 +163,6 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
             <IconPill
               onPress={() => {
                 press();
-                if (!saved) void api.requestRecipeImage(recipeId);
                 toggleSavedRecipe(recipeId);
               }}
               accessibilityLabel={saved ? 'Unsave recipe' : 'Save recipe'}

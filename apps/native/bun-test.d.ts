@@ -11,4 +11,5 @@ declare module 'bun:test' {
   export function describe(label: string, fn: () => void): void;
   export function test(label: string, fn: () => void | Promise<unknown>): void;
   export function expect(actual: unknown): Matchers;
+  export function afterEach(fn: () => void | Promise<unknown>): void;
 }

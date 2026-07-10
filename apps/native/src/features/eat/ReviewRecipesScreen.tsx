@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
@@ -17,6 +18,7 @@ import { useRecipeArt } from '../../hooks/useRecipeArt';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { todayISO } from '../week/weekDates';
+import { api } from '../../services/api';
 import type { Recipe } from '@qook/shared';
 import type { SeedMealKey } from '../../lib/assets';
 
@@ -25,6 +27,7 @@ const DOT_LEADER = '·'.repeat(80);
 export function ReviewRecipesScreen() {
   const router = useRouter();
   const { press, select } = useHaptics();
+  const queryClient = useQueryClient();
   const tier = useGenerationSession((s) => s.tier);
   const recipes = useGenerationSession((s) => s.recipes);
   const sessionState = useGenerationSession((s) => s.state);
@@ -121,7 +124,17 @@ export function ReviewRecipesScreen() {
               recipe={r}
               selected={i === pickIdx}
               onPress={() => {
-                if (i !== pickIdx) { select(); setPickIdx(i); }
+                if (i === pickIdx) return;
+                select();
+                setPickIdx(i);
+                // Spotlight-first (spec §1B): engaging an alternate kicks off its
+                // art; invalidate nudges the poll loop so the vignette upgrades
+                // in place (requestRecipeImage marks it requested, so a still-
+                // 'pending' row now polls; a cache-hit 'ready' row shows at once).
+                if (r.imageStatus !== 'ready' && !r.heroImageUrl) {
+                  void api.requestRecipeImage(r.id);
+                  queryClient.invalidateQueries({ queryKey: ['recipe', r.id] });
+                }
               }}
             />
           ))}

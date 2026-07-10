@@ -10,6 +10,7 @@ import { dbRowToRecipe } from './recipeRow';
 import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
+import { markRecipeArtRequested } from '../hooks/recipeArtState';
 
 type ApiMode = 'mock' | 'live';
 
@@ -199,14 +200,17 @@ export async function generateRecipesForEnergy(
   }
 }
 
-// Draft-time hero art, also re-fired on save/retry for pending or failed rows.
-// Called but NOT awaited by the UI. The server's atomic pending|failed→generating lock
-// means at most one paid generation per recipe row ever (retry-on-open only
-// re-fires a 'failed' row), so the spend ceiling is the global pending/failed
-// recipe count × ~6.8¢ — NOT a per-user quota. The client polls the recipe row
-// only while image_status is pending/generating, and a 'failed' open re-fires
-// this once (spec §6). No-op in mock mode: fixture recipes have no DB row.
+// Spotlight-first hero art (design-spotlight-art §1): fired for the default
+// draft-time proposal, a review-time proposal switch, or a detail-modal open
+// on a pending/failed row — never for all 3 proposals up front. Called but NOT
+// awaited by the UI. The server's atomic pending|failed→generating lock means
+// at most one paid generation per recipe row ever, so the spend ceiling is the
+// global pending/failed recipe count × ~6.8¢ — NOT a per-user quota. Always
+// marks the id requested first (recipeArtState) so the poll guard lets a
+// 'pending' row poll once its generation is actually in flight. No-op in mock
+// mode: fixture recipes have no DB row.
 export async function requestRecipeImage(recipeId: string): Promise<void> {
+  markRecipeArtRequested(recipeId); // enables poll for this row while 'pending'
   if (mode === 'mock') return;
   try {
     await ensureSession();
