@@ -26,7 +26,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Expo:** 54 + Expo Router v6, TypeScript
 - **State:** TanStack Query (server) + Zustand (UX)
 - **Backend:** Supabase CLI, migrations at `supabase/migrations/`
-- **AI:** OpenRouter (Haiku 4.5 draft, Sonnet fallback, `google/gemini-3.1-flash-image` for canon-locked meal art)
+- **AI:** OpenRouter (Haiku 4.5 draft, Sonnet fallback, `google/gemini-3.1-flash-lite-image` for canon-locked meal art via OR_IMAGE_MODEL secret)
 
 ## Key locked decisions
 
@@ -36,7 +36,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Auth:** Sign in with Apple + email/password (both via Supabase Auth)
 - **No IAP in v1.** Paywall ships in v1.1 via RevenueCat.
 - **Account deletion in-app** (Apple 5.1.1(v) requirement)
-- **Draft-time live images are current behavior:** all 3 proposals request art after text generation (~$0.204/session). The proposal-time vs selected-meal cost decision is open before TestFlight; see the finish-line plan.
+- **Spotlight-first images (decided 2026-07-11):** the default proposal fires at draft time; alternates on engagement. Typical session ~$0.034–$0.10.
 - **Mock/live toggle** — `app.json.extra.apiMode` flips between fixtures and Supabase
 
 ## Design system (Phase 3b Menu restyle landed 2026-07-08)
@@ -59,7 +59,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 ## Rules
 
 - **Do NOT merge PRs to main** — Zach handles merges himself
-- **External API cost:** always test with 1-2 items before batch (`google/gemini-3.1-flash-image` is approximately $0.068/image)
+- **External API cost:** always test with 1-2 items before batch (`google/gemini-3.1-flash-lite-image` is approximately $0.034/image)
 - **OpenRouter key:** lives ONLY in Supabase Edge Function secrets. Never in client bundle, never in EAS.
 - **RLS is the security model:** every client query must pass RLS. Edge Functions hold service role key for admin ops.
 - **Signature dedup:** SHA-256 over canonical `{title, cuisine, tier, sorted ingredients}` → global recipe cache

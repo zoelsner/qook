@@ -5,7 +5,9 @@ import { MODELS, OR_ENDPOINT, orHeaders } from "../_shared/openrouter.ts";
 import { ERRORS, errorResponse } from "../_shared/errors.ts";
 import { lockOutcome } from "./lock.ts";
 
-const IMAGE_PRICE_USD = 0.068; // google/gemini-3.1-flash-image, spec §3
+// Effective model is the OR_IMAGE_MODEL secret (google/gemini-3.1-flash-lite-image
+// since the 2026-07-11 bake-off: same artist's hand, half the price, 4-9s vs ~14s).
+const IMAGE_PRICE_USD = 0.034;
 
 // Storage path and the DB's image_storage_path must agree with the actual
 // bytes' MIME type — hardcoding .png silently wrote mismatched extensions

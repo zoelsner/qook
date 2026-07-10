@@ -12,7 +12,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **`apiMode` is `"live"`** in `app.json`; mock fixtures remain behind the flag.
 - **4 Edge Functions deployed** with `--no-verify-jwt` (auth enforced in-code by `requireUser`): `generate-recipe` (SSE stream, structured outputs, signature-dedup global cache), `generate-image` (draft-time today; atomic `image_status pending|failed→generating` spend lock), `shopping-share` (keyless Instacart search-fallback — the IDP program is closed), `delete-account` (cascade verified).
 - **Auth today:** anonymous sign-ins enabled; client `ensureSession()` bootstraps an anon session. Anon signups capped 10/hr/IP. Real auth (Apple + email) is Phase 5.
-- **Images:** `google/gemini-3.1-flash-image` (~$0.068/image) via OpenRouter, style-locked by the canon reference at `apps/native/assets/meals-seed/canon/canon-v1.png`. Seedream is GONE from OpenRouter. The current client requests art for all 3 proposals after recipe text finishes; save/retry can safely re-fire because the DB lock allows at most one paid generation per recipe state. Missing art renders a neutral blur/letter—not another recipe—and TanStack Query polls only while `image_status` is `pending`/`generating`. Latest measured run: recipes ready in ~34s; images ready ~11–22s later in parallel; all art ready ~54s from start. Verified 2026-07-10.
+- **Images:** `google/gemini-3.1-flash-lite-image` (~$0.034/image, 4–9s) via OpenRouter, set by the `OR_IMAGE_MODEL` function secret (code default is still flash — the secret wins). Chosen in the 2026-07-11 bake-off: same artist's hand as flash, half price, ~3× faster, and it actually obeys the prompt (flash leaks props/planks from the canon reference). Style-locked by the canon reference at `apps/native/assets/meals-seed/canon/canon-v1.png` + the v3 prompt in `supabase/functions/_shared/prompts/image.ts` (edge-touching zoom + jewel-toned color + fine-detail lines; gold standard = the Thai turkey lettuce wraps hero). Spotlight-first: only the default proposal fires at draft time; alternates fire on review-tap/detail-open. Missing art renders a neutral blur/letter—not another recipe—and TanStack Query polls only while `image_status` is `pending`/`generating` (pending only if this client requested it). Bake-off artifact: https://claude.ai/code/artifact/bf3e857c-f435-456a-83a4-8e8dd735be6d
 - **Quotas:** 10 generations/user/day (failed generations excluded); recipes persist tags + nutrition (migration `20260707000001`).
 - **Secrets/tokens:** `OPENROUTER_API_KEY` lives ONLY in Supabase function secrets. `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` live in `~/Projects/qook/.env.local` (gitignored) — load with `set -a; source …; set +a`, NEVER cat/echo/print them (rotation pending — they transited chat once). The anon key in `app.json` is public by design.
 - **DB row ↔ client mapping:** edge `supabase/functions/_shared/recipe-map.ts` and client `apps/native/src/services/recipeRow.ts` must stay in sync — never cast a raw snake_case row `as Recipe`.
@@ -57,7 +57,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Expo:** 54 + Expo Router v6, TypeScript
 - **State:** TanStack Query (server) + Zustand (UX)
 - **Backend:** Supabase CLI, migrations at `supabase/migrations/`
-- **AI:** OpenRouter — recipe generation via structured outputs (SSE-streamed from `generate-recipe`); images via `google/gemini-3.1-flash-image`, canon-locked. (Seedream no longer exists on OpenRouter.)
+- **AI:** OpenRouter — recipe generation via structured outputs (SSE-streamed from `generate-recipe`); images via `google/gemini-3.1-flash-lite-image` (OR_IMAGE_MODEL secret), canon-locked. (Seedream no longer exists on OpenRouter.)
 
 ## Key locked decisions
 
@@ -67,7 +67,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Auth:** Sign in with Apple + email/password (both via Supabase Auth)
 - **No IAP in v1.** Paywall ships in v1.1 via RevenueCat.
 - **Account deletion in-app** (Apple 5.1.1(v) requirement)
-- **Draft-time live images are currently enabled:** all 3 proposals request art after text generation (~$0.204/session at current pricing). This supersedes older save-gated notes, but the proposal-time vs selected-meal cost decision must be made before TestFlight; see the finish-line plan.
+- **Spotlight-first draft-time images (decided 2026-07-11):** the default proposal fires at draft time; alternates fire on engagement. Typical session ~$0.034–$0.10 on the lite model.
 - **Mock/live toggle** — `app.json.extra.apiMode` flips between fixtures and Supabase
 
 ## Design system (Phase 3b "Menu" restyle landed 2026-07-08; see `docs/superpowers/plans/2026-07-08-phase3b-menu-restyle.md`)
@@ -92,7 +92,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 ## Rules
 
 - **Do NOT merge PRs to main** — Zach handles merges himself
-- **External API cost:** always test with 1-2 items before batch (Gemini 3.1 Flash Image is ~$0.068/image; a text generation is a few cents)
+- **External API cost:** always test with 1-2 items before batch (gemini-3.1-flash-lite-image is ~$0.034/image; a text generation is a few cents)
 - **OpenRouter key:** lives ONLY in Supabase Edge Function secrets. Never in client bundle, never in EAS.
 - **RLS is the security model:** every client query must pass RLS. Edge Functions hold service role key for admin ops.
 - **Signature dedup:** SHA-256 over canonical `{title, cuisine, tier, sorted ingredients}` → global recipe cache
