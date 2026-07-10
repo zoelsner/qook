@@ -39,3 +39,11 @@ export async function writeString(key: string, value: string): Promise<void> {
     /* swallow — non-fatal */
   }
 }
+
+export async function clearAuthFlags(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([StorageKeys.signedIn, StorageKeys.authMode]);
+  } catch {
+    /* non-fatal */
+  }
+}

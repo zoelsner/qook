@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { IconApple } from '../../components/painted';
 import { palette, spacing, typeScale } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { StorageKeys, writeFlag, writeString } from '../../lib/storage';
+import { signInWithApple } from '../../services/supabase';
 
 const HORIZONTAL_PADDING = 32;
 
@@ -26,15 +27,28 @@ export function SignInScreen() {
     router.replace('/(tabs)/tonight');
   };
 
-  const handleApple = () => {
+  const handleApple = async () => {
+    if (busy) return;
     press();
-    console.log('[auth] stub Sign in with Apple');
-    void finish('apple');
+    setBusy(true);
+    try {
+      const result = await signInWithApple();
+      if (result === 'canceled') {
+        setBusy(false);
+        return;
+      }
+      await writeFlag(StorageKeys.signedIn, true);
+      await writeString(StorageKeys.authMode, 'apple');
+      router.replace('/(tabs)/tonight');
+    } catch (e) {
+      setBusy(false);
+      Alert.alert('Sign-in failed', 'Could not sign in with Apple. Please try again.');
+      if (__DEV__) console.warn('[auth] apple sign-in', e);
+    }
   };
 
   const handleGuest = () => {
     tap();
-    console.log('[auth] continue as guest');
     void finish('guest');
   };
 
@@ -129,7 +143,7 @@ export function SignInScreen() {
             weight="medium"
             style={styles.finePrint}
           >
-            Stubbed sign-in for development. No account required.
+            We use your Apple ID only to secure your account.
           </BodyText>
 
           <View style={{ height: spacing.md }} />

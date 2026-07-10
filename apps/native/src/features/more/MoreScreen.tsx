@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Constants from 'expo-constants';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react-native';
 
 import { ScreenShell } from '../../components/ScreenShell';
@@ -10,7 +11,10 @@ import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { usePrefs } from '../../stores/prefs';
+import { useCookSession } from '../../stores/cookSession';
 import { todayISO } from '../week/weekDates';
+import { supabase, signInWithApple } from '../../services/supabase';
+import { AuthMode, StorageKeys, clearAuthFlags, readString, writeFlag, writeString } from '../../lib/storage';
 
 interface MoreRow {
   label: string;
@@ -29,6 +33,14 @@ interface MoreGroup {
 export function MoreScreen() {
   const router = useRouter();
   const { tap, press, select } = useHaptics();
+  const queryClient = useQueryClient();
+
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+
+  useEffect(() => {
+    void readString(StorageKeys.authMode).then((mode) => setAuthMode(mode as AuthMode | null));
+  }, []);
 
   const plan = useWeekPlan((s) => s.plan);
   const clearDay = useWeekPlan((s) => s.clearDay);
@@ -69,6 +81,76 @@ export function MoreScreen() {
 
   const showPending = (what: string, detail: string) =>
     Alert.alert(what, detail, [{ text: 'OK' }]);
+
+  const handleAppleUpgrade = async () => {
+    if (accountBusy) return;
+    setAccountBusy(true);
+    try {
+      const result = await signInWithApple();
+      if (result === 'ok') {
+        await writeFlag(StorageKeys.signedIn, true);
+        await writeString(StorageKeys.authMode, 'apple');
+        setAuthMode('apple');
+      }
+    } catch (e) {
+      if (__DEV__) console.warn('[account] apple sign-in', e);
+      Alert.alert('Sign-in failed', 'Could not sign in with Apple. Please try again.');
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const handleSignOut = () => {
+    confirm(
+      'Sign out?',
+      "You'll be signed out on this device.",
+      async () => {
+        await supabase.auth.signOut();
+        await clearAuthFlags();
+        router.replace('/(auth)/sign-in');
+      },
+      'Sign out',
+    );
+  };
+
+  const deleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'This permanently deletes your account and all recipes generated on it. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (accountBusy) return;
+            setAccountBusy(true);
+            try {
+              const { error } = await supabase.functions.invoke('delete-account');
+              if (error) throw error;
+            } catch (e) {
+              setAccountBusy(false);
+              if (__DEV__) console.warn('[account] delete failed', e);
+              Alert.alert(
+                'Could not delete',
+                'Something went wrong deleting your account. Your data was not changed. Please try again.',
+              );
+              return; // STOP — do not clear local state if the server call failed
+            }
+            // Server row gone — tear down the local session and all local state.
+            await supabase.auth.signOut();
+            clearAll();
+            usePrefs.getState().resetPrefs();
+            useCookSession.setState({ byRecipe: {} });
+            queryClient.clear();
+            await clearAuthFlags();
+            setAccountBusy(false);
+            router.replace('/(auth)/sign-in');
+          },
+        },
+      ],
+    );
+  };
 
   // Short summary lines under each taste row, so the user sees their current
   // state without opening the detail screen.
@@ -188,31 +270,33 @@ export function MoreScreen() {
     {
       title: 'account',
       rows: [
-        {
-          label: 'Sign in',
-          subtitle: 'Email, Apple — required for syncing',
-          kicker: 'id',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Sign in',
-              'Auth ships with the first live backend cut. Until then the app runs locally on mock data.',
-            );
-          },
-        },
+        authMode === 'apple'
+          ? {
+              label: 'Sign out',
+              subtitle: 'Signed in with Apple',
+              kicker: 'id',
+              onPress: () => {
+                tap();
+                handleSignOut();
+              },
+            }
+          : {
+              label: 'Sign in with Apple',
+              subtitle: 'Secure your account with your Apple ID',
+              kicker: 'id',
+              onPress: () => {
+                tap();
+                void handleAppleUpgrade();
+              },
+            },
         {
           label: 'Delete account',
           subtitle: 'Permanently remove your data',
           kicker: 'gone',
           destructive: true,
-          disabled: true,
           onPress: () => {
             tap();
-            showPending(
-              'Delete account',
-              "Required by Apple's 5.1.1(v). Ships with the auth cut before TestFlight.",
-            );
+            deleteAccount();
           },
         },
       ],
