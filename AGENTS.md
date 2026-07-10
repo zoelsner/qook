@@ -4,13 +4,15 @@
 
 Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
-**Target:** v1 TestFlight 2026-05-24.
+**Target:** TestFlight via the 2026-07 revival. The original 2026-05-24 date lapsed.
 
 ## Start every session by reading
 
-1. `docs/plan/START-HERE.md` — current phase + what's done vs pending
-2. `docs/plan/PLAN.md` — 32-day execution plan (especially §9 Day 1 checklist + §4 timeline)
-3. Section files as needed:
+1. `docs/superpowers/plans/2026-07-10-finish-line.md` — authoritative launch blockers, product-completeness queue, and Fable brief
+2. `CLAUDE.md` — current live backend, routes, architecture decisions, and gotchas
+3. `docs/superpowers/specs/2026-07-06-qook-revival-design.md` + the latest implementation plan in `docs/superpowers/plans/`
+4. April docs (`docs/plan/START-HERE.md`, `PLAN.md`, and section files) are pre-revival reference; use them only where the July docs have not superseded them.
+5. Section files as needed:
    - `docs/plan/section-backend.md` — Supabase (schema, RLS, Edge Fns, cron, storage)
    - `docs/plan/section-frontend.md` — Expo + RN (design tokens, primitives, routing)
    - `docs/plan/section-domain.md` — TS types + flows + normalize
@@ -21,10 +23,10 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
 - **Monorepo layout:** `apps/native/` (Expo) + `packages/shared/` (TS domain types) + `supabase/` (migrations + edge functions)
 - **Package manager:** `bun`
-- **Expo:** 52 + Expo Router v4, TypeScript blank template
+- **Expo:** 54 + Expo Router v6, TypeScript
 - **State:** TanStack Query (server) + Zustand (UX)
 - **Backend:** Supabase CLI, migrations at `supabase/migrations/`
-- **AI:** OpenRouter (Haiku 4.5 draft, Sonnet 4.6 polish, Seedream 4.5 image)
+- **AI:** OpenRouter (Haiku 4.5 draft, Sonnet fallback, `google/gemini-3.1-flash-image` for canon-locked meal art)
 
 ## Key locked decisions
 
@@ -34,14 +36,14 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Auth:** Sign in with Apple + email/password (both via Supabase Auth)
 - **No IAP in v1.** Paywall ships in v1.1 via RevenueCat.
 - **Account deletion in-app** (Apple 5.1.1(v) requirement)
-- **Save-gated live images** (cohort eager, live lazy) — keeps 100-tester OpenRouter ≈ $109/mo
+- **Draft-time live images are current behavior:** all 3 proposals request art after text generation (~$0.204/session). The proposal-time vs selected-meal cost decision is open before TestFlight; see the finish-line plan.
 - **Mock/live toggle** — `app.json.extra.apiMode` flips between fixtures and Supabase
 
-## Design system (updated 2026-04-20 end-of-day)
+## Design system (Phase 3b Menu restyle landed 2026-07-08)
 
-- Palette: cream `#FCF9F1` / surface `#FEFBF3` / text `#26241C` / forest `#2A3A26` / rust `#C36A48` / prussian `#3D5469`
+- Palette: cream ground `#FBF7EE` / active well `#F1E9D9` / surface `#FFFCF6` / forest ink `#2A3A26` / rust `#C36A48` / prussian `#3D5469`
 - Fraunces Bold (display) · DM Sans (body) · JetBrains Mono (kickers)
-- Primitives kept: PaperCard, WashBackground, ScreenShell, PolishedButton (default CTA)
+- Primitives kept: PaperCard, ScreenShell (flat cream), PolishedButton (default CTA), MenuRow, Vignette
 - Primitives dialed back: **BrushstrokeUnderline** used sparingly as title accent only, not system-wide
 - Primitives deprecated: **PaintedButton** (wobbly buttons), **painted icons** (IconClose, IconRefresh, IconHeart, IconArrowRight, etc. — replace with `lucide-react-native`), **PaintedCheckbox wobble**
 - 24 Seedream watercolor PNGs at `assets/meals-seed/v2/` (copied from sashafood) — the watercolor food imagery remains the distinctive visual
@@ -57,20 +59,22 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 ## Rules
 
 - **Do NOT merge PRs to main** — Zach handles merges himself
-- **External API cost:** always test with 1-2 items before batch (Seedream is $0.04/image)
+- **External API cost:** always test with 1-2 items before batch (`google/gemini-3.1-flash-image` is approximately $0.068/image)
 - **OpenRouter key:** lives ONLY in Supabase Edge Function secrets. Never in client bundle, never in EAS.
 - **RLS is the security model:** every client query must pass RLS. Edge Functions hold service role key for admin ops.
 - **Signature dedup:** SHA-256 over canonical `{title, cuisine, tier, sorted ingredients}` → global recipe cache
 - **No emojis in UI** — color, typography, iconography only
 - **SwiftUI reference only** — active code path is Expo/React Native. Do not edit `sashafood/apps/swift/` from this project.
 
-## Dev commands (post-scaffold)
+## Dev commands
+
+Run app commands from `apps/native/`; the root package has no scripts.
 
 ```bash
-bun install              # install deps
-bun run start            # Expo dev server
-bun run typecheck        # tsc --noEmit
-bun run lint             # eslint
+bun install                         # install deps from repo root
+cd apps/native && bun run start     # Expo dev server
+cd apps/native && bun run typecheck # tsc --noEmit
+cd apps/native && bun run lint      # eslint
 supabase start           # local Postgres + Auth + Storage + Edge runtime
 supabase db reset        # replay migrations locally
 supabase gen types typescript --local > packages/shared/src/database.ts  # regenerate types

@@ -70,3 +70,14 @@ Date: 2026-07-07. Executed by Claude (SDD Task 11, adapted cloud-first — no Do
 - **Verified E2E on sim 2026-07-08:** save → generate → recipe-specific canon-style watercolor ready in ~20s and rendered as modal hero; Instacart dock → Safari search fallback; loading-screen text fix confirmed live.
 - **Deployed:** `generate-image` redeployed 2026-07-08 (commits 45ea3b6 + 0cec83c). Migrations unchanged since `20260707000001`.
 - **Still pending (Zach):** rotate `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD`; push `main` (local c7d7cad) to origin.
+
+## Phase 3c — generated-art linking incident (2026-07-10)
+
+- **Symptom:** a newly generated chickpea curry displayed the bundled `miso-salmon` painting. The backend image pipeline was initially suspected.
+- **Backend evidence:** all 3 recipes from generation session `f89a8ddd-6e84-46f9-a600-4f3ada873165` reached `image_status='ready'` with distinct Storage paths and no `image_error`. Closing and reopening the curry fetched and rendered the correct image.
+- **Root cause:** the client persisted the generated recipe while its image was pending, `RecipeDetailModal` did not refresh after the first fetch, `useRecipeArt` treated the pending cache entry as fresh for 5 minutes, and `FoodHeroImage` used `miso-salmon` whenever both remote and local art were absent. Generation worked; cache synchronization and the fallback were wrong.
+- **Fix:** remove the salmon fallback; render the neutral Expo blur/letter state when art is absent; refetch stale recipe rows on mount; poll at 2.5s only while status is `pending`/`generating`; stop on `ready`/`failed`; log Edge Function invocation failures in development. Pure state regression coverage lives in `apps/native/src/hooks/recipeArtState.test.ts`.
+- **Measured latency:** generation session ~33.9s for all 3 recipes. Their images finished ~10.6s, ~13.4s, and ~21.5s after recipe persistence, in parallel. First art was ready ~44s from session start; all 3 were ready ~54s from start.
+- **Verification:** `tsc --noEmit`, ESLint, `git diff --check`, and 12 Bun tests passed. Simulator restart upgraded a persisted pending curry snapshot to its recipe-specific Supabase image. No new paid image was generated for the verification.
+- **Architecture decision:** remain on Supabase. Convex's automatic reactive queries would have reduced client bookkeeping, but Supabase Realtime or bounded polling fully covers this lifecycle; migration would add risk without addressing a backend failure.
+- **Cost decision still open:** draft-time generation currently requests 3 images per session (~$0.204). Decide before TestFlight whether the visual review experience justifies that cost or whether only the selected/spotlight meal should generate art.

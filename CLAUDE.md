@@ -6,20 +6,21 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
 **Target:** TestFlight via the 2026-07 revival (auth is Phase 5, TestFlight after). The original 2026-05-24 date lapsed.
 
-## Backend live state (2026-07-08 — supersedes anything below that contradicts it)
+## Backend live state (2026-07-10 — supersedes anything below that contradicts it)
 
 - **Supabase project `eehjclffugngogbvctib`** (org "Zach's Qook" `mmidcvwztglgjlgrynpx`, free, us-west-2) on Zach's dedicated account. Do NOT touch the FTP project on the old account. Ops log: `docs/superpowers/plans/phase2-deploy-notes.md`.
 - **`apiMode` is `"live"`** in `app.json`; mock fixtures remain behind the flag.
-- **4 Edge Functions deployed** with `--no-verify-jwt` (auth enforced in-code by `requireUser`): `generate-recipe` (SSE stream, structured outputs, signature-dedup global cache), `generate-image` (save-gated, atomic `image_status pending→generating` spend lock), `shopping-share` (keyless Instacart search-fallback — the IDP program is closed), `delete-account` (cascade verified).
+- **4 Edge Functions deployed** with `--no-verify-jwt` (auth enforced in-code by `requireUser`): `generate-recipe` (SSE stream, structured outputs, signature-dedup global cache), `generate-image` (draft-time today; atomic `image_status pending|failed→generating` spend lock), `shopping-share` (keyless Instacart search-fallback — the IDP program is closed), `delete-account` (cascade verified).
 - **Auth today:** anonymous sign-ins enabled; client `ensureSession()` bootstraps an anon session. Anon signups capped 10/hr/IP. Real auth (Apple + email) is Phase 5.
-- **Images:** `google/gemini-3.1-flash-image` (~$0.068/image) via OpenRouter, style-locked by the canon reference at `apps/native/assets/meals-seed/canon/canon-v1.png`. Seedream is GONE from OpenRouter. One image per recipe ever: saving a recipe fires `api.requestRecipeImage` → lock → generate → `meal-images` storage. Verified E2E 2026-07-08.
+- **Images:** `google/gemini-3.1-flash-image` (~$0.068/image) via OpenRouter, style-locked by the canon reference at `apps/native/assets/meals-seed/canon/canon-v1.png`. Seedream is GONE from OpenRouter. The current client requests art for all 3 proposals after recipe text finishes; save/retry can safely re-fire because the DB lock allows at most one paid generation per recipe state. Missing art renders a neutral blur/letter—not another recipe—and TanStack Query polls only while `image_status` is `pending`/`generating`. Latest measured run: recipes ready in ~34s; images ready ~11–22s later in parallel; all art ready ~54s from start. Verified 2026-07-10.
 - **Quotas:** 10 generations/user/day (failed generations excluded); recipes persist tags + nutrition (migration `20260707000001`).
 - **Secrets/tokens:** `OPENROUTER_API_KEY` lives ONLY in Supabase function secrets. `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` live in `~/Projects/qook/.env.local` (gitignored) — load with `set -a; source …; set +a`, NEVER cat/echo/print them (rotation pending — they transited chat once). The anon key in `app.json` is public by design.
 - **DB row ↔ client mapping:** edge `supabase/functions/_shared/recipe-map.ts` and client `apps/native/src/services/recipeRow.ts` must stay in sync — never cast a raw snake_case row `as Recipe`.
+- **Backend decision:** stay on Supabase. Convex would make reactive query updates automatic, but Qook already has working Postgres/RLS/Storage/Edge Functions; the 2026-07-10 image incident was a missing client cache refresh, not a Supabase limitation. Do not plan a migration for this issue.
 
 ## Start every session by reading
 
-0. **Revival docs first (2026-07):** `docs/superpowers/specs/2026-07-06-qook-revival-design.md` + the latest plan in `docs/superpowers/plans/`. The April docs below describe the pre-revival state.
+0. **Revival docs first (2026-07):** `docs/superpowers/plans/2026-07-10-finish-line.md`, then `docs/superpowers/specs/2026-07-06-qook-revival-design.md` + the latest implementation plan in `docs/superpowers/plans/`. The April docs below describe the pre-revival state.
 
 1. `docs/plan/START-HERE.md` — current phase + what's done vs pending
 2. `docs/plan/PLAN.md` — 32-day execution plan (especially §9 Day 1 checklist + §4 timeline)
@@ -33,7 +34,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
    - `docs/plan/section-ai.md` — OpenRouter wrapper + prompts + streaming + cost
    - `docs/plan/section-testflight.md` — EAS + TestFlight + launch assets
 
-## Current product shape (2026-04-23)
+## Current product shape (2026-07-10)
 
 - **4 tabs**: Tonight (dashboard) · Week (energy-map planner) · Shop (derived list) · More (settings, taste prefs, plan reset).
 - **One unified product-loop store** `useWeekPlan` (Zustand + `persist` to AsyncStorage, key `qook.weekPlan.v1`). Tonight reads `plan[today]`, Week writes `plan[*]`, Shop aggregates ingredients across future days. `activePickFor(day)`, `recentSelectedDays(plan, today, N)` are the selector helpers.
@@ -41,7 +42,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **`clearFuture()` keeps today + past; wipes dates > today.** There's no `clearFutureOnly` — it's `clearFuture`. `clearAll` wipes everything. Persisted state survives sim reloads; to reset, call `useWeekPlan.getState().clearAll()` from the JS debugger or uninstall the app.
 - **Mock vs live** — `app.json.extra.apiMode` = `'mock' | 'live'`. **Live since 2026-07-07** (see "Backend live state" above). Mock mode still reads `apps/native/src/services/fixtures/recipes.ts` — 24 recipes tied to watercolor PNGs at `apps/native/assets/meals-seed/v2/`.
 
-## Routes (Expo Router v5, file-based)
+## Routes (Expo Router v6, file-based)
 
 - `(tabs)/{tonight,week,shop,more}.tsx` — bottom tab bar, rendered by custom `FloatingTabBar`. Height is `screen.tabBarHeight` (design token in `src/design/spacing.ts`) — any sticky dock that sits above the bar uses `insets.bottom + screen.tabBarHeight + gap` (see `ShopScreen.tsx`). Don't hardcode the number.
 - `(eat)/{energy,loading,review,context}.tsx` — modal stack for the energy → draft → pick flow.
@@ -53,7 +54,7 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
 - **Monorepo layout:** `apps/native/` (Expo) + `packages/shared/` (TS domain types) + `supabase/` (migrations + edge functions). **Root `package.json` has no scripts — all dev commands run from `apps/native/`.**
 - **Package manager:** `bun` (workspaces via `"workspaces": ["apps/*","packages/*"]`)
-- **Expo:** 54 + Expo Router v5, TypeScript
+- **Expo:** 54 + Expo Router v6, TypeScript
 - **State:** TanStack Query (server) + Zustand (UX)
 - **Backend:** Supabase CLI, migrations at `supabase/migrations/`
 - **AI:** OpenRouter — recipe generation via structured outputs (SSE-streamed from `generate-recipe`); images via `google/gemini-3.1-flash-image`, canon-locked. (Seedream no longer exists on OpenRouter.)
@@ -66,12 +67,12 @@ Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 - **Auth:** Sign in with Apple + email/password (both via Supabase Auth)
 - **No IAP in v1.** Paywall ships in v1.1 via RevenueCat.
 - **Account deletion in-app** (Apple 5.1.1(v) requirement)
-- **Save-gated live images** (cohort eager, live lazy) — keeps 100-tester OpenRouter ≈ $109/mo
+- **Draft-time live images are currently enabled:** all 3 proposals request art after text generation (~$0.204/session at current pricing). This supersedes older save-gated notes, but the proposal-time vs selected-meal cost decision must be made before TestFlight; see the finish-line plan.
 - **Mock/live toggle** — `app.json.extra.apiMode` flips between fixtures and Supabase
 
-## Design system (last touched 2026-04-23; **Phase 3b "Menu" restyle planned** — see `docs/superpowers/plans/2026-07-08-phase3b-menu-restyle.md`: cream ground moves to `#FBF7EE`, `well #F1E9D9` token added, dot-leader MenuRows, circular Vignettes, text-only mono tab bar)
+## Design system (Phase 3b "Menu" restyle landed 2026-07-08; see `docs/superpowers/plans/2026-07-08-phase3b-menu-restyle.md`)
 
-- Palette: cream `#FCF9F1` / surface `#FEFBF3` / text `#26241C` / forest `#2A3A26` / rust `#C36A48` / prussian `#3D5469`
+- Palette: cream ground `#FBF7EE` / active well `#F1E9D9` / surface `#FFFCF6` / forest ink `#2A3A26` / rust `#C36A48` / prussian `#3D5469`
 - Fraunces Bold (display) · DM Sans (body) · JetBrains Mono (kickers)
 - Fraunces 500 Italic preloaded in `_layout.tsx` for editorial moments ("Tap to spotlight" hint on Tonight)
 - Primitives kept: PaperCard, ScreenShell (flat cream background, no gradient), PolishedButton (default CTA — tones: forest / rust / cream / ghost / apple)
