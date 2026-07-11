@@ -1,130 +1,147 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { CircledWord } from '../../components/CircledWord';
-import { StepDots } from '../../components/StepDots';
+import { DisplayText, Mono, BodyText } from '../../components/Text';
+import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
-import { ENERGY_TIER_LABEL } from '../../types/energy';
 import { api } from '../../services/api';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useHaptics } from '../../hooks/useHaptics';
+import { DealingHandLoader } from './DealingHandLoader';
 
-const STAGES = [
-  { label: 'reading your preferences' },
-  { label: 'drafting three dinners' },
-  { label: 'checking ingredient overlap' },
-  { label: 'finalizing timelines' },
-];
+const FIRST_ART_TIMEOUT_MS = 6000;
+const POLL_INTERVAL_MS = 1200;
+const PREFETCH_AT_DEAL = 3;
+
+// Same stale-typed-routes workaround as DeckScreen's ALLOCATE_ROUTE (Task 10):
+// app/(eat)/deck.tsx exists on disk, but the generated router.d.ts predates it.
+const DECK_ROUTE = '/(eat)/deck' as Href;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Reveal gate: proposal text is already resolved; wait for card-1 art up to a
+// timeout, then reveal (art timeout → deck shows the monogram anyway).
+async function waitForFirstArt(id: string): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < FIRST_ART_TIMEOUT_MS) {
+    const r = await api.getRecipeById(id).catch(() => null);
+    if (r && (r.imageStatus === 'ready' || r.heroImageUrl)) return;
+    await sleep(POLL_INTERVAL_MS);
+  }
+}
 
 export function GenerationLoadingScreen() {
   const router = useRouter();
-  const { success, error } = useHaptics();
+  const { success, error: errorHaptic } = useHaptics();
   const tier = useGenerationSession((s) => s.tier);
   const context = useGenerationSession((s) => s.context);
-  const finish = useGenerationSession((s) => s.finish);
+  const setProposals = useGenerationSession((s) => s.setProposals);
   const fail = useGenerationSession((s) => s.fail);
-  const streamedTitles = useGenerationSession((s) => s.streamedTitles);
-  const [stage, setStage] = useState(0);
-  const ran = useRef(false);
+  const [phase, setPhase] = useState<'thinking' | 'coming-up'>('thinking');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const runId = useRef(0);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
     if (!tier) {
       router.replace('/(eat)/energy');
       return;
     }
-
-    const tick = setInterval(() => {
-      setStage((s) => Math.min(s + 1, STAGES.length - 1));
-    }, 900);
-
+    const myRun = ++runId.current;
     let cancelled = false;
+
     (async () => {
       try {
-        const recipes = await api.generateRecipesForEnergy(tier, context);
-        if (cancelled) return;
-        // Spotlight-first (spec §1A): only the default proposal (index 0, the
-        // one review selects on mount) gets draft-time art. Alternates are fired
-        // when the user engages them (review tap / detail open). Fire-and-forget.
-        if (recipes[0]) void api.requestRecipeImage(recipes[0].id);
-        finish(recipes);
+        setErrorMsg(null);
+        setPhase('thinking');
+        const proposals = await api.generateProposals(tier, context);
+        if (cancelled || myRun !== runId.current) return;
+        setProposals(proposals);
+        setPhase('coming-up');
+        // Warm the first 3 hero images in parallel (spec: pre-fire first 3).
+        proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
+          if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);
+        });
+        if (proposals[0]) await waitForFirstArt(proposals[0].id);
+        if (cancelled || myRun !== runId.current) return;
         success();
-        router.replace('/(eat)/review');
+        router.replace(DECK_ROUTE);
       } catch (e) {
-        if (cancelled) return;
-        fail(e instanceof Error ? e.message : 'Unknown error');
-        error();
-        router.replace('/(eat)/review');
+        if (cancelled || myRun !== runId.current) return;
+        const msg = e instanceof Error ? e.message : 'The kitchen is busy — try again.';
+        fail(msg);
+        setErrorMsg(msg);
+        errorHaptic();
       }
     })();
 
     return () => {
       cancelled = true;
-      clearInterval(tick);
     };
-  }, [tier, context, finish, fail, router, success, error]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier, context]);
+
+  const retry = () => {
+    runId.current++; // triggers the effect body via state change below
+    setErrorMsg(null);
+    setPhase('thinking');
+    // Re-run by nudging the effect: bump a dummy dep through context is not
+    // ideal; instead re-invoke the same flow inline.
+    if (!tier) return;
+    void (async () => {
+      const myRun = runId.current;
+      try {
+        const proposals = await api.generateProposals(tier, context);
+        if (myRun !== runId.current) return;
+        setProposals(proposals);
+        setPhase('coming-up');
+        proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
+          if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);
+        });
+        if (proposals[0]) await waitForFirstArt(proposals[0].id);
+        if (myRun !== runId.current) return;
+        success();
+        router.replace(DECK_ROUTE);
+      } catch (e) {
+        if (myRun !== runId.current) return;
+        setErrorMsg(e instanceof Error ? e.message : 'The kitchen is busy — try again.');
+        errorHaptic();
+      }
+    })();
+  };
+
+  if (errorMsg) {
+    return (
+      <ScreenShell scrollable={false} horizontalPadding={24}>
+        <View style={styles.errorWrap}>
+          <Mono size={10} bold color={palette.destructive}>
+            {"couldn't deal"}
+          </Mono>
+          <View style={{ height: spacing.sm }} />
+          <DisplayText size={24} color={palette.ink} style={{ lineHeight: 28, textAlign: 'center' }}>
+            {errorMsg}
+          </DisplayText>
+          <View style={{ height: spacing.lg }} />
+          <PolishedButton label="Try again" tone="rust" onPress={retry} />
+          <View style={{ height: spacing.sm }} />
+          <PolishedButton label="Back" tone="ghost" onPress={() => router.replace('/(eat)/energy')} />
+        </View>
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell scrollable={false} horizontalPadding={24}>
-      <View style={styles.wrapper}>
-        <Mono size={10} bold color={palette.accentDeep}>
-          drafting
-        </Mono>
-        <View style={{ height: spacing.sm }} />
-        <DisplayText
-          size={34}
-          color={palette.primary}
-          style={styles.title}
-        >
-          Cooking up ideas…
-        </DisplayText>
-        <View style={{ height: spacing.xl + spacing.md }} />
-        <CircledWord
-          words={[
-            'tonight',
-            tier ? ENERGY_TIER_LABEL[tier].toLowerCase() : 'your taste',
-            'the fridge',
-            'no repeats',
-          ]}
-        />
-        <View style={{ height: spacing.lg }} />
-        {streamedTitles.filter(Boolean).length > 0 ? (
-          streamedTitles.filter(Boolean).map((t, i) => (
-            <BodyText
-              key={i}
-              size={15}
-              color={palette.textSecondary}
-              weight="medium"
-            >
-              {t}
-            </BodyText>
-          ))
-        ) : (
-          <BodyText size={14} color={palette.textSecondary} weight="medium">
-            {STAGES[stage].label}
-          </BodyText>
-        )}
-        <View style={{ height: spacing.md }} />
-        <StepDots total={STAGES.length} current={stage} />
-      </View>
+      <DealingHandLoader phase={phase} />
     </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  errorWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-  },
-  title: {
-    letterSpacing: -1,
-    lineHeight: 38,
-    textAlign: 'center',
   },
 });
