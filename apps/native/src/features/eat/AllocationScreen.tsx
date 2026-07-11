@@ -85,7 +85,8 @@ export function AllocationScreen() {
       appendRecipeAndSelect(w.date, fresh);
       commitSelection(w.date);
     }
-    const cooked = cookTonightId;
+    // Live read, like liveKept above — a reconcile can swap the id between render and Done.
+    const cooked = useGenerationSession.getState().deck?.cookTonightId ?? cookTonightId;
     reset();
     if (cooked) {
       router.replace({ pathname: '/(modals)/recipe/[id]', params: { id: cooked } });
