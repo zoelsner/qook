@@ -35,6 +35,7 @@ interface WeekPlanState {
   appendRecipeAndSelect: (date: ISODate, recipe: Recipe) => void;
   stageRecipeForShop: (recipe: Recipe) => void;
   toggleSavedRecipe: (id: string) => void;
+  remapSavedRecipe: (oldId: string, newId: string) => void;
   clearDay: (date: ISODate) => void;
   clearFuture: () => void;
   clearAll: () => void;
@@ -176,6 +177,20 @@ export const useWeekPlan = create<WeekPlanState>()(
             ? state.savedRecipeIds.filter((x) => x !== id)
             : [...state.savedRecipeIds, id],
         })),
+
+      // A phase-2 fill can cache-hit the signature dedup and hand back a
+      // different recipe id than the skeleton the user saved. Follow the swap
+      // so the heart doesn't point at a dead id.
+      remapSavedRecipe: (oldId, newId) =>
+        set((state) => {
+          if (oldId === newId || !state.savedRecipeIds.includes(oldId)) return state;
+          return {
+            savedRecipeIds: [
+              ...state.savedRecipeIds.filter((x) => x !== oldId && x !== newId),
+              newId,
+            ],
+          };
+        }),
 
       clearDay: (date) =>
         set((state) => {

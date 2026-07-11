@@ -44,6 +44,7 @@ export function DeckScreen() {
   const reset = useGenerationSession((s) => s.reset);
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
+  const remapSavedRecipe = useWeekPlan((s) => s.remapSavedRecipe);
   const [dealing, setDealing] = useState(false);
 
   // Guard: no deck means the user landed here without a hand — bounce to energy.
@@ -51,11 +52,10 @@ export function DeckScreen() {
     if (!deck) router.replace('/(eat)/energy');
   }, [deck, router]);
 
-  const handKey = deck?.proposals[0]?.id;
+  // Cleared explicitly when a fresh hand is dealt (handleFreshHand) — a
+  // card-0-id key can collide across hands when cache-hits repeat a recipe,
+  // which would silently skip the new hand's art requests.
   const requestedRef = useRef<number[]>([]);
-  useEffect(() => {
-    requestedRef.current = [];
-  }, [handKey]);
 
   // Prefetch art: first 3 at deal, then stay 2 ahead of the swiper.
   useEffect(() => {
@@ -83,13 +83,18 @@ export function DeckScreen() {
         try {
           const { recipeId } = await api.fillRecipe(recipe.id, context || undefined);
           const full = await api.getRecipeById(recipeId);
-          if (full) reconcileKept(recipe.id, full);
+          if (full) {
+            reconcileKept(recipe.id, full);
+            // Signature cache-hit: the fill redirected to an existing row, so
+            // move the saved heart from the (now dead) skeleton id with it.
+            if (full.id !== recipe.id) remapSavedRecipe(recipe.id, full.id);
+          }
         } catch {
           /* detail view offers retry on next open */
         }
       })();
     },
-    [context, reconcileKept]
+    [context, reconcileKept, remapSavedRecipe]
   );
 
   const saveIfNew = useCallback(
@@ -146,6 +151,7 @@ export function DeckScreen() {
     void (async () => {
       try {
         const recipes = await api.generateProposals(tier, context || undefined);
+        requestedRef.current = [];
         dealHand(recipes);
       } catch {
         /* keep the exhausted state; the button can be tapped again */
