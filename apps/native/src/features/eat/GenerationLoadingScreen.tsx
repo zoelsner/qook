@@ -44,12 +44,12 @@ export function GenerationLoadingScreen() {
   const runId = useRef(0);
   const mountedRef = useRef(true);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true; // refs persist across Fast Refresh re-runs — re-arm on setup
+    return () => {
       mountedRef.current = false;
-    },
-    []
-  );
+    };
+  }, []);
 
   useEffect(() => {
     if (!tier) {
