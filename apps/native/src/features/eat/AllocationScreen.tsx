@@ -40,9 +40,16 @@ export function AllocationScreen() {
   const days = useMemo(dayOptions, []);
 
   // Pre-select "Tonight" for the cooked recipe; others start unassigned.
-  const [choices, setChoices] = useState<Record<string, ISODate | null>>(() => {
-    const seed: Record<string, ISODate | null> = {};
-    for (const r of kept) seed[r.id] = r.id === cookTonightId ? todayISO() : null;
+  // Keyed by POSITION, not recipe id: reconcileKept (deckState.ts) swaps a kept
+  // recipe's id in place when a phase-2 fill cache-hits, and that swap can land
+  // after this screen has already mounted and seeded choices. Indexes survive
+  // the id swap because reconcileKept is order-preserving; a same-render id key
+  // would silently lose the "Tonight" pre-selection.
+  const [choices, setChoices] = useState<Record<number, ISODate | null>>(() => {
+    const seed: Record<number, ISODate | null> = {};
+    kept.forEach((r, i) => {
+      seed[i] = r.id === cookTonightId ? todayISO() : null;
+    });
     return seed;
   });
 
@@ -56,14 +63,21 @@ export function AllocationScreen() {
     }
   }, [nothingToPlace, reset, router]);
 
-  const setDay = (recipeId: string, date: ISODate) => {
+  const setDay = (index: number, date: ISODate) => {
     select();
-    setChoices((c) => ({ ...c, [recipeId]: c[recipeId] === date ? null : date }));
+    setChoices((c) => ({ ...c, [index]: c[index] === date ? null : date }));
   };
 
   const finish = async () => {
     press();
-    const writes = allocationWrites(kept.map((r) => ({ recipe: r, date: choices[r.id] ?? null })));
+    // Read the store directly rather than the render-closure `kept`: a phase-2
+    // fill can reconcile (id swap) in the same tick Done is tapped, and we want
+    // whichever recipe object is live at write time, keyed by the same indexes
+    // `choices` was seeded and toggled with.
+    const liveKept = useGenerationSession.getState().deck?.kept ?? kept;
+    const writes = allocationWrites(
+      liveKept.map((r, i) => ({ recipe: r, date: choices[i] ?? null }))
+    );
     for (const w of writes) {
       // Re-fetch the freshest row so a completed phase-2 fill's ingredients land
       // in the plan (Shop aggregation reads plan recipes' ingredients).
@@ -106,13 +120,13 @@ export function AllocationScreen() {
       <View style={{ height: spacing.lg }} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {kept.map((r) => (
+        {kept.map((r, i) => (
           <AllocationRow
-            key={r.id}
+            key={`${r.id}-${i}`}
             recipe={r}
             days={days}
-            selected={choices[r.id] ?? null}
-            onSelect={(d) => setDay(r.id, d)}
+            selected={choices[i] ?? null}
+            onSelect={(d) => setDay(i, d)}
           />
         ))}
         <View style={{ height: spacing.lg }} />
