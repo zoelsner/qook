@@ -140,7 +140,7 @@ export function ReviewRecipesScreen() {
           ))}
           <View style={{ height: spacing.lg }} />
           <PolishedButton
-            label={`Cook the ${firstWord(pick.title)} →`}
+            label={`Cook the ${dishShortName(pick.title)} →`}
             tone="forest"
             onPress={handleCook}
           />
@@ -179,7 +179,7 @@ function ProposalRow({
     >
       <View style={selected ? styles.vignetteRing : null}>
         <Vignette
-          size={58}
+          size={74}
           localKey={art?.localImageKey as SeedMealKey | undefined}
           remoteUrl={art?.heroImageUrl}
           blurhash={art?.blurhash}
@@ -208,8 +208,12 @@ function ProposalRow({
   );
 }
 
-function firstWord(title: string): string {
-  return title.trim().split(/\s+/)[0]?.toLowerCase() || 'this';
+// "Crispy Chicken Thighs with Roasted Root Vegetables" → "crispy chicken thighs".
+// A bare first word ("Cook the crispy →", "Cook the korean →") read as nonsense;
+// the dish name is everything before the first joiner/punctuation.
+function dishShortName(title: string): string {
+  const head = title.split(/\s+(?:with|and|in|over|on)\s+|[,—(]/i)[0].trim();
+  return head.toLowerCase() || 'this';
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
