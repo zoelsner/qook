@@ -1,4 +1,5 @@
 import type {
+  ContentStatus,
   DietaryTag,
   EnergyTier,
   GroceryCategory,
@@ -81,6 +82,12 @@ export interface Recipe {
 
   notes?: string;
   nutritionalEstimate?: NutritionalEstimate;
+
+  // Two-phase generation (spec 2026-07-10). 'proposal' = skeleton card
+  // (title + hook + protein estimate, no ingredients/steps yet); 'full' =
+  // written recipe. Undefined on legacy/mock recipes is treated as 'full'.
+  contentStatus?: ContentStatus;
+  hook?: string;
 
   heroImageUrl?: string;
   localImageKey?: string;
