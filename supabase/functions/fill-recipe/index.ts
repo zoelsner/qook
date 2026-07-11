@@ -6,7 +6,7 @@ import { Recipe, RecipeJsonSchema } from "../_shared/schema.ts";
 import { requireUser, serviceClient } from "../_shared/supabase.ts";
 import { buildLiveContext } from "../_shared/context.ts";
 import { stripCodeFences } from "../_shared/partial-parser.ts";
-import { computeSignature, dbRowToClientRecipe, toFillUpdate } from "../_shared/recipe-map.ts";
+import { computeSignature, toFillUpdate } from "../_shared/recipe-map.ts";
 import { resolveFillTarget } from "./dedup.ts";
 import { ERRORS, errorResponse } from "../_shared/errors.ts";
 
@@ -14,6 +14,24 @@ const RequestBody = z.object({
   recipeId: z.string().uuid(),
   context: z.string().max(500).optional(),
 });
+
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+
+// Global 'full' rows sharing a signature — used both for the normal
+// post-write dedup check and the concurrent-fill retry below. Fail-safe on
+// lookup error: log and treat as "no match" rather than throwing, since a
+// missed cache hit just means a harmless duplicate, not a broken fill.
+async function findGlobalFullRows(admin: Admin, signature: string) {
+  const { data, error } = await admin
+    .from("recipes")
+    .select("id")
+    .eq("signature", signature)
+    .is("user_id", null)
+    .eq("content_status", "full");
+  if (error) console.error("fill-recipe signature lookup error", String(error));
+  return data ?? null;
+}
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -85,25 +103,48 @@ Deno.serve(async (req) => {
     const recipe = result.data;
     const signature = await computeSignature(recipe);
 
-    const { data: existing } = await admin
-      .from("recipes")
-      .select("id")
-      .eq("signature", signature)
-      .is("user_id", null)
-      .eq("content_status", "full");
-    const target = resolveFillTarget(recipeId, existing ?? null);
+    const existing = await findGlobalFullRows(admin, signature);
+    const target = resolveFillTarget(recipeId, existing);
 
     if (target.action === "cache-hit") {
       // Point at the pre-existing full row; drop the now-redundant skeleton.
-      await admin.rpc("increment_use_count", { recipe_id: target.targetId });
-      await admin.from("recipes").delete().eq("id", recipeId);
+      // Fail-safe: an RPC or delete error here doesn't change the response —
+      // a stale use_count or a surviving redundant skeleton is harmless.
+      const { error: rpcError } = await admin.rpc("increment_use_count", {
+        recipe_id: target.targetId,
+      });
+      if (rpcError) console.error("fill-recipe increment_use_count error", String(rpcError));
+      const { error: deleteError } = await admin.from("recipes").delete().eq("id", recipeId);
+      if (deleteError) console.error("fill-recipe skeleton delete error", String(deleteError));
       return new Response(JSON.stringify({ recipeId: target.targetId, status: "full" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
     // Fill the skeleton in place. image_status is untouched (art fired at deal).
-    await admin.from("recipes").update(toFillUpdate(recipe, signature)).eq("id", recipeId);
+    const { error: updateError } = await admin
+      .from("recipes")
+      .update(toFillUpdate(recipe, signature))
+      .eq("id", recipeId);
+
+    if (updateError) {
+      // 23505 = unique violation on the global signature index: a concurrent
+      // fill committed this exact signature first. Re-check for that row and
+      // fall back to the cache-hit path instead of failing the request.
+      if (updateError.code === "23505") {
+        const winner = await findGlobalFullRows(admin, signature);
+        const raceTarget = winner?.find((r: { id: string }) => r.id !== recipeId);
+        if (raceTarget) {
+          const { error: deleteError } = await admin.from("recipes").delete().eq("id", recipeId);
+          if (deleteError) console.error("fill-recipe skeleton delete error", String(deleteError));
+          return new Response(JSON.stringify({ recipeId: raceTarget.id, status: "full" }), {
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+      throw new Error(`fill update failed: ${String(updateError.message ?? updateError)}`);
+    }
+
     return new Response(JSON.stringify({ recipeId, status: "full" }), {
       headers: { "Content-Type": "application/json" },
     });
