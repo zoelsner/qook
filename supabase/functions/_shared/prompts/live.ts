@@ -21,7 +21,7 @@ export function buildLiveSystemPrompt(): string {
   ].join(" ");
 }
 
-const STRUCTURED_INGREDIENT_DIRECTIVE = [
+export const STRUCTURED_INGREDIENT_DIRECTIVE = [
   "For EVERY ingredient, populate `parsed` with:",
   "- `parsed.category` using EXACTLY this grammar:",
   "  Produce: fresh vegetables, fruits, fresh herbs.",

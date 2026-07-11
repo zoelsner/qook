@@ -254,3 +254,52 @@ export const RecipeEnvelopeJsonSchema = {
     },
   },
 } as const;
+
+// --- Phase-1 "hand of 5" proposals (spec 2026-07-10) ---
+// A proposal is the thin card payload: enough to render Treatment-01 without
+// the full recipe body. Full ingredients/steps arrive later via fill-recipe.
+export const Proposal = z.object({
+  title: z.string().min(4),
+  hook: z.string().min(4).max(140),
+  timeMinutes: z.number().int().positive().max(240),
+  proteinG: z.number().int().nonnegative().max(300),
+  cuisine: z.string().min(2),
+});
+export type Proposal = z.infer<typeof Proposal>;
+
+export const ProposalsEnvelope = z.object({
+  proposals: z.array(Proposal).length(5),
+  // null unless the model refuses on safety grounds; when set, proposals is [].
+  refusal: z.string().nullish(),
+});
+
+// OpenRouter response_format for the phase-1 call. Luna (OpenAI) honours strict
+// mode. No array minItems/maxItems (kept out for provider-portability); the
+// prompt asks for exactly 5 and the Zod envelope enforces .length(5) after.
+export const ProposalsEnvelopeJsonSchema = {
+  name: "ProposalsEnvelope",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["proposals", "refusal"],
+    properties: {
+      proposals: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "hook", "timeMinutes", "proteinG", "cuisine"],
+          properties: {
+            title: { type: "string" },
+            hook: { type: "string" },
+            timeMinutes: { type: "integer" },
+            proteinG: { type: "integer" },
+            cuisine: { type: "string" },
+          },
+        },
+      },
+      refusal: { type: ["string", "null"] },
+    },
+  },
+} as const;
