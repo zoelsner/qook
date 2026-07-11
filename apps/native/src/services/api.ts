@@ -4,6 +4,7 @@ import type {
   EnergyTier,
   GroceryItem,
   Recipe,
+  Timestamp,
 } from '@qook/shared';
 import { supabase, ensureSession } from './supabase';
 import { dbRowToRecipe } from './recipeRow';
@@ -230,6 +231,65 @@ export async function requestRecipeImage(recipeId: string): Promise<void> {
   }
 }
 
+// Phase-1 (spec 2026-07-10): deal a hand of 5 proposals — one cheap Luna call.
+// The edge already maps rows to client shape; we only normalize the ISO
+// createdAt/updatedAt strings to the branded Timestamp number. Mock mode returns
+// 5 tier-matched fixtures (already full, with local art).
+export async function generateProposals(
+  tier: EnergyTier,
+  context?: string
+): Promise<Recipe[]> {
+  if (mode === 'mock') {
+    await lag(1200);
+    return pickForTier(tier, 5);
+  }
+  await ensureSession();
+  const { data, error } = await supabase.functions.invoke('generate-proposals', {
+    body: { tier, context: context?.trim() || undefined },
+  });
+  if (error) {
+    const msg = (error as { message?: string }).message ?? 'Something went wrong.';
+    throw new Error(msg);
+  }
+  const proposals = ((data as { proposals?: unknown[] })?.proposals ?? []) as Record<
+    string,
+    unknown
+  >[];
+  return proposals.map((r) => ({
+    ...r,
+    createdAt: (typeof r.createdAt === 'string'
+      ? Date.parse(r.createdAt)
+      : r.createdAt) as Timestamp,
+    updatedAt: (typeof r.updatedAt === 'string'
+      ? Date.parse(r.updatedAt)
+      : r.updatedAt) as Timestamp,
+  })) as unknown as Recipe[];
+}
+
+// Phase-2 (spec 2026-07-10): write ONE full recipe for a kept/cooked proposal.
+// Quota-free. Returns the FINAL row id — a cache hit redirects to a pre-existing
+// full row and the skeleton is deleted server-side, so callers must adopt the
+// returned recipeId. Called but the deck does not block on it.
+export async function fillRecipe(
+  recipeId: string,
+  context?: string
+): Promise<{ recipeId: string; status: string }> {
+  if (mode === 'mock') {
+    await lag(200);
+    return { recipeId, status: 'full' };
+  }
+  await ensureSession();
+  const { data, error } = await supabase.functions.invoke('fill-recipe', {
+    body: { recipeId, context: context?.trim() || undefined },
+  });
+  if (error) {
+    const msg = (error as { message?: string }).message ?? 'Something went wrong.';
+    throw new Error(msg);
+  }
+  const out = data as { recipeId?: string; status?: string };
+  return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };
+}
+
 export const api = {
   getTonightPlan,
   getRecipeById,
@@ -239,5 +299,7 @@ export const api = {
   getGroceries,
   toggleGrocery,
   generateRecipesForEnergy,
+  generateProposals,
+  fillRecipe,
   requestRecipeImage,
 };
