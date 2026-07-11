@@ -55,6 +55,8 @@ export type ClientRecipe = {
   heroImageUrl?: string;
   ownerId?: string;
   imageStatus: string;
+  contentStatus: string;
+  hook?: string;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -110,6 +112,55 @@ export function toRecipeInsert(r: Recipe, signature: string) {
     nutrition: r.nutrition ?? null,
     source: "ai" as const,
     image_status: "pending" as const,
+  };
+}
+
+// Phase-1 skeleton row: title + hook + protein estimate only. No signature
+// (computed at fill time), empty ingredient/workflow arrays (DB defaults),
+// image_status 'pending' so the client can fire art immediately (the image
+// prompt is title-only). content_status 'proposal' flags it as not-yet-written.
+export function toSkeletonInsert(
+  p: { title: string; cuisine: string; timeMinutes: number; proteinG: number; hook: string },
+  tier: string,
+  serves: number,
+) {
+  return {
+    user_id: null as string | null,
+    signature: null as string | null,
+    title: p.title,
+    cuisine: p.cuisine,
+    serves,
+    total_time_min: p.timeMinutes,
+    difficulty: difficultyForTier(tier),
+    energy_tier: tier,
+    content_status: "proposal" as const,
+    hook: p.hook,
+    nutrition: { calories: null, proteinG: p.proteinG, carbG: null, fatG: null },
+    source: "ai" as const,
+    image_status: "pending" as const,
+  };
+}
+
+// Phase-2 fill: promote a skeleton row to a full recipe IN PLACE. Deliberately
+// omits user_id (stays null / global cache) and image_status (art was fired
+// independently at deal time — must not be reset). Sets content_status 'full'
+// and clears any prior generation_error.
+export function toFillUpdate(r: Recipe, signature: string) {
+  return {
+    signature,
+    cuisine: r.cuisine,
+    serves: r.servings,
+    total_time_min: r.timeMinutes,
+    difficulty: difficultyForTier(r.tier),
+    energy_tier: r.tier,
+    ingredient_groups: r.ingredientGroups,
+    workflow_sections: r.workflowSections,
+    timeline: [] as unknown[],
+    notes: r.notes ?? null,
+    tags: r.tags ?? [],
+    nutrition: r.nutrition ?? null,
+    content_status: "full" as const,
+    generation_error: null as string | null,
   };
 }
 
@@ -235,6 +286,8 @@ export function dbRowToClientRecipe(
       : undefined,
     ownerId,
     imageStatus: String(row.image_status ?? "pending"),
+    contentStatus: String(row.content_status ?? "full"),
+    ...(row.hook != null ? { hook: String(row.hook) } : {}),
     source: String(row.source ?? "ai"),
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),

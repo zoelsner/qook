@@ -1,4 +1,5 @@
 import type {
+  ContentStatus,
   DietaryTag,
   EnergyTier,
   GroceryCategory,
@@ -187,6 +188,8 @@ export function dbRowToRecipe(
       : undefined,
     ownerId,
     imageStatus: String(row.image_status ?? 'pending') as ImageStatus,
+    contentStatus: (String(row.content_status ?? 'full')) as ContentStatus,
+    ...(row.hook != null ? { hook: String(row.hook) } : {}),
     source: String(row.source ?? 'ai') as RecipeSource,
     createdAt: toTimestamp(row.created_at),
     updatedAt: toTimestamp(row.updated_at),
