@@ -205,7 +205,7 @@ export function DeckScreen() {
         </View>
       ) : focused ? (
         <DeckCard
-          key={focused.id}
+          key={`${focused.id}-${deck.position}`}
           recipe={focused}
           onKeep={handleKeep}
           onPass={handlePass}
