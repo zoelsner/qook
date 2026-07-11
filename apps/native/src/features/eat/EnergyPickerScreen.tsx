@@ -54,7 +54,7 @@ export function EnergyPickerScreen() {
 
       <View style={{ height: spacing.md }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
-        {"We'll draft three dinners tuned to the bandwidth you actually have tonight."}
+        {"We'll deal a hand of five dinners tuned to the bandwidth you actually have tonight."}
       </BodyText>
 
       <View style={{ height: spacing.xl }} />
@@ -71,7 +71,7 @@ export function EnergyPickerScreen() {
       />
       <View style={{ height: spacing.sm + 2 }} />
       <Mono size={9} color={palette.textTertiary} style={styles.caption}>
-        FRESH PICKS IN ABOUT 10 SECONDS
+        A HAND OF FIVE IN ABOUT 15 SECONDS
       </Mono>
     </ScreenShell>
   );
