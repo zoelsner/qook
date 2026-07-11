@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
 import { ScreenShell } from '../../components/ScreenShell';
-import { DisplayText, Mono, BodyText } from '../../components/Text';
+import { DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
@@ -42,6 +42,14 @@ export function GenerationLoadingScreen() {
   const [phase, setPhase] = useState<'thinking' | 'coming-up'>('thinking');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const runId = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
 
   useEffect(() => {
     if (!tier) {
@@ -78,34 +86,40 @@ export function GenerationLoadingScreen() {
 
     return () => {
       cancelled = true;
+      // Intentionally reads/mutates the ref's live value at cleanup time (not a
+      // stale local copy) so a concurrent retry() sees the bumped runId.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      runId.current++;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tier, context]);
 
   const retry = () => {
-    runId.current++; // triggers the effect body via state change below
+    // Supersedes any in-flight run (the main effect's async closure checks
+    // `myRun !== runId.current` and bails) — this does not re-trigger the effect.
+    runId.current++;
     setErrorMsg(null);
     setPhase('thinking');
-    // Re-run by nudging the effect: bump a dummy dep through context is not
-    // ideal; instead re-invoke the same flow inline.
     if (!tier) return;
     void (async () => {
       const myRun = runId.current;
       try {
         const proposals = await api.generateProposals(tier, context);
-        if (myRun !== runId.current) return;
+        if (!mountedRef.current || myRun !== runId.current) return;
         setProposals(proposals);
         setPhase('coming-up');
         proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
           if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);
         });
         if (proposals[0]) await waitForFirstArt(proposals[0].id);
-        if (myRun !== runId.current) return;
+        if (!mountedRef.current || myRun !== runId.current) return;
         success();
         router.replace(DECK_ROUTE);
       } catch (e) {
-        if (myRun !== runId.current) return;
-        setErrorMsg(e instanceof Error ? e.message : 'The kitchen is busy — try again.');
+        if (!mountedRef.current || myRun !== runId.current) return;
+        const msg = e instanceof Error ? e.message : 'The kitchen is busy — try again.';
+        fail(msg);
+        setErrorMsg(msg);
         errorHaptic();
       }
     })();

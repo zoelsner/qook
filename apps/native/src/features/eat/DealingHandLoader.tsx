@@ -4,7 +4,6 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-nat
 import { DisplayText, Mono } from '../../components/Text';
 import { palette, radius, spacing } from '../../design';
 
-const CARD_COUNT = 5;
 const CARD_W = 92;
 const CARD_H = 128;
 // Final fan offsets (x, rotation) for the five dealt cards, centered.
