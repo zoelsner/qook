@@ -176,7 +176,7 @@ function HeroEmpty({ onFind }: { onFind: () => void }) {
       </DisplayText>
       <View style={{ height: spacing.xs }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
-        Tell us your energy, we&rsquo;ll draft three dinners in about 10 seconds.
+        Tell us your energy, we&rsquo;ll deal a hand of five dinners in about 15 seconds.
       </BodyText>
       <View style={{ height: spacing.md }} />
       <PolishedButton
