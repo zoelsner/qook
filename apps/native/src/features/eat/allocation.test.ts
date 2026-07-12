@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Recipe } from '@qook/shared';
 import type { ISODate } from '../week/weekDates';
-import { allocationWrites, tierMismatch } from './allocation';
+import { allocationWrites, tierMismatch, allocateKeeps } from './allocation';
 
 function r(id: string): Recipe {
   return { id, title: `Dish ${id}` } as Recipe;
@@ -34,5 +34,31 @@ describe('tierMismatch', () => {
   });
   test('a card exactly at the ceiling is fine', () => {
     expect(tierMismatch(30, 'after-work')).toBe(false);
+  });
+});
+
+function rr(id: string): Recipe {
+  return { id, title: `Dish ${id}` } as Recipe;
+}
+
+describe('allocateKeeps', () => {
+  test('over-keep: extras with no night go to the bench', () => {
+    const choices = [
+      { recipe: rr('a'), date: '2026-07-13' as ISODate },
+      { recipe: rr('b'), date: null },
+      { recipe: rr('c'), date: null },
+    ];
+    const out = allocateKeeps(choices, ['2026-07-13' as ISODate]);
+    expect(out.placed.map((w) => w.recipe.id)).toEqual(['a']);
+    expect(out.benched.map((r) => r.id)).toEqual(['b', 'c']);
+    expect(out.emptyNights).toEqual([]);
+  });
+
+  test('under-keep: unfilled nights are reported, none benched', () => {
+    const choices = [{ recipe: rr('a'), date: '2026-07-13' as ISODate }];
+    const out = allocateKeeps(choices, ['2026-07-13' as ISODate, '2026-07-14' as ISODate]);
+    expect(out.placed.map((w) => w.recipe.id)).toEqual(['a']);
+    expect(out.benched).toEqual([]);
+    expect(out.emptyNights).toEqual(['2026-07-14']);
   });
 });

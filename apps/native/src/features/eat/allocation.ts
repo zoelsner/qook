@@ -26,3 +26,24 @@ export function allocationWrites(choices: AllocationChoice[]): AllocationWrite[]
 export function tierMismatch(cardMinutes: number, nightTier: EnergyTier): boolean {
   return cardMinutes > TIER_MAX_MINUTES[nightTier];
 }
+
+export interface KeepAllocation {
+  placed: AllocationWrite[];
+  benched: Recipe[];
+  emptyNights: ISODate[];
+}
+
+// Split the user's day choices into: writes for dated keeps, over-keeps (no
+// day chosen) destined for the bench, and the reset's nights left empty. The
+// app NEVER fills an empty night itself (spec D6) — emptyNights is surfaced as
+// a "Deal fresh ideas" affordance, not auto-drafted.
+export function allocateKeeps(
+  choices: AllocationChoice[],
+  nights: ISODate[],
+): KeepAllocation {
+  const placed = allocationWrites(choices);
+  const benched = choices.filter((c) => c.date == null).map((c) => c.recipe);
+  const usedNights = new Set(placed.map((w) => w.date));
+  const emptyNights = nights.filter((d) => !usedNights.has(d));
+  return { placed, benched, emptyNights };
+}
