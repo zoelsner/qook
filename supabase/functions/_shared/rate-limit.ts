@@ -3,8 +3,10 @@ type Admin = any;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTH_MS = 30 * DAY_MS;
-const DAILY_MAX = 10;
-const MONTHLY_MAX = 30;
+// TESTING LIMITS (Zach, 2026-07-13): quotas effectively off while the deck is
+// being play-tested. RESTORE 10 / 30 BEFORE TESTFLIGHT.
+const DAILY_MAX = 1000;
+const MONTHLY_MAX = 5000;
 
 async function countSince(admin: Admin, userId: string, sinceMs: number) {
   const since = new Date(Date.now() - sinceMs).toISOString();
