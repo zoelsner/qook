@@ -133,6 +133,8 @@ export function DayRow({
       onPress={() => {
         if (activeTier && onOpenDay) onOpenDay(date, activeTier);
       }}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${weekday} — pick from your bench or deal fresh ideas`}
     >
       <View style={styles.dayLabel}>
         {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}

@@ -131,11 +131,18 @@ export const useWeekPlan = create<WeekPlanState>()(
 
         const existingIndex = existing.recipes.findIndex((item) => item.id === recipe.id);
         if (existingIndex >= 0) {
+          // Same id re-appended: adopt the fresh object too, not just the
+          // selection — a background phase-2 fill re-appends the same id with
+          // real ingredients, and keeping the stale skeleton would leave Shop
+          // aggregation empty for this day.
           set((state) => ({
             plan: {
               ...state.plan,
               [date]: {
                 ...state.plan[date],
+                recipes: state.plan[date]!.recipes!.map((item, i) =>
+                  i === existingIndex ? recipe : item
+                ),
                 pickIndex: existingIndex,
                 selectedAt,
               },
