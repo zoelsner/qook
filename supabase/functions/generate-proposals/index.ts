@@ -17,6 +17,7 @@ import { ERRORS, errorResponse } from "../_shared/errors.ts";
 const RequestBody = z.object({
   tier: z.enum(["brain-is-fried", "after-work", "got-energy", "weekend-project"]),
   context: z.string().max(500).optional(),
+  energyMix: z.string().max(120).optional(),
 });
 
 function clampServes(n: number): number {
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
   if (!parsed.success) {
     return errorResponse(ERRORS.BAD_REQUEST, "Bad request body.", 400);
   }
-  const { tier, context } = parsed.data;
+  const { tier, context, energyMix } = parsed.data;
 
   // The session row is the quota-counting record — check its insert.
   const { data: session, error: sessionError } = await admin
@@ -94,7 +95,7 @@ Deno.serve(async (req) => {
       model: MODELS.textDraft(),
       messages: [
         { role: "system", content: buildProposalsSystemPrompt() },
-        { role: "user", content: buildProposalsUserPrompt(liveCtx) },
+        { role: "user", content: buildProposalsUserPrompt(liveCtx, energyMix) },
       ],
       jsonSchema: ProposalsEnvelopeJsonSchema,
       temperature: 0.85,

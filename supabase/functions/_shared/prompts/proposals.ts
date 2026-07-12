@@ -21,7 +21,7 @@ export function buildProposalsSystemPrompt(): string {
   ].join(" ");
 }
 
-export function buildProposalsUserPrompt(ctx: LiveContext): string {
+export function buildProposalsUserPrompt(ctx: LiveContext, energyMix?: string): string {
   const rule = TIER_RULES[ctx.tier];
   const avoid = ctx.avoidIngredients.length
     ? ctx.avoidIngredients.join(", ")
@@ -30,6 +30,9 @@ export function buildProposalsUserPrompt(ctx: LiveContext): string {
     `Deal exactly 5 dinner proposals for tier "${ctx.tier}" (${rule.label}).`,
     `Tier directive: ${rule.directive}`,
     `timeMinutes ceiling: ${rule.maxMinutes}.`,
+    energyMix && energyMix.trim()
+      ? `Aim for a spread of times matching the week's energy: ${energyMix.trim()}. This is a soft target for variety — never exceed the timeMinutes ceiling above.`
+      : ``,
     ``,
     `Serves: ${ctx.householdSize}.`,
     `Avoid ingredients: ${avoid}. This rule also applies to ingredientNames — never list an avoided ingredient there.`,
