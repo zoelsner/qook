@@ -23,9 +23,11 @@ const WEEK_TIERS: { tier: EnergyTier; minutes: number }[] = [
 export function DayRow({
   date,
   onOpenRecipe,
+  onOpenDay,
 }: {
   date: ISODate;
   onOpenRecipe: (recipeId: string) => void;
+  onOpenDay?: (date: ISODate, tier: EnergyTier) => void;
 }) {
   const { tap, select } = useHaptics();
   const setEnergy = useWeekPlan((state) => state.setEnergy);
@@ -126,7 +128,12 @@ export function DayRow({
   }
 
   return (
-    <View style={styles.row}>
+    <Pressable
+      style={styles.row}
+      onPress={() => {
+        if (activeTier && onOpenDay) onOpenDay(date, activeTier);
+      }}
+    >
       <View style={styles.dayLabel}>
         {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}
         <Mono size={12} bold color={palette.ink}>
@@ -162,7 +169,7 @@ export function DayRow({
           );
         })}
       </View>
-    </View>
+    </Pressable>
   );
 }
 

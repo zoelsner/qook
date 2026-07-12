@@ -1,8 +1,9 @@
 import { ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { EnergyTier } from '@qook/shared';
 
 import { PolishedButton } from '../../components/PolishedButton';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
@@ -13,8 +14,9 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
 import { taggedFutureOrTodayDays, useWeekPlan } from '../../stores/weekPlan';
 import type { ResetNight } from '../eat/weekReset';
+import { DaySheet } from './DaySheet';
 import { DayRow } from './DayRow';
-import { formatDayShort, upcomingDays, todayISO } from './weekDates';
+import { formatDayShort, upcomingDays, todayISO, type ISODate } from './weekDates';
 
 export function WeekScreen() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export function WeekScreen() {
   const hasHydrated = useWeekPlan((state) => state.hasHydrated);
   const clearFuture = useWeekPlan((state) => state.clearFuture);
   const startWeekReset = useGenerationSession((state) => state.startWeekReset);
+  const [sheet, setSheet] = useState<{ date: ISODate; tier: EnergyTier } | null>(null);
 
   const today = todayISO();
   const days = upcomingDays(7, today);
@@ -55,6 +58,11 @@ export function WeekScreen() {
   const onClearFuture = () => {
     tap();
     clearFuture();
+  };
+
+  const onOpenDay = (date: ISODate, tier: EnergyTier) => {
+    press();
+    setSheet({ date, tier });
   };
 
   return (
@@ -90,7 +98,7 @@ export function WeekScreen() {
       <View style={{ height: spacing.lg }} />
 
       <View style={styles.pinnedToday}>
-        <DayRow date={days[0]} onOpenRecipe={onOpenRecipe} />
+        <DayRow date={days[0]} onOpenRecipe={onOpenRecipe} onOpenDay={onOpenDay} />
       </View>
 
       <View style={styles.card}>
@@ -99,7 +107,7 @@ export function WeekScreen() {
           contentContainerStyle={{ paddingHorizontal: 18, paddingVertical: 4 }}
         >
           {days.slice(1).map((date) => (
-            <DayRow key={date} date={date} onOpenRecipe={onOpenRecipe} />
+            <DayRow key={date} date={date} onOpenRecipe={onOpenRecipe} onOpenDay={onOpenDay} />
           ))}
         </ScrollView>
       </View>
@@ -149,6 +157,14 @@ export function WeekScreen() {
         Swipe a hand of ideas, place your keeps
       </BodyText>
 
+      {sheet ? (
+        <DaySheet
+          date={sheet.date}
+          tier={sheet.tier}
+          visible={sheet != null}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
       <View style={{ height: insets.bottom + screen.tabBarHeight + spacing.sm }} />
     </ScreenShell>
   );
