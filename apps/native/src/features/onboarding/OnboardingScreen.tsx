@@ -264,7 +264,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
       <View style={{ height: spacing.lg + 4 }} />
 
-      <BodyText size={typeScale.bodyMD} color={palette.textSecondary} style={styles.body}>
+      <BodyText size={typeScale.bodyLG} color={palette.textSecondary} style={styles.body}>
         A calmer way to pick what to cook — tuned to your taste, not just tonight&rsquo;s
         energy.
       </BodyText>
@@ -303,7 +303,7 @@ function TasteStep({
       </DisplayText>
 
       <View style={{ height: spacing.md }} />
-      <BodyText size={typeScale.bodyMD} color={palette.textSecondary} weight="medium">
+      <BodyText size={typeScale.bodyLG} color={palette.textSecondary} weight="medium">
         Tap the three that look like your table. This tunes every draft.
       </BodyText>
 
@@ -322,12 +322,12 @@ function TasteStep({
               style={[styles.tile, selected ? styles.tileSelected : null]}
             >
               <View style={styles.tileVignetteWrap}>
-                <Vignette size={76} localKey={dish.key} title={dish.title} />
+                <Vignette size={104} localKey={dish.key} title={dish.title} />
                 {selected ? <View style={styles.tileDot} /> : null}
               </View>
               <View style={{ height: spacing.xs + 2 }} />
               <BodyText
-                size={13}
+                size={15}
                 weight="semi"
                 color={palette.ink}
                 numberOfLines={1}
@@ -335,7 +335,7 @@ function TasteStep({
               >
                 {dish.name}
               </BodyText>
-              <Mono size={9} color={palette.textSecondary}>
+              <Mono size={10} color={palette.textSecondary}>
                 {dish.tagLine}
               </Mono>
             </Pressable>

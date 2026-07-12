@@ -7,12 +7,14 @@ import { palette, radius, spacing } from '../../design';
 const CARD_W = 92;
 const CARD_H = 128;
 // Final fan offsets (x, rotation) for the five dealt cards, centered.
+// Each card carries a watercolor wash — stronger than the palette.wash*
+// atmosphere tints so they actually read against the cream ground.
 const FAN = [
-  { x: -132, rot: -16 },
-  { x: -66, rot: -8 },
-  { x: 0, rot: 0 },
-  { x: 66, rot: 8 },
-  { x: 132, rot: 16 },
+  { x: -132, rot: -16, tint: 'rgba(154, 174, 128, 0.34)' }, // sage
+  { x: -66, rot: -8, tint: 'rgba(226, 186, 124, 0.32)' }, // ochre
+  { x: 0, rot: 0, tint: 'rgba(255, 252, 246, 0)' }, // center: paints itself
+  { x: 66, rot: 8, tint: 'rgba(61, 84, 105, 0.22)' }, // prussian
+  { x: 132, rot: 16, tint: 'rgba(154, 174, 128, 0.34)' }, // sage
 ];
 
 // "Dealing the hand" (spec Loading screen): five face-down cards deal into a fan
@@ -60,7 +62,14 @@ export function DealingHandLoader({ phase }: { phase: 'thinking' | 'coming-up' }
                   i === 2 ? styles.centerCard : null,
                   { transform: [{ translateX: fan.x }, { rotate: `${fan.rot}deg` }] },
                 ]}
-              />
+              >
+                <View
+                  style={[
+                    styles.cardWash,
+                    { backgroundColor: i === 2 ? palette.washRust : fan.tint },
+                  ]}
+                />
+              </View>
             );
           }
           // Stagger each card's deal across the first ~60% of the cycle, hold,
@@ -100,6 +109,7 @@ export function DealingHandLoader({ phase }: { phase: 'thinking' | 'coming-up' }
                 { opacity, transform: [{ translateX: tx }, { rotate: rot }] },
               ]}
             >
+              <View style={[styles.cardWash, { backgroundColor: fan.tint }]} />
               {i === 2 && paint ? (
                 <Animated.View style={[styles.paintWash, { opacity: paint }]} />
               ) : null}
@@ -145,10 +155,16 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     zIndex: 5,
   },
+  cardWash: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.card,
+  },
+  // The center card's "paint" moment — a rust wash strong enough to read
+  // as the card coming to life, not just a shadow shift.
   paintWash: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: radius.card,
-    backgroundColor: palette.well,
+    backgroundColor: 'rgba(195, 106, 72, 0.30)',
   },
   copy: {
     letterSpacing: -0.6,

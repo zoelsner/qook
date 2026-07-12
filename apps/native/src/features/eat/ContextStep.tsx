@@ -109,7 +109,7 @@ export function ContextStep() {
 
               <View style={{ height: spacing.md }} />
               <BodyText
-                size={typeScale.bodyMD}
+                size={typeScale.bodyLG}
                 color={palette.textSecondary}
                 weight="medium"
               >
@@ -153,7 +153,7 @@ export function ContextStep() {
                     ]}
                   >
                     <BodyText
-                      size={12}
+                      size={13}
                       weight="medium"
                       color={palette.textSecondary}
                     >
@@ -242,8 +242,8 @@ const styles = StyleSheet.create({
   },
   input: {
     fontFamily: fontFamily.bodyRegular,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 23,
     color: palette.text,
     minHeight: 96,
     textAlignVertical: 'top',
@@ -265,9 +265,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(42, 58, 38, 0.22)',
   },
+  // Grows to absorb keyboard-avoiding shifts but caps so the CTA sits just
+  // below the chips instead of pinned to the bottom of a tall screen.
   flexSpacer: {
     flex: 1,
     minHeight: spacing.lg,
+    maxHeight: 96,
   },
   skipRow: {
     alignSelf: 'center',
