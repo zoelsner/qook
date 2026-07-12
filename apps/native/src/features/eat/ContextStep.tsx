@@ -123,8 +123,8 @@ export function ContextStep() {
                 weight="medium"
               >
                 {mode === 'week'
-                  ? "Tired nights, busy stretches, anything you're craving — tell us and we'll steer the hand. Or skip it."
-                  : "Tell us what you're in the mood for, what's already in the fridge, or nothing at all. We'll tune the drafts."}
+                  ? 'Tired nights, busy stretches, anything you’re craving — tell us and we’ll steer the hand. Or skip it.'
+                  : 'Tell us what you’re in the mood for, what’s already in the fridge, or nothing at all. We’ll tune the drafts.'}
               </BodyText>
 
               <View style={{ height: spacing.lg }} />
