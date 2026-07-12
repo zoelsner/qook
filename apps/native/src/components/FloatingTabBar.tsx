@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { GlassContainer, GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { palette, screen, spacing } from '../design';
@@ -36,8 +36,11 @@ const SPRING_CONFIG = {
   mass: 0.8,
 } as const;
 
-const highlightHeight = screen.tabBarHeight - 12;
+// Compact lens — Apple's tab-bar lens hugs the label, it doesn't fill the
+// bar. Oversized glass reads as a blob and its tint smears past the shape.
+const highlightHeight = screen.tabBarHeight - 24;
 const highlightRadius = highlightHeight / 2;
+const HIGHLIGHT_INSET = 10;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -139,7 +142,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
       style={[
         styles.highlightWrapper,
         {
-          width: slotWidth - 8,
+          width: slotWidth - HIGHLIGHT_INSET * 2,
           height: highlightHeight,
           borderRadius: highlightRadius,
           transform: [{ translateX }],
@@ -204,11 +207,19 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
       ]}
     >
       {glassAvailable ? (
-        <GlassView glassEffectStyle="regular" style={StyleSheet.absoluteFillObject} />
+        // Overlapping glass views must share a GlassContainer — rendered as
+        // independent effects they "merge" unpredictably and the lens bleeds
+        // past the bar's corners (expo-glass-effect nesting pitfall).
+        <GlassContainer spacing={0} style={StyleSheet.absoluteFillObject}>
+          <GlassView glassEffectStyle="regular" style={StyleSheet.absoluteFillObject} />
+          {innerWidth > 0 ? highlight : null}
+        </GlassContainer>
       ) : (
-        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFillObject} />
+        <>
+          <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFillObject} />
+          {innerWidth > 0 ? highlight : null}
+        </>
       )}
-      {innerWidth > 0 ? highlight : null}
       {row}
     </View>
   );
@@ -234,8 +245,8 @@ const styles = StyleSheet.create({
   // so it matches the flex-1 tab layout measured by onLayout exactly.
   highlightWrapper: {
     position: 'absolute',
-    left: 4,
-    top: 6,
+    left: HIGHLIGHT_INSET,
+    top: 12,
   },
   highlightFill: {
     flex: 1,
