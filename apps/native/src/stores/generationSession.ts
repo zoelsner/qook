@@ -9,6 +9,7 @@ import {
   setCookTonight as reduceSetCook,
   type DeckState,
 } from '../features/eat/deckState';
+import { representativeTier, type ResetNight } from '../features/eat/weekReset';
 
 export type GenerationState =
   | 'idle'
@@ -29,6 +30,11 @@ interface GenerationSessionState {
   // Swipe deck (spec 2026-07-10).
   deck: DeckState | null;
 
+  // Weekly reset (spec 2026-07-12). 'week' = entered from the Plan tab against
+  // a set of tagged nights; 'tonight' = the single-night Tonight-tab flow.
+  mode: 'tonight' | 'week';
+  resetNights: ResetNight[];
+
   start: (tier: EnergyTier) => void;
   setContext: (context: string) => void;
   beginGeneration: () => void;
@@ -44,6 +50,7 @@ interface GenerationSessionState {
   dealHand: (recipes: Recipe[]) => void;
   setCookTonight: (id: string) => void;
   reconcileKept: (oldId: string, recipe: Recipe) => void;
+  startWeekReset: (nights: ResetNight[]) => void;
 }
 
 export const useGenerationSession = create<GenerationSessionState>((set) => ({
@@ -54,6 +61,8 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
   streamedTitles: [],
   error: null,
   deck: null,
+  mode: 'tonight',
+  resetNights: [],
 
   start: (tier) =>
     set({
@@ -64,6 +73,8 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
       streamedTitles: [],
       error: null,
       deck: null,
+      mode: 'tonight',
+      resetNights: [],
     }),
   setContext: (context) => set({ context }),
   beginGeneration: () => set({ state: 'generating_text' }),
@@ -85,6 +96,8 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
       streamedTitles: [],
       error: null,
       deck: null,
+      mode: 'tonight',
+      resetNights: [],
     }),
 
   setProposals: (recipes) =>
@@ -97,4 +110,19 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
     set((s) => (s.deck ? { deck: reduceSetCook(s.deck, id) } : s)),
   reconcileKept: (oldId, recipe) =>
     set((s) => (s.deck ? { deck: reduceReconcile(s.deck, oldId, recipe) } : s)),
+
+  // Enter the deck flow from the Plan tab: the tier chips already set energy, so
+  // we skip the energy picker and drive one shared tier into generate-proposals.
+  startWeekReset: (nights) =>
+    set({
+      mode: 'week',
+      resetNights: nights,
+      tier: representativeTier(nights),
+      context: '',
+      state: 'collecting_context',
+      recipes: [],
+      streamedTitles: [],
+      error: null,
+      deck: null,
+    }),
 }));
