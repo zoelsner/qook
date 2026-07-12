@@ -30,9 +30,14 @@ export function buildProposalsUserPrompt(ctx: LiveContext, energyMix?: string): 
     `Deal exactly 5 dinner proposals for tier "${ctx.tier}" (${rule.label}).`,
     `Tier directive: ${rule.directive}`,
     `timeMinutes ceiling: ${rule.maxMinutes}.`,
-    energyMix && energyMix.trim()
-      ? `Aim for a spread of times matching the week's energy: ${energyMix.trim()}. This is a soft target for variety — never exceed the timeMinutes ceiling above.`
-      : ``,
+    // Conditional spread, not a ''-yielding ternary: when energyMix is absent
+    // the array — and so the prompt — must be byte-identical to pre-hint
+    // builds (deployed clients don't send energyMix).
+    ...(energyMix && energyMix.trim()
+      ? [
+          `Aim for a spread of times matching the week's energy: ${energyMix.trim()}. This is a soft target for variety — never exceed the timeMinutes ceiling above.`,
+        ]
+      : []),
     ``,
     `Serves: ${ctx.householdSize}.`,
     `Avoid ingredients: ${avoid}. This rule also applies to ingredientNames — never list an avoided ingredient there.`,

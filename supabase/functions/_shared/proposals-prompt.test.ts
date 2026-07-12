@@ -20,6 +20,10 @@ Deno.test("hand-mix hint appears when energyMix is provided", () => {
 Deno.test("no hand-mix line when energyMix is omitted", () => {
   const prompt = buildProposalsUserPrompt(ctx);
   assertEquals(prompt.includes("Aim for a spread of"), false);
+  // Byte-identity guard for deployed clients: the omitted-hint prompt must not
+  // grow a stray blank line where the hint would sit.
+  assertEquals(prompt.includes("\n\n\n"), false);
+  assertStringIncludes(prompt, "timeMinutes ceiling: 30.\n\nServes: 2.");
 });
 
 Deno.test("per-card timeMinutes ceiling stays an integer with no min/max relaxation", () => {
