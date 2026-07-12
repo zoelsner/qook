@@ -111,11 +111,11 @@ export function DeckScreen() {
   // which would silently skip the new hand's art requests.
   const requestedRef = useRef<number[]>([]);
 
-  // Tracks the background hand-prefetch: whether one is currently in flight,
-  // whether the single silent retry has already been spent, and whether it
-  // ultimately failed (drives the "Deal again" card on exhaustion).
+  // Tracks the background hand-prefetch: whether one is currently in flight
+  // and whether it ultimately failed (drives the "Deal again" card on
+  // exhaustion). Failure is sticky until a manual re-deal — each auto-attempt
+  // costs a quota unit, so the trigger effect must never re-arm on its own.
   const prefetchInFlightRef = useRef(false);
-  const prefetchRetriedRef = useRef(false);
   const [prefetchFailed, setPrefetchFailed] = useState(false);
 
   // Prefetch art: first 3 at deal, then stay 2 ahead of the swiper.
@@ -153,17 +153,17 @@ export function DeckScreen() {
     const redealContext = buildRedealContext({ voiceContext: context, summary: sum, excludeTitles });
     void (async () => {
       try {
-        const recipes = await api.generateProposals(tier, redealContext);
-        stageNextHand(recipes);
-        prefetchRetriedRef.current = false;
-      } catch {
-        if (!prefetchRetriedRef.current) {
-          // One silent retry (spec §1.1.5).
-          prefetchRetriedRef.current = true;
-          prefetchInFlightRef.current = false;
-          prefetchNextHand();
-          return;
+        try {
+          stageNextHand(await api.generateProposals(tier, redealContext));
+        } catch {
+          // One silent retry (spec §1.1.5) — inline, inside the same
+          // invocation, so the in-flight ref stays true until BOTH attempts
+          // settle (a recursive call would let the outer finally clear the
+          // ref while the retry is still pending, opening a duplicate-call
+          // window mid-flight).
+          stageNextHand(await api.generateProposals(tier, redealContext));
         }
+      } catch {
         setPrefetchFailed(true);
       } finally {
         prefetchInFlightRef.current = false;
@@ -172,7 +172,10 @@ export function DeckScreen() {
   }, [tier, deck, context, stageNextHand]);
 
   useEffect(() => {
-    if (!deck || mode !== 'week') return;
+    // prefetchFailed gates re-arming: once both attempts are spent, any deck
+    // mutation (a swipe, a reconcile) would otherwise re-satisfy the pure
+    // trigger and fire another billable call. Only handleFreshHand un-sticks.
+    if (!deck || mode !== 'week' || prefetchFailed) return;
     const fire = shouldPrefetchNextHand({
       position: deck.position,
       handSize: deck.proposals.length,
@@ -181,10 +184,9 @@ export function DeckScreen() {
       nextHandReady: deck.nextHand != null,
     });
     if (fire) {
-      setPrefetchFailed(false);
       prefetchNextHand();
     }
-  }, [deck, deck?.position, mode, unfilledNights, prefetchNextHand]);
+  }, [deck, mode, unfilledNights, prefetchNextHand, prefetchFailed]);
 
   // When the current hand runs out and a prefetched hand is staged, reveal it.
   useEffect(() => {
@@ -268,7 +270,6 @@ export function DeckScreen() {
     if (!tier) return;
     press();
     setPrefetchFailed(false);
-    prefetchRetriedRef.current = false;
     setDealing(true);
     void (async () => {
       try {
