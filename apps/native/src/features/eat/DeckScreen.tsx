@@ -20,8 +20,11 @@ import { X, Info } from 'lucide-react-native';
 import { palette, radius, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
-import { useWeekPlan } from '../../stores/weekPlan';
-import { focusedRecipe, isExhausted } from './deckState';
+import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { focusedRecipe, isExhausted, swipeSummary, sessionExcludeTitles } from './deckState';
+import { shouldPrefetchNextHand } from './handPrefetch';
+import { buildRedealContext } from './redealContext';
+import { unfilledResetNights } from './weekReset';
 import { artIndicesToRequest } from './imagePrefetch';
 import { CardArt } from './CardArt';
 import { useSwipeGesture } from '../swipe-night/useSwipeGesture';
@@ -88,6 +91,11 @@ export function DeckScreen() {
   const setCookTonight = useGenerationSession((s) => s.setCookTonight);
   const reconcileKept = useGenerationSession((s) => s.reconcileKept);
   const reset = useGenerationSession((s) => s.reset);
+  const mode = useGenerationSession((s) => s.mode);
+  const resetNights = useGenerationSession((s) => s.resetNights);
+  const stageNextHand = useGenerationSession((s) => s.stageNextHand);
+  const promoteNextHand = useGenerationSession((s) => s.promoteNextHand);
+  const plan = useWeekPlan((s) => s.plan);
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
   const remapSavedRecipe = useWeekPlan((s) => s.remapSavedRecipe);
@@ -102,6 +110,13 @@ export function DeckScreen() {
   // card-0-id key can collide across hands when cache-hits repeat a recipe,
   // which would silently skip the new hand's art requests.
   const requestedRef = useRef<number[]>([]);
+
+  // Tracks the background hand-prefetch: whether one is currently in flight,
+  // whether the single silent retry has already been spent, and whether it
+  // ultimately failed (drives the "Deal again" card on exhaustion).
+  const prefetchInFlightRef = useRef(false);
+  const prefetchRetriedRef = useRef(false);
+  const [prefetchFailed, setPrefetchFailed] = useState(false);
 
   // Prefetch art: first 3 at deal, then stay 2 ahead of the swiper.
   useEffect(() => {
@@ -119,6 +134,65 @@ export function DeckScreen() {
       requestedRef.current.push(i);
     }
   }, [deck, deck?.position]);
+
+  // Count nights this reset still needs to fill (excludes days already carrying
+  // a committed recipe). Drives whether another hand is worth prefetching.
+  const unfilledNights = React.useMemo(() => {
+    if (mode !== 'week') return 0;
+    const filled = new Set(
+      Object.keys(plan).filter((date) => activePickFor(plan[date as keyof typeof plan]) != null),
+    );
+    return unfilledResetNights(resetNights, filled).length;
+  }, [mode, resetNights, plan]);
+
+  const prefetchNextHand = useCallback(() => {
+    if (!tier || !deck) return;
+    prefetchInFlightRef.current = true;
+    const sum = swipeSummary(deck);
+    const excludeTitles = sessionExcludeTitles(deck);
+    const redealContext = buildRedealContext({ voiceContext: context, summary: sum, excludeTitles });
+    void (async () => {
+      try {
+        const recipes = await api.generateProposals(tier, redealContext);
+        stageNextHand(recipes);
+        prefetchRetriedRef.current = false;
+      } catch {
+        if (!prefetchRetriedRef.current) {
+          // One silent retry (spec §1.1.5).
+          prefetchRetriedRef.current = true;
+          prefetchInFlightRef.current = false;
+          prefetchNextHand();
+          return;
+        }
+        setPrefetchFailed(true);
+      } finally {
+        prefetchInFlightRef.current = false;
+      }
+    })();
+  }, [tier, deck, context, stageNextHand]);
+
+  useEffect(() => {
+    if (!deck || mode !== 'week') return;
+    const fire = shouldPrefetchNextHand({
+      position: deck.position,
+      handSize: deck.proposals.length,
+      unfilledNights,
+      prefetchInFlight: prefetchInFlightRef.current,
+      nextHandReady: deck.nextHand != null,
+    });
+    if (fire) {
+      setPrefetchFailed(false);
+      prefetchNextHand();
+    }
+  }, [deck, deck?.position, mode, unfilledNights, prefetchNextHand]);
+
+  // When the current hand runs out and a prefetched hand is staged, reveal it.
+  useEffect(() => {
+    if (deck && isExhausted(deck) && deck.nextHand != null) {
+      requestedRef.current = [];
+      promoteNextHand();
+    }
+  }, [deck, promoteNextHand]);
 
   // Fire phase-2 for a kept/cooked card; adopt the final (possibly redirected)
   // full row so allocation writes real ingredients. Fire-and-forget.
@@ -193,6 +267,8 @@ export function DeckScreen() {
   const handleFreshHand = useCallback(() => {
     if (!tier) return;
     press();
+    setPrefetchFailed(false);
+    prefetchRetriedRef.current = false;
     setDealing(true);
     void (async () => {
       try {
@@ -238,11 +314,11 @@ export function DeckScreen() {
       ) : exhausted ? (
         <View style={styles.emptyWell}>
           <Mono size={10} bold color={palette.accentDeep}>
-            that&apos;s the hand
+            {prefetchFailed ? "couldn't deal the next hand" : "that's the hand"}
           </Mono>
           <View style={{ height: spacing.sm }} />
           <DisplayText size={26} color={palette.primary} style={{ textAlign: 'center' }}>
-            Nothing grabbed you?
+            {prefetchFailed ? 'Deal again?' : 'Nothing grabbed you?'}
           </DisplayText>
           <View style={{ height: spacing.md }} />
           <PolishedButton label="Deal a fresh hand" tone="forest" onPress={handleFreshHand} />
