@@ -209,6 +209,15 @@ export function MoreScreen() {
             router.push('/generation');
           },
         },
+        {
+          label: 'Saved recipes',
+          subtitle: "Recipes you've hearted",
+          kicker: 'saved',
+          onPress: () => {
+            press();
+            router.push('/saved');
+          },
+        },
       ],
     },
     {

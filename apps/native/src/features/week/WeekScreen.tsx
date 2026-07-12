@@ -2,12 +2,13 @@ import { ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PolishedButton } from '../../components/PolishedButton';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { ScreenShell } from '../../components/ScreenShell';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
-import { palette, spacing } from '../../design';
+import { palette, screen, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useBatchSession } from '../../stores/batchSession';
 import { taggedFutureOrTodayDays, useWeekPlan } from '../../stores/weekPlan';
@@ -17,6 +18,7 @@ import { formatDayShort, upcomingDays, todayISO } from './weekDates';
 
 export function WeekScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { press, tap } = useHaptics();
   const plan = useWeekPlan((state) => state.plan);
   const hasHydrated = useWeekPlan((state) => state.hasHydrated);
@@ -175,6 +177,8 @@ export function WeekScreen() {
       >
         About 15 seconds · one shopping list at the end
       </BodyText>
+
+      <View style={{ height: insets.bottom + screen.tabBarHeight + spacing.sm }} />
     </ScreenShell>
   );
 }

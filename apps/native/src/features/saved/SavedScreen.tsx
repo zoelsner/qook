@@ -4,16 +4,16 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useQueries } from '@tanstack/react-query';
 import type { Recipe } from '@qook/shared';
 
-import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { RingSpinner } from '../../components/RingSpinner';
 import { ScreenShell } from '../../components/ScreenShell';
-import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { BodyText, Mono } from '../../components/Text';
 import { Vignette } from '../../components/Vignette';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { api } from '../../services/api';
 import { useWeekPlan } from '../../stores/weekPlan';
 import type { SeedMealKey } from '../../lib/assets';
+import { SettingsHeader } from '../more/SettingsHeader';
 
 export function SavedScreen() {
   const router = useRouter();
@@ -40,22 +40,12 @@ export function SavedScreen() {
 
   return (
     <ScreenShell horizontalPadding={24}>
-      <View style={styles.header}>
-        <Mono size={10} bold color={palette.accentDeep}>
-          SAVED
-        </Mono>
-        <View style={styles.titleWrap}>
-          <DisplayText size={38} color={palette.primary} style={styles.title}>
-            Saved.
-          </DisplayText>
-          <BrushstrokeUnderline
-            width={140}
-            color={palette.accent}
-            strokeWidth={2.4}
-            style={styles.displayUnderline}
-          />
-        </View>
-      </View>
+      <SettingsHeader
+        kicker="saved"
+        title="Saved"
+        subtitle="hearted recipes"
+        underlineWidth={140}
+      />
 
       <View style={{ height: spacing.md }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
@@ -113,22 +103,6 @@ export function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: 6,
-  },
-  titleWrap: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-  },
-  title: {
-    letterSpacing: -1.2,
-    lineHeight: 42,
-  },
-  displayUnderline: {
-    position: 'absolute',
-    left: -6,
-    bottom: -8,
-  },
   emptyState: {
     alignItems: 'center',
     paddingTop: spacing.xl,
