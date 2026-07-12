@@ -153,6 +153,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         <GlassView
           glassEffectStyle="regular"
           tintColor="rgba(241, 233, 217, 0.55)"
+          isInteractive
           style={[styles.highlightFill, { borderRadius: highlightRadius }]}
         />
       ) : (
@@ -235,10 +236,12 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.haloRing,
   },
+  // No alignItems:center here — it would shrink each Pressable to its
+  // label's height, leaving most of the bar untappable. Tabs stretch to
+  // the full bar height and center their own label.
   row: {
     flexDirection: 'row',
     height: screen.tabBarHeight,
-    alignItems: 'center',
   },
   // left:4/top:6 provide the highlight's static inset within its tab slot; the
   // dynamic translateX (slot index * slot width, unmodified) does the sliding
