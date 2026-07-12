@@ -75,9 +75,9 @@ export function AllocationScreen() {
   useEffect(() => {
     if (nothingToPlace) {
       reset();
-      router.replace('/(tabs)/tonight');
+      router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
     }
-  }, [nothingToPlace, reset, router]);
+  }, [nothingToPlace, reset, router, mode]);
 
   const setDay = (index: number, date: ISODate) => {
     select();
