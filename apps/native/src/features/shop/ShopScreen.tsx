@@ -309,10 +309,8 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
   );
 }
 
-// Middle-dot leader, clipped per row (same device as MenuRow) — the mockup's
-// grocery rows are menu lines: box · name ····· qty, all on one baseline.
-const DOT_LEADER = '·'.repeat(80);
-
+// Same row anatomy as the recipe detail's IngredientRow: box + name flex,
+// qty right, hairline separator. One grocery line = one ingredient line.
 function ShopRow({
   item,
   checked,
@@ -332,27 +330,22 @@ function ShopRow({
       accessibilityLabel={`${item.name}, ${quantity}${checked ? ', checked' : ''}`}
       accessibilityState={{ checked }}
     >
-      <SquareCheckbox checked={checked} size={19} style={styles.rowBox} />
+      <SquareCheckbox checked={checked} size={22} />
       <BodyText
-        size={15}
-        weight="medium"
-        color={checked ? palette.textTertiary : palette.ink}
+        size={16}
+        weight="semi"
+        color={checked ? palette.textSecondary : palette.ink}
         style={[
           styles.rowName,
           checked ? { textDecorationLine: 'line-through' } : null,
         ]}
-        numberOfLines={1}
       >
         {item.name}
       </BodyText>
-      <Text style={styles.rowLeader} numberOfLines={1} ellipsizeMode="clip">
-        {DOT_LEADER}
-      </Text>
       <Mono
         size={12}
         color={checked ? palette.textTertiary : palette.textSecondary}
         style={styles.rowQty}
-        numberOfLines={1}
       >
         {quantity}
       </Mono>
@@ -416,28 +409,20 @@ const styles = StyleSheet.create({
   // the mockup's translateY on the box).
   row: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    paddingVertical: 9,
-  },
-  rowBox: {
-    marginRight: 11,
-    transform: [{ rotate: '-2deg' }],
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: palette.ingredientRowBorder,
   },
   rowName: {
-    flexShrink: 1,
-    letterSpacing: -0.15,
-  },
-  rowLeader: {
     flex: 1,
-    marginHorizontal: 8,
-    fontSize: 13,
-    letterSpacing: 3,
-    color: palette.statRuleColor,
+    letterSpacing: -0.15,
+    lineHeight: 20,
   },
   rowQty: {
-    flexShrink: 0,
-    letterSpacing: 0.4,
-    textTransform: 'none',
+    letterSpacing: 1.2,
   },
   empty: {
     borderRadius: 22,

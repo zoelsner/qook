@@ -44,6 +44,36 @@ describe('aggregateIngredients staged recipes', () => {
     expect(items[0].recipeCount).toBe(1);
     expect(items[0].quantities).toEqual(['1 bunch']);
   });
+
+  test('falls back to the raw item when parsed name/key arrive blank', () => {
+    const salmon = {
+      id: 'salmon',
+      title: 'Miso Salmon',
+      ingredients: [
+        {
+          title: 'main',
+          items: [
+            {
+              item: 'salmon fillets',
+              quantity: '2 (6-ounce) fillets',
+              parsed: {
+                canonicalKey: '  ',
+                name: '',
+                category: 'Protein',
+              },
+            },
+          ],
+        },
+      ],
+    } as unknown as Recipe;
+
+    const items = aggregateIngredients({}, TODAY, [salmon]);
+
+    expect(items.length).toBe(1);
+    expect(items[0].name).toBe('salmon fillets');
+    expect(items[0].key).toBe('salmon fillets');
+    expect(items[0].category).toBe('Protein');
+  });
 });
 
 describe('collectShopMeals', () => {

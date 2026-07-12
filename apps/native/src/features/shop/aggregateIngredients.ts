@@ -96,8 +96,11 @@ export function aggregateIngredients(
       const rawName = ingredient.item?.trim();
       if (!rawName) continue;
 
-      const key = ingredient.parsed?.canonicalKey ?? rawName.toLowerCase();
-      const displayName = ingredient.parsed?.name ?? rawName;
+      // parsed comes straight from the LLM — `name`/`canonicalKey` are
+      // required strings but can arrive blank, which rendered nameless rows.
+      const key =
+        ingredient.parsed?.canonicalKey?.trim() || rawName.toLowerCase();
+      const displayName = ingredient.parsed?.name?.trim() || rawName;
       const category: GroceryCategory =
         ingredient.parsed?.category ?? categorizeIngredient(displayName);
       const quantity = ingredient.quantity?.trim() || '';
