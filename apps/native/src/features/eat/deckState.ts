@@ -1,17 +1,34 @@
 import type { Recipe } from '@qook/shared';
 
-// Pure "hand of 5" deck reducer. No RN/expo imports so it unit-tests under bun.
+// Pure deck reducer. No RN/expo imports so it unit-tests under bun.
 // kept accumulates ACROSS fresh hands (deal-a-fresh-hand keeps prior keeps),
 // so allocation at the end covers everything the user liked this session.
+// passed + dealt accumulate the whole session: passed feeds the bench (Phase C)
+// and the swipe summary; dealt is the exclude set fed to re-deals (Phase B).
 export interface DeckState {
   proposals: Recipe[];
   position: number;
   kept: Recipe[];
+  passed: Recipe[];
+  dealt: { id: string; title: string }[];
+  nextHand: Recipe[] | null;
   cookTonightId: string | null;
 }
 
+function dealtEntries(recipes: Recipe[]): { id: string; title: string }[] {
+  return recipes.map((r) => ({ id: r.id, title: r.title }));
+}
+
 export function initDeck(proposals: Recipe[]): DeckState {
-  return { proposals, position: 0, kept: [], cookTonightId: null };
+  return {
+    proposals,
+    position: 0,
+    kept: [],
+    passed: [],
+    dealt: dealtEntries(proposals),
+    nextHand: null,
+    cookTonightId: null,
+  };
 }
 
 export function focusedRecipe(state: DeckState): Recipe | null {
@@ -37,12 +54,32 @@ export function keepAt(state: DeckState): DeckState {
 }
 
 export function passAt(state: DeckState): DeckState {
-  if (isExhausted(state)) return state;
-  return { ...state, position: state.position + 1 };
+  const focused = focusedRecipe(state);
+  if (!focused) return state;
+  return {
+    ...state,
+    passed: dedupePush(state.passed, focused),
+    position: state.position + 1,
+  };
 }
 
+// Deal a fresh hand: keep prior keeps/passes, append the new hand to the dealt
+// exclude set, reset position, and clear any prefetched hand (it's now live).
 export function dealFreshHand(state: DeckState, proposals: Recipe[]): DeckState {
-  return { ...state, proposals, position: 0 };
+  const newIds = new Set(state.dealt.map((d) => d.id));
+  const appended = dealtEntries(proposals).filter((d) => !newIds.has(d.id));
+  return {
+    ...state,
+    proposals,
+    position: 0,
+    dealt: [...state.dealt, ...appended],
+    nextHand: null,
+  };
+}
+
+// Stash a background-prefetched hand without revealing it yet (Phase B).
+export function stageNextHand(state: DeckState, recipes: Recipe[]): DeckState {
+  return { ...state, nextHand: recipes };
 }
 
 export function setCookTonight(state: DeckState, id: string): DeckState {
@@ -52,14 +89,28 @@ export function setCookTonight(state: DeckState, id: string): DeckState {
 // After fill-recipe resolves, the kept card may have a NEW id (cache-hit
 // redirect) and now carries the full body — swap it in so allocation writes the
 // full recipe and points at the surviving row. Also repoints cookTonightId.
-export function reconcileKept(
-  state: DeckState,
-  oldId: string,
-  recipe: Recipe
-): DeckState {
+export function reconcileKept(state: DeckState, oldId: string, recipe: Recipe): DeckState {
   return {
     ...state,
     kept: state.kept.map((r) => (r.id === oldId ? recipe : r)),
     cookTonightId: state.cookTonightId === oldId ? recipe.id : state.cookTonightId,
   };
+}
+
+// Compact record of this session's swipes for steering the next hand (Phase B).
+export function swipeSummary(state: DeckState): {
+  keptTitles: string[];
+  keptCuisines: string[];
+  passedCuisines: string[];
+} {
+  return {
+    keptTitles: state.kept.map((r) => r.title),
+    keptCuisines: [...new Set(state.kept.map((r) => r.cuisine))],
+    passedCuisines: [...new Set(state.passed.map((r) => r.cuisine))],
+  };
+}
+
+// Every title dealt this session — the dedup exclude set sent to re-deals.
+export function sessionExcludeTitles(state: DeckState): string[] {
+  return state.dealt.map((d) => d.title);
 }

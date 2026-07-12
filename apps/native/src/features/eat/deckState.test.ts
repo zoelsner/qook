@@ -8,12 +8,19 @@ import {
   keepAt,
   passAt,
   reconcileKept,
+  sessionExcludeTitles,
+  stageNextHand,
+  swipeSummary,
 } from './deckState';
 
 function r(id: string): Recipe {
   return { id, title: `Dish ${id}` } as Recipe;
 }
 const HAND = [r('a'), r('b'), r('c'), r('d'), r('e')];
+
+function rc(id: string, cuisine: string): Recipe {
+  return { id, title: `Dish ${id}`, cuisine } as Recipe;
+}
 
 describe('deckState', () => {
   test('keepAt records the focused recipe and advances', () => {
@@ -56,5 +63,48 @@ describe('deckState', () => {
     let s = keepAt(initDeck(HAND));
     s = reconcileKept(s, 'a', r('full-a'));
     expect(s.kept.map((x) => x.id)).toEqual(['full-a']);
+  });
+});
+
+describe('deckState session tracking', () => {
+  test('passAt records the passed recipe', () => {
+    const s = passAt(initDeck(HAND));
+    expect(s.passed.map((x) => x.id)).toEqual(['a']);
+  });
+
+  test('initDeck seeds the dealt set from the hand', () => {
+    const s = initDeck([rc('a', 'Thai'), rc('b', 'Italian')]);
+    expect(s.dealt.map((d) => d.id)).toEqual(['a', 'b']);
+  });
+
+  test('dealFreshHand appends the new hand to the dealt set', () => {
+    let s = initDeck([rc('a', 'Thai')]);
+    s = dealFreshHand(s, [rc('b', 'Italian')]);
+    expect(s.dealt.map((d) => d.id)).toEqual(['a', 'b']);
+  });
+
+  test('swipeSummary reports kept + passed cuisines', () => {
+    let s = initDeck([rc('a', 'Thai'), rc('b', 'Italian')]);
+    s = keepAt(s); // keep a (Thai)
+    s = passAt(s); // pass b (Italian)
+    const sum = swipeSummary(s);
+    expect(sum.keptCuisines).toEqual(['Thai']);
+    expect(sum.passedCuisines).toEqual(['Italian']);
+  });
+
+  test('sessionExcludeTitles lists every dealt title', () => {
+    const s = initDeck([rc('a', 'Thai'), rc('b', 'Italian')]);
+    expect(sessionExcludeTitles(s)).toEqual(['Dish a', 'Dish b']);
+  });
+
+  test('stageNextHand stashes the prefetched hand', () => {
+    const s = stageNextHand(initDeck(HAND), [rc('z', 'Thai')]);
+    expect(s.nextHand?.map((x) => x.id)).toEqual(['z']);
+  });
+
+  test('dealFreshHand clears any staged next hand', () => {
+    let s = stageNextHand(initDeck(HAND), [rc('z', 'Thai')]);
+    s = dealFreshHand(s, [rc('z', 'Thai')]);
+    expect(s.nextHand).toBe(null);
   });
 });
