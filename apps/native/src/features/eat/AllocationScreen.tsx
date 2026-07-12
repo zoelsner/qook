@@ -11,7 +11,7 @@ import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
 import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
-import { allocationWrites, tierMismatch } from './allocation';
+import { allocateKeeps, tierMismatch } from './allocation';
 import { unfilledResetNights } from './weekReset';
 import { api } from '../../services/api';
 import { addDaysISO, todayISO, type ISODate } from '../week/weekDates';
@@ -36,6 +36,7 @@ export function AllocationScreen() {
   const resetNights = useGenerationSession((s) => s.resetNights);
   const plan = useWeekPlan((s) => s.plan);
   const reset = useGenerationSession((s) => s.reset);
+  const addToBench = useGenerationSession((s) => s.addToBench);
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
 
@@ -74,7 +75,7 @@ export function AllocationScreen() {
   const nothingToPlace = !deck || kept.length === 0;
   useEffect(() => {
     if (nothingToPlace) {
-      reset();
+      if (mode !== 'week') reset();
       router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
     }
   }, [nothingToPlace, reset, router, mode]);
@@ -91,19 +92,27 @@ export function AllocationScreen() {
     // whichever recipe object is live at write time, keyed by the same indexes
     // `choices` was seeded and toggled with.
     const liveKept = useGenerationSession.getState().deck?.kept ?? kept;
-    const writes = allocationWrites(
-      liveKept.map((r, i) => ({ recipe: r, date: choices[i] ?? null }))
-    );
-    for (const w of writes) {
+    const dayChoices = liveKept.map((r, i) => ({ recipe: r, date: choices[i] ?? null }));
+    const nightDates = mode === 'week' ? days.map((d) => d.date) : [];
+    const outcome = allocateKeeps(dayChoices, nightDates);
+
+    for (const w of outcome.placed) {
       // Re-fetch the freshest row so a completed phase-2 fill's ingredients land
       // in the plan (Shop aggregation reads plan recipes' ingredients).
       const fresh = (await api.getRecipeById(w.recipe.id).catch(() => null)) ?? w.recipe;
       appendRecipeAndSelect(w.date, fresh);
       commitSelection(w.date);
     }
+    if (mode === 'week' && outcome.benched.length) {
+      addToBench(outcome.benched);
+    }
+
     // Live read, like liveKept above — a reconcile can swap the id between render and Done.
     const cooked = useGenerationSession.getState().deck?.cookTonightId ?? cookTonightId;
-    reset();
+    // In week mode, leave the session (and its bench) in place — reset() nulls
+    // `deck`, which would wipe the bench the day sheet needs. It clears on the
+    // next startWeekReset instead (spec D7).
+    if (mode !== 'week') reset();
     if (cooked) {
       router.replace({ pathname: '/(modals)/recipe/[id]', params: { id: cooked } });
     } else {
@@ -113,7 +122,13 @@ export function AllocationScreen() {
 
   const skipAll = () => {
     press();
-    reset();
+    if (mode === 'week') {
+      // In week mode keeps were already saved (savedRecipeIds) and passes/
+      // over-keeps stay on the bench for the day sheet; leave the session.
+      addToBench(useGenerationSession.getState().deck?.kept ?? []);
+    } else {
+      reset();
+    }
     router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
   };
 
