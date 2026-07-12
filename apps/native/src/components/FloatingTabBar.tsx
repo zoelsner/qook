@@ -114,11 +114,17 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         const slotW = slotWidthRef.current;
         if (slotW === 0) return;
         const relativeX = gesture.moveX - rowPageXRef.current;
-        const hoveredIndex = clamp(Math.floor(relativeX / slotW), 0, routeCount - 1);
-        if (hoveredIndex !== hoveredIndexRef.current) {
-          hoveredIndexRef.current = hoveredIndex;
+        // Follow the finger 1:1 while held — no spring per slot, or the lens
+        // "bounces" between sections. Center the lens under the finger and
+        // clamp so it never slides past the first/last slot.
+        const maxT = (routeCount - 1) * slotW;
+        translateX.setValue(clamp(relativeX - slotW / 2, 0, maxT));
+        // Track the nearest slot for the release snap, with a light detent
+        // tick each time the finger crosses into a new one (iOS-style).
+        const nearest = clamp(Math.round((relativeX - slotW / 2) / slotW), 0, routeCount - 1);
+        if (nearest !== hoveredIndexRef.current) {
+          hoveredIndexRef.current = nearest;
           void select();
-          animateTo(hoveredIndex);
         }
       },
       onPanResponderRelease: () => {
