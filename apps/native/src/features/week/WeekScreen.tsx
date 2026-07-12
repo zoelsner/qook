@@ -92,18 +92,22 @@ export function WeekScreen() {
 
       <View style={{ height: spacing.lg }} />
 
+      <View style={styles.pinnedToday}>
+        <DayRow date={days[0]} onOpenRecipe={onOpenRecipe} />
+      </View>
+
       <View style={styles.card}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 18, paddingVertical: 4 }}
         >
-          {days.map((date) => (
+          {days.slice(1).map((date) => (
             <DayRow key={date} date={date} onOpenRecipe={onOpenRecipe} />
           ))}
         </ScrollView>
       </View>
 
-      <View style={{ height: spacing.md }} />
+      <View style={{ height: spacing.sm }} />
 
       <View style={styles.summary}>
         <View style={styles.summaryLeft}>
@@ -164,7 +168,7 @@ export function WeekScreen() {
 
       <View style={{ height: spacing.xs + 2 }} />
       <BodyText
-        size={12}
+        size={11}
         weight="medium"
         color={palette.textTertiary}
         style={{ textAlign: 'center' }}
@@ -203,8 +207,11 @@ const styles = StyleSheet.create({
     left: -6,
     bottom: -8,
   },
+  pinnedToday: {
+    paddingHorizontal: 18,
+  },
   card: {
-    maxHeight: 380,
+    flex: 1,
     borderRadius: 22,
   },
   summary: {
