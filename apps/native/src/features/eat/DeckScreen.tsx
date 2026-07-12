@@ -16,7 +16,7 @@ import { Vignette } from '../../components/Vignette';
 import { DisplayText, Mono, ItalicText, BodyText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
-import { X, Eye } from 'lucide-react-native';
+import { X, Info } from 'lucide-react-native';
 import { palette, radius, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
@@ -448,7 +448,7 @@ function DeckCard({
               accessibilityLabel={flipped ? 'Show the recipe card' : 'Show ingredients and plan'}
               style={styles.infoPill}
             >
-              <Eye size={16} color={palette.ink} strokeWidth={2.2} />
+              <Info size={16} color={palette.ink} strokeWidth={2.2} />
             </IconPill>
           </View>
 
