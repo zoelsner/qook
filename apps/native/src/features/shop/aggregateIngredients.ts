@@ -33,10 +33,43 @@ export interface ShopItem {
  * user's selected Tonight/Week meals. A staged recipe already present as an
  * active pick is deduplicated by recipe id.
  */
+/**
+ * The distinct meals feeding the shopping list — the source list for the
+ * Shop filter pills (spec 2026-07-13-shop-meal-pills-design.md). Planned
+ * picks first in date order (deduplicated by id: a dish planned twice gets
+ * one pill), then staged recipes not already present as a pick.
+ */
+export function collectShopMeals(
+  plan: Record<ISODate, DayPlan>,
+  todayIso: ISODate,
+  staged: Recipe[] = [],
+): Recipe[] {
+  const meals: Recipe[] = [];
+  const seen = new Set<string>();
+  const dates = Object.keys(plan).sort() as ISODate[];
+  for (const date of dates) {
+    if (date < todayIso) continue;
+    const day = plan[date];
+    const pick = day.recipes?.[day.pickIndex ?? 0];
+    if (pick && !seen.has(pick.id)) {
+      seen.add(pick.id);
+      meals.push(pick);
+    }
+  }
+  for (const recipe of staged) {
+    if (!seen.has(recipe.id)) {
+      seen.add(recipe.id);
+      meals.push(recipe);
+    }
+  }
+  return meals;
+}
+
 export function aggregateIngredients(
   plan: Record<ISODate, DayPlan>,
   todayIso: ISODate,
   staged: Recipe[] = [],
+  excludeIds?: ReadonlySet<string>,
 ): ShopItem[] {
   const map = new Map<string, ShopItem>();
 
@@ -53,6 +86,9 @@ export function aggregateIngredients(
   }
 
   for (const pick of picks) {
+    // Pill-toggled meals contribute nothing; both nights of a twice-planned
+    // dish drop together (pills are per-dish, not per-night — spec).
+    if (excludeIds?.has(pick.id)) continue;
     if (!pick.ingredients?.length) continue;
 
     const flatIngredients = pick.ingredients.flatMap((group) => group.items ?? []);

@@ -21,9 +21,11 @@ import {
 } from '../../lib/shoppingShare';
 import {
   aggregateIngredients,
+  collectShopMeals,
   formatQuantity,
   type ShopItem,
 } from './aggregateIngredients';
+import { MealFilterPills } from './MealFilterPills';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
   'Produce',
@@ -63,12 +65,27 @@ export function ShopScreen() {
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
   const today = todayISO();
 
+  const staged = useMemo(
+    () => (hasHydrated ? activeStagedRecipes(shopStaging, today) : []),
+    [shopStaging, today, hasHydrated],
+  );
+  const meals = useMemo(
+    () => (hasHydrated ? collectShopMeals(plan, today, staged) : []),
+    [plan, today, staged, hasHydrated],
+  );
+
+  // Pill exclusions — ephemeral, same lifetime as `checked` (spec
+  // 2026-07-13-shop-meal-pills-design.md). A meal leaving the plan takes its
+  // stale exclusion with it (excludeIds intersects with live meal ids).
+  const [excluded, setExcluded] = useState<Record<string, boolean>>({});
+  const excludeIds = useMemo(
+    () => new Set(meals.filter((m) => excluded[m.id]).map((m) => m.id)),
+    [meals, excluded],
+  );
+
   const items = useMemo(
-    () =>
-      hasHydrated
-        ? aggregateIngredients(plan, today, activeStagedRecipes(shopStaging, today))
-        : [],
-    [plan, shopStaging, today, hasHydrated],
+    () => (hasHydrated ? aggregateIngredients(plan, today, staged, excludeIds) : []),
+    [plan, staged, today, hasHydrated, excludeIds],
   );
 
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -102,6 +119,11 @@ export function ShopScreen() {
   const handleToggle = (key: string) => {
     select();
     setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleTogglePill = (id: string) => {
+    select();
+    setExcluded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   useEffect(() => {
@@ -179,7 +201,25 @@ export function ShopScreen() {
 
       <View style={{ height: spacing.sm }} />
 
-      {!hasHydrated ? null : totalItems === 0 ? (
+      {meals.length >= 2 ? (
+        <>
+          <MealFilterPills
+            meals={meals}
+            excluded={excludeIds}
+            onToggle={handleTogglePill}
+            edgeBleed={24}
+          />
+          <View style={{ height: spacing.sm + 2 }} />
+        </>
+      ) : null}
+
+      {!hasHydrated ? null : totalItems === 0 && excludeIds.size > 0 ? (
+        <View style={styles.filteredEmpty}>
+          <BodyText size={14} color={palette.textSecondary} weight="medium">
+            Every meal is hidden — tap a pill to bring its ingredients back.
+          </BodyText>
+        </View>
+      ) : totalItems === 0 ? (
         <EmptyShop
           onOpenWeek={() => {
             press();
@@ -330,6 +370,10 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: palette.statRuleColor,
     marginTop: spacing.sm,
+  },
+  filteredEmpty: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
   },
   titleRow: {
     flexDirection: 'row',
