@@ -9,7 +9,7 @@ export default function TabsLayout() {
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="tonight" options={{ title: 'Tonight' }} />
-      <Tabs.Screen name="week" options={{ title: 'Week' }} />
+      <Tabs.Screen name="week" options={{ title: 'Plan' }} />
       <Tabs.Screen name="shop" options={{ title: 'Shop' }} />
       <Tabs.Screen name="more" options={{ title: 'More' }} />
     </Tabs>

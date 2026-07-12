@@ -56,6 +56,12 @@ export function scaledIngredientQuantity(
 ): string | undefined {
   if (!ing.quantity) return undefined;
   if (Math.abs(factor - 1) < 0.001) return ing.quantity;
+  // scaleQuantityString preserves the trailing unit text verbatim, so prefer
+  // it whenever the display quantity has a leading numeric token — the
+  // structured parse drops the unit wording when quantityUnit is 'count'.
+  if (/^\s*(\d+\s+\d+\/\d+|\d+\/\d+|\d*\.?\d+|[¼½¾⅓⅔])/.test(ing.quantity)) {
+    return scaleQuantityString(ing.quantity, factor);
+  }
   const parsed = ing.parsed;
   if (parsed?.quantityAmount != null && parsed.quantityAmount > 0) {
     const amt = formatAmount(parsed.quantityAmount * factor);

@@ -20,7 +20,7 @@ type TabName = 'tonight' | 'week' | 'shop' | 'more';
 
 const LABELS: Record<TabName, string> = {
   tonight: 'Tonight',
-  week: 'Week',
+  week: 'Plan',
   shop: 'Shop',
   more: 'More',
 };

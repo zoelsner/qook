@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Recipe } from '@qook/shared';
@@ -15,6 +15,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useRecipeArt } from '../../hooks/useRecipeArt';
+import { hasRequestedRecipeArt, isRecipeArtMissing } from '../../hooks/recipeArtState';
+import { api } from '../../services/api';
 import {
   useWeekPlan,
   activePickFor,
@@ -325,6 +327,17 @@ function MorePickRow({
   onPeek: () => void;
 }) {
   const art = useRecipeArt(recipe);
+
+  // Warm this alternate's art as soon as its row is visible — spotlight-first
+  // otherwise only fires on detail-open, leaving a visible blank vignette.
+  // Guarded client-side (hasRequestedRecipeArt) so re-renders don't spam; the
+  // server also holds an atomic pending|failed→generating lock.
+  useEffect(() => {
+    if (recipe.id && isRecipeArtMissing(art) && !hasRequestedRecipeArt(recipe.id)) {
+      void api.requestRecipeImage(recipe.id);
+    }
+  }, [recipe.id, art]);
+
   return (
     <Pressable
       onPress={onSpotlight}
@@ -410,6 +423,15 @@ function UpcomingCard({
 }) {
   const pick = activePickFor(day);
   const art = useRecipeArt(pick ?? undefined);
+
+  // Same warm-on-visibility as MorePickRow (§5) — guarded so re-renders
+  // don't spam; server holds an atomic pending|failed→generating lock.
+  useEffect(() => {
+    if (pick?.id && isRecipeArtMissing(art) && !hasRequestedRecipeArt(pick.id)) {
+      void api.requestRecipeImage(pick.id);
+    }
+  }, [pick?.id, art]);
+
   const { weekday, month, day: d } = formatDayShort(date);
   const accessibilityLabel = pick
     ? `${weekday}: ${pick.title}`

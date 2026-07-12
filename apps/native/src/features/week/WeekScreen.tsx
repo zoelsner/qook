@@ -127,7 +127,7 @@ export function WeekScreen() {
             weight="medium"
             color={drafting ? palette.textTertiary : palette.accentDeep}
           >
-            Clear future
+            Clear upcoming
           </BodyText>
         </Pressable>
       </View>

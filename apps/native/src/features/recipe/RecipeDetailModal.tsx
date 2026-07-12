@@ -10,6 +10,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import type {
   IngredientGroup,
   Ingredient,
@@ -29,7 +36,7 @@ import {
   IconCookingSteam,
 } from '../../components/painted';
 import { X, Bookmark, Share, Minus, Plus } from 'lucide-react-native';
-import { palette, spacing, typeScale } from '../../design';
+import { fontFamily, palette, spacing, typeScale } from '../../design';
 import { ENERGY_TIER_SUBTITLE } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -235,6 +242,9 @@ function RecipeBody({
             style={styles.heroImage}
           />
         )}
+        {recipe.imageStatus === 'pending' || recipe.imageStatus === 'generating' ? (
+          <PaintingCaption />
+        ) : null}
       </View>
 
       <View style={styles.titleBlock}>
@@ -509,6 +519,33 @@ function LoadingState() {
   );
 }
 
+// Quiet caption over the hero placeholder while art is generating (4-9s).
+// Lives inside styles.hero, a ScrollView descendant far from the heroNav
+// SafeAreaView where the GlassView hero pills render (see HeroPill note
+// below) — it is not an ancestor of any GlassView, so animating its opacity
+// is safe. Only the Text pulses, never a View wrapper, per the same rule.
+function PaintingCaption() {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <View style={styles.paintingCaptionWrap} pointerEvents="none">
+      <Animated.Text style={[styles.paintingCaptionText, pulseStyle]}>
+        Painting your plate…
+      </Animated.Text>
+    </View>
+  );
+}
+
 // Clear glass circle for the hero-nav pills (close / save / share) when
 // Liquid Glass is available; falls back to the cream IconPill otherwise.
 // GlassView renders as an absolute-fill sibling *under* the Pressable inside
@@ -657,6 +694,20 @@ const styles = StyleSheet.create({
     backgroundColor: palette.well,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  paintingCaptionWrap: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  paintingCaptionText: {
+    fontFamily: fontFamily.monoRegular,
+    fontSize: typeScale.monoSM,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: palette.textSecondary,
   },
   heroNav: {
     position: 'absolute',
