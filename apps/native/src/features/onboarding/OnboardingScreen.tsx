@@ -100,6 +100,14 @@ const SEED_DISHES: SeedDish[] = [
   },
 ];
 
+// The seed watercolors frame the plate at ~60% of the canvas; zoom the
+// vignette so the food, not the splash, fills the circle. Beef & broccoli's
+// plate sits smaller in frame than the rest.
+const ART_ZOOM_DEFAULT = 1.35;
+const ART_ZOOM: Partial<Record<SeedMealKey, number>> = {
+  'beef-broccoli-stirfry': 1.5,
+};
+
 const SERVINGS_OPTIONS: { value: number; word: string }[] = [
   { value: 1, word: 'JUST ME' },
   { value: 2, word: 'US TWO' },
@@ -322,7 +330,12 @@ function TasteStep({
               style={[styles.tile, selected ? styles.tileSelected : null]}
             >
               <View style={styles.tileVignetteWrap}>
-                <Vignette size={104} localKey={dish.key} title={dish.title} />
+                <Vignette
+                  size={104}
+                  zoom={ART_ZOOM[dish.key] ?? ART_ZOOM_DEFAULT}
+                  localKey={dish.key}
+                  title={dish.title}
+                />
                 {selected ? <View style={styles.tileDot} /> : null}
               </View>
               <View style={{ height: spacing.xs + 2 }} />

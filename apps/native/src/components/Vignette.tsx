@@ -13,6 +13,10 @@ export interface VignetteProps {
   blurhash?: string;
   imageStatus?: ImageStatus;
   title?: string;
+  // Scales the art inside the circular crop (>1 zooms in). The bundled
+  // seed PNGs frame the plate at ~60% of the canvas, so small vignettes
+  // need a zoom; generated live art is already edge-to-edge.
+  zoom?: number;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -27,6 +31,7 @@ export function Vignette({
   blurhash,
   imageStatus,
   title,
+  zoom = 1,
   style,
 }: VignetteProps) {
   const hasArt = !!remoteUrl || !!localKey;
@@ -51,15 +56,23 @@ export function Vignette({
     );
   }
 
+  const artSize = size * zoom;
   return (
-    <View style={[{ width: size, height: size, borderRadius: radius }, styles.crop, style]}>
+    <View
+      style={[
+        { width: size, height: size, borderRadius: radius },
+        styles.crop,
+        zoom !== 1 ? styles.center : null,
+        style,
+      ]}
+    >
       <FoodHeroImage
         localKey={localKey}
         remoteUrl={remoteUrl}
         blurhash={blurhash}
-        width={size}
-        height={size}
-        cornerRadius={radius}
+        width={artSize}
+        height={artSize}
+        cornerRadius={artSize / 2}
       />
     </View>
   );
@@ -68,6 +81,10 @@ export function Vignette({
 const styles = StyleSheet.create({
   crop: {
     overflow: 'hidden',
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   letterWrap: {
     backgroundColor: palette.background,
