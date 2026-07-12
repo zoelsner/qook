@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { Recipe } from '@qook/shared';
+import type { EnergyTier, Recipe } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
 import { Vignette } from '../../components/Vignette';
@@ -10,8 +10,9 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
-import { useWeekPlan } from '../../stores/weekPlan';
-import { allocationWrites } from './allocation';
+import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
+import { allocationWrites, tierMismatch } from './allocation';
+import { unfilledResetNights } from './weekReset';
 import { api } from '../../services/api';
 import { addDaysISO, todayISO, type ISODate } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
@@ -31,13 +32,28 @@ export function AllocationScreen() {
   const router = useRouter();
   const { press, select } = useHaptics();
   const deck = useGenerationSession((s) => s.deck);
+  const mode = useGenerationSession((s) => s.mode);
+  const resetNights = useGenerationSession((s) => s.resetNights);
+  const plan = useWeekPlan((s) => s.plan);
   const reset = useGenerationSession((s) => s.reset);
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
 
   const kept = deck?.kept ?? [];
   const cookTonightId = deck?.cookTonightId ?? null;
-  const days = useMemo(dayOptions, []);
+  const days = useMemo(() => {
+    if (mode !== 'week') {
+      return dayOptions().map((d) => ({ ...d, tier: undefined as EnergyTier | undefined }));
+    }
+    const filled = new Set(
+      Object.keys(plan).filter((date) => activePickFor(plan[date as ISODate]) != null),
+    );
+    return unfilledResetNights(resetNights, filled).map((n) => ({
+      date: n.date,
+      label: n.date === todayISO() ? 'Tonight' : WEEKDAY[new Date(`${n.date}T00:00:00`).getDay()],
+      tier: n.tier as EnergyTier | undefined,
+    }));
+  }, [mode, resetNights, plan]);
 
   // Pre-select "Tonight" for the cooked recipe; others start unassigned.
   // Keyed by POSITION, not recipe id: reconcileKept (deckState.ts) swaps a kept
@@ -91,14 +107,14 @@ export function AllocationScreen() {
     if (cooked) {
       router.replace({ pathname: '/(modals)/recipe/[id]', params: { id: cooked } });
     } else {
-      router.replace('/(tabs)/tonight');
+      router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
     }
   };
 
   const skipAll = () => {
     press();
     reset();
-    router.replace('/(tabs)/tonight');
+    router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
   };
 
   if (nothingToPlace) return null;
@@ -152,7 +168,7 @@ function AllocationRow({
   onSelect,
 }: {
   recipe: Recipe;
-  days: { date: ISODate; label: string }[];
+  days: { date: ISODate; label: string; tier?: EnergyTier }[];
   selected: ISODate | null;
   onSelect: (date: ISODate) => void;
 }) {
@@ -173,16 +189,17 @@ function AllocationRow({
       <View style={styles.chipRow}>
         {days.map((d) => {
           const active = selected === d.date;
+          const over = d.tier ? tierMismatch(recipe.timeMinutes, d.tier) : false;
           return (
             <Pressable
               key={d.date}
               onPress={() => onSelect(d.date)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              style={[styles.chip, active ? styles.chipActive : null]}
+              style={[styles.chip, active ? styles.chipActive : null, over && !active ? styles.chipOver : null]}
             >
-              <Mono size={10} bold color={active ? palette.surface : palette.textSecondary}>
-                {d.label}
+              <Mono size={10} bold color={active ? palette.surface : over ? palette.utility : palette.textSecondary}>
+                {over ? `${d.label} · over` : d.label}
               </Mono>
             </Pressable>
           );
@@ -228,6 +245,9 @@ const styles = StyleSheet.create({
   chipActive: {
     backgroundColor: palette.primary,
     borderColor: palette.primary,
+  },
+  chipOver: {
+    borderColor: palette.utility,
   },
   skipRow: {
     alignSelf: 'center',
