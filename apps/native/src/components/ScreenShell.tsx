@@ -1,13 +1,18 @@
 import React, { PropsWithChildren } from 'react';
 import { View, StyleSheet, ScrollView, ScrollViewProps } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, screen, palette } from '../design';
+import { screen, palette } from '../design';
 
 export interface ScreenShellProps {
   scrollable?: boolean;
   horizontalPadding?: number;
   scrollProps?: Partial<ScrollViewProps>;
 }
+
+// One top pad shared by BOTH branches so every screen's masthead sits at the
+// same height below the notch. Historically scrollable screens got spacing.lg
+// and non-scrollable (Plan) got 0 — Zach 2026-07-13: meet in the middle.
+export const SHELL_TOP_PAD = 12;
 
 export function ScreenShell({
   scrollable = true,
@@ -24,7 +29,7 @@ export function ScreenShell({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              paddingTop: spacing.lg,
+              paddingTop: SHELL_TOP_PAD,
               paddingBottom: screen.bottom + insets.bottom,
             }}
             {...scrollProps}
@@ -35,7 +40,12 @@ export function ScreenShell({
           // Children go directly under a flex:1 view — nesting them in the
           // auto-height `content` wrapper collapses any flex:1 child to zero
           // height (GenerationLoadingScreen rendered no text because of this).
-          <View style={[styles.fill, { paddingHorizontal: horizontalPadding }]}>
+          <View
+            style={[
+              styles.fill,
+              { paddingHorizontal: horizontalPadding, paddingTop: SHELL_TOP_PAD },
+            ]}
+          >
             {children}
           </View>
         )}

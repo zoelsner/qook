@@ -234,7 +234,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: spacing.sm,
+    // Matches SHELL_TOP_PAD (ScreenShell) so this screen's masthead sits at
+    // the same height as the tabs'.
+    paddingTop: 12,
   },
   mastheadRule: {
     height: StyleSheet.hairlineWidth,
