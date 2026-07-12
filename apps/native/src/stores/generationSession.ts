@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { EnergyTier, Recipe } from '@qook/shared';
 import {
   addToBench as reduceAddBench,
+  appendEncore as reduceAppendEncore,
   dealFreshHand,
   initDeck,
   keepAt as reduceKeep,
@@ -59,6 +60,7 @@ interface GenerationSessionState {
   promoteNextHand: () => void;
   addToBench: (recipes: Recipe[]) => void;
   placeFromBench: (recipe: Recipe) => void;
+  attachEncore: (recipe: Recipe) => void;
 }
 
 export const useGenerationSession = create<GenerationSessionState>()(
@@ -160,6 +162,9 @@ export const useGenerationSession = create<GenerationSessionState>()(
             : [...s.deck.kept, recipe];
           return { deck: { ...s.deck, kept } };
         }),
+
+      attachEncore: (recipe) =>
+        set((s) => (s.deck ? { deck: reduceAppendEncore(s.deck, recipe) } : s)),
     }),
     {
       name: 'qook.generationSession.v1',

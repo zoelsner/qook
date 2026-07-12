@@ -336,6 +336,7 @@ export function DeckScreen() {
         <DeckCard
           key={`${focused.id}-${deck.position}`}
           recipe={focused}
+          isEncore={focused.id === deck.encoreId}
           onKeep={handleKeep}
           onPass={handlePass}
           onCookTonight={handleCookTonight}
@@ -372,11 +373,13 @@ export function DeckScreen() {
 
 function DeckCard({
   recipe,
+  isEncore,
   onKeep,
   onPass,
   onCookTonight,
 }: {
   recipe: Recipe;
+  isEncore?: boolean;
   onKeep: () => void;
   onPass: () => void;
   onCookTonight: () => void;
@@ -427,8 +430,8 @@ function DeckCard({
               <PaperCard padding={0} cornerRadius={radius.sheet}>
                 <CardArt recipe={recipe} />
                 <View style={styles.cardBody}>
-                  <Mono size={10} bold color={palette.accentDeep}>
-                    {recipe.cuisine.toLowerCase()}
+                  <Mono size={10} bold color={isEncore ? palette.accent : palette.accentDeep}>
+                    {isEncore ? 'from your kitchen' : recipe.cuisine.toLowerCase()}
                   </Mono>
                   <View style={{ height: 4 }} />
                   <DisplayText size={26} color={palette.ink} numberOfLines={2} style={styles.cardTitle}>

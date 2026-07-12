@@ -8,6 +8,8 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
 import { api } from '../../services/api';
 import { useGenerationSession } from '../../stores/generationSession';
+import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { encoreCandidateId } from './encore';
 import { useHaptics } from '../../hooks/useHaptics';
 import { DealingHandLoader } from './DealingHandLoader';
 
@@ -39,10 +41,41 @@ export function GenerationLoadingScreen() {
   const context = useGenerationSession((s) => s.context);
   const setProposals = useGenerationSession((s) => s.setProposals);
   const fail = useGenerationSession((s) => s.fail);
+  const mode = useGenerationSession((s) => s.mode);
+  const attachEncore = useGenerationSession((s) => s.attachEncore);
+  const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
+  const plan = useWeekPlan((s) => s.plan);
   const [phase, setPhase] = useState<'thinking' | 'coming-up'>('thinking');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const runId = useRef(0);
   const mountedRef = useRef(true);
+
+  // Compute the encore candidate from the user's history and attach it as a
+  // 6th card (spec §1.3). Week mode only; below-threshold or no candidate is
+  // a no-op — a plain hand of 5. Fetches the full recipe by id (quota-free,
+  // no generate-proposals call).
+  const maybeAttachEncore = React.useCallback(
+    async (dealtIds: string[]) => {
+      if (mode !== 'week') return;
+      const cookedIds = Object.values(plan)
+        .filter((d) => d.cookedAt && d.recipes?.length)
+        .map((d) => activePickFor(d)?.id)
+        .filter((id): id is string => Boolean(id));
+      const placedThisWeekIds = Object.values(plan)
+        .map((d) => activePickFor(d)?.id)
+        .filter((id): id is string => Boolean(id));
+      const candidateId = encoreCandidateId({
+        savedIds: savedRecipeIds,
+        cookedIds,
+        placedThisWeekIds,
+        dealtThisSessionIds: dealtIds,
+      });
+      if (!candidateId) return;
+      const full = await api.getRecipeById(candidateId).catch(() => null);
+      if (full) attachEncore(full);
+    },
+    [mode, plan, savedRecipeIds, attachEncore],
+  );
 
   useEffect(() => {
     mountedRef.current = true; // refs persist across Fast Refresh re-runs — re-arm on setup
@@ -66,6 +99,7 @@ export function GenerationLoadingScreen() {
         const proposals = await api.generateProposals(tier, context);
         if (cancelled || myRun !== runId.current) return;
         setProposals(proposals);
+        void maybeAttachEncore(proposals.map((p) => p.id));
         setPhase('coming-up');
         // Warm the first 3 hero images in parallel (spec: pre-fire first 3).
         proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
@@ -107,6 +141,7 @@ export function GenerationLoadingScreen() {
         const proposals = await api.generateProposals(tier, context);
         if (!mountedRef.current || myRun !== runId.current) return;
         setProposals(proposals);
+        void maybeAttachEncore(proposals.map((p) => p.id));
         setPhase('coming-up');
         proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
           if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { Recipe } from '@qook/shared';
 import {
   addToBench,
+  appendEncore,
   benchCards,
   dealFreshHand,
   focusedRecipe,
@@ -136,5 +137,14 @@ describe('deckState bench', () => {
     s = keepAt(s);
     const round = JSON.parse(JSON.stringify(s));
     expect(round).toEqual(s);
+  });
+});
+
+describe('deckState encore', () => {
+  test('appendEncore adds a sixth card + records the encore id', () => {
+    const s = appendEncore(initDeck(HAND), rc('enc', 'French'));
+    expect(s.proposals.length).toBe(6);
+    expect(s.encoreId).toBe('enc');
+    expect(s.dealt.map((d) => d.id).includes('enc')).toBe(true);
   });
 });

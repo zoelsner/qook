@@ -14,6 +14,7 @@ export interface DeckState {
   nextHand: Recipe[] | null;
   bench: Recipe[];
   cookTonightId: string | null;
+  encoreId: string | null;
 }
 
 function dealtEntries(recipes: Recipe[]): { id: string; title: string }[] {
@@ -30,6 +31,7 @@ export function initDeck(proposals: Recipe[]): DeckState {
     nextHand: null,
     bench: [],
     cookTonightId: null,
+    encoreId: null,
   };
 }
 
@@ -140,4 +142,17 @@ export function benchCards(state: DeckState): Recipe[] {
     out.push(r);
   }
   return out;
+}
+
+// The 6th card: a full recipe from the user's history, appended after the fresh
+// five (spec §1.3). Recorded in `dealt` so it can't reappear in re-deals; marked
+// via encoreId so the card can wear a distinct kicker.
+export function appendEncore(state: DeckState, recipe: Recipe): DeckState {
+  if (state.proposals.some((r) => r.id === recipe.id)) return state;
+  return {
+    ...state,
+    proposals: [...state.proposals, recipe],
+    dealt: [...state.dealt, { id: recipe.id, title: recipe.title }],
+    encoreId: recipe.id,
+  };
 }
