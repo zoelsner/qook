@@ -11,7 +11,7 @@ import { palette, radius, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { api } from '../../services/api';
 import { useGenerationSession } from '../../stores/generationSession';
-import { useWeekPlan } from '../../stores/weekPlan';
+import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
 import { benchCards } from '../eat/deckState';
 import { formatDayShort, type ISODate } from './weekDates';
 import type { ResetNight } from '../eat/weekReset';
@@ -64,6 +64,10 @@ export function DaySheet({
             : (await api.fillRecipe(card.id, context || undefined)).recipeId;
         const full = await api.getRecipeById(finalId);
         if (!full) return;
+        // Don't resurrect the day if the user cleared or re-picked it while
+        // the fill ran — a background write landing then reads as auto-fill.
+        const active = activePickFor(useWeekPlan.getState().plan[date]);
+        if (active?.id !== card.id) return;
         reconcileKept(card.id, full);
         appendRecipeAndSelect(date, full);
         commitSelection(date);
