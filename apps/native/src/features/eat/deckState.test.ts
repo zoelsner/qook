@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { Recipe } from '@qook/shared';
 import {
+  addToBench,
+  benchCards,
   dealFreshHand,
   focusedRecipe,
   initDeck,
@@ -106,5 +108,22 @@ describe('deckState session tracking', () => {
     let s = stageNextHand(initDeck(HAND), [rc('z', 'Thai')]);
     s = dealFreshHand(s, [rc('z', 'Thai')]);
     expect(s.nextHand).toBe(null);
+  });
+});
+
+describe('deckState bench', () => {
+  test('bench = passes plus over-keeps, minus kept, deduped', () => {
+    let s = initDeck([rc('a', 'Thai'), rc('b', 'Italian'), rc('c', 'Thai')]);
+    s = passAt(s); // pass a
+    s = keepAt(s); // keep b
+    s = addToBench(s, [rc('c', 'Thai')]); // over-keep c
+    expect(benchCards(s).map((r) => r.id)).toEqual(['a', 'c']);
+  });
+
+  test('round-trips through JSON unchanged', () => {
+    let s = initDeck([rc('a', 'Thai')]);
+    s = keepAt(s);
+    const round = JSON.parse(JSON.stringify(s));
+    expect(round).toEqual(s);
   });
 });

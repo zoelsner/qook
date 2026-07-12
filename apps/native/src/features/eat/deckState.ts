@@ -12,6 +12,7 @@ export interface DeckState {
   passed: Recipe[];
   dealt: { id: string; title: string }[];
   nextHand: Recipe[] | null;
+  bench: Recipe[];
   cookTonightId: string | null;
 }
 
@@ -27,6 +28,7 @@ export function initDeck(proposals: Recipe[]): DeckState {
     passed: [],
     dealt: dealtEntries(proposals),
     nextHand: null,
+    bench: [],
     cookTonightId: null,
   };
 }
@@ -113,4 +115,25 @@ export function swipeSummary(state: DeckState): {
 // Every title dealt this session — the dedup exclude set sent to re-deals.
 export function sessionExcludeTitles(state: DeckState): string[] {
   return state.dealt.map((d) => d.title);
+}
+
+// Over-keeps land on the bench (spec §1.1.7). Dedup-append.
+export function addToBench(state: DeckState, recipes: Recipe[]): DeckState {
+  let bench = state.bench;
+  for (const r of recipes) bench = dedupePush(bench, r);
+  return { ...state, bench };
+}
+
+// The bench the day sheet shows: everything passed or over-kept this session,
+// minus anything currently kept (a kept card isn't "leftovers"). Deduped by id.
+export function benchCards(state: DeckState): Recipe[] {
+  const keptIds = new Set(state.kept.map((r) => r.id));
+  const out: Recipe[] = [];
+  const seen = new Set<string>();
+  for (const r of [...state.passed, ...state.bench]) {
+    if (keptIds.has(r.id) || seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(r);
+  }
+  return out;
 }
