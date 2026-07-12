@@ -253,11 +253,16 @@ export function DeckScreen() {
     press();
     if (deck && deck.kept.length > 0) {
       router.replace(ALLOCATE_ROUTE);
+    } else if (mode === 'week') {
+      // Passed-on-everything is the mainline week exit: the passes ARE the
+      // bench, so the session must survive this close (it clears on the next
+      // weekly reset, spec D7).
+      router.replace('/(tabs)/week');
     } else {
       reset();
       router.replace('/(tabs)/tonight');
     }
-  }, [press, deck, router, reset]);
+  }, [press, deck, mode, router, reset]);
 
   const handleClose = useCallback(() => {
     press();
@@ -273,7 +278,18 @@ export function DeckScreen() {
     setDealing(true);
     void (async () => {
       try {
-        const recipes = await api.generateProposals(tier, context || undefined);
+        // Manual re-deals carry the same swipe steering + exclude set as the
+        // background prefetch (spec §1.1.9) — a plain-context deal would
+        // happily repeat the titles the user just swiped through.
+        const live = useGenerationSession.getState().deck;
+        const dealContext = live
+          ? buildRedealContext({
+              voiceContext: context,
+              summary: swipeSummary(live),
+              excludeTitles: sessionExcludeTitles(live),
+            })
+          : context || undefined;
+        const recipes = await api.generateProposals(tier, dealContext || undefined);
         requestedRef.current = [];
         dealHand(recipes);
       } catch {

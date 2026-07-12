@@ -10,6 +10,7 @@ import { api } from '../../services/api';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
 import { encoreCandidateId } from './encore';
+import { todayISO } from '../week/weekDates';
 import { useHaptics } from '../../hooks/useHaptics';
 import { DealingHandLoader } from './DealingHandLoader';
 
@@ -66,8 +67,13 @@ export function GenerationLoadingScreen() {
         .filter((d) => d.cookedAt && d.recipes?.length)
         .map((d) => activePickFor(d)?.id)
         .filter((id): id is string => Boolean(id));
-      const placedThisWeekIds = Object.values(plan)
-        .map((d) => activePickFor(d)?.id)
+      // Only the CURRENT week's placements exclude a dish — the plan keeps
+      // past days forever, and counting them would cancel the cooked-history
+      // leg entirely (every cooked dish was once placed).
+      const today = todayISO();
+      const placedThisWeekIds = Object.entries(plan)
+        .filter(([date]) => date >= today)
+        .map(([, d]) => activePickFor(d)?.id)
         .filter((id): id is string => Boolean(id));
       const candidateId = encoreCandidateId({
         savedIds: savedRecipeIds,
