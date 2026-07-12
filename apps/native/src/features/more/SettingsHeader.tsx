@@ -28,7 +28,13 @@ export function SettingsHeader({
       <Pressable
         onPress={() => {
           tap();
-          router.back();
+          // Deep links can land here with an empty stack — GO_BACK would be
+          // unhandled, so fall back to the More tab these screens hang off.
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/more');
+          }
         }}
         hitSlop={12}
         style={styles.backBtn}
