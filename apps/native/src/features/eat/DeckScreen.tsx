@@ -419,13 +419,19 @@ function DeckCard({
     setFlipped(next === 1);
   }, [tap, flip]);
 
+  // backfaceVisibility lives INSIDE the animated styles: reanimated applies
+  // the transform natively, and on-device (Fabric) that update clobbers the
+  // static style's backfaceVisibility — both faces get culled as back-facing
+  // and the flipped card renders blank. (Simulator doesn't reproduce it.)
   const frontFaceStyle = useAnimatedStyle(() => ({
+    backfaceVisibility: 'hidden' as const,
     transform: [
       { perspective: 1200 },
       { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` },
     ],
   }));
   const backFaceStyle = useAnimatedStyle(() => ({
+    backfaceVisibility: 'hidden' as const,
     transform: [
       { perspective: 1200 },
       { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` },
@@ -598,7 +604,6 @@ const styles = StyleSheet.create({
   },
   flipFace: {
     width: '100%',
-    backfaceVisibility: 'hidden',
   },
   flipFaceBack: {
     position: 'absolute',
