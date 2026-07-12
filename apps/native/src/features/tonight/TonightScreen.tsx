@@ -11,6 +11,7 @@ import { ProteinChip } from '../../components/ProteinChip';
 import { BodyText, DisplayText, Mono, ItalicText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight, ChevronRight } from 'lucide-react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useRecipeArt } from '../../hooks/useRecipeArt';
@@ -94,6 +95,7 @@ export function TonightScreen() {
         <MorePicks
           picks={morePicks}
           onSpotlight={onSpotlight}
+          onOpenRecipe={onOpenRecipe}
         />
       ) : null}
 
@@ -236,7 +238,13 @@ function HeroPopulated({
             />
           </View>
         </View>
-        <View style={styles.heroArtWrap}>
+        {/* Keyed on the pick's id so a swap remounts the art with a fade-in
+            instead of a hard cut. */}
+        <Animated.View
+          key={pick.id}
+          entering={FadeIn.duration(250)}
+          style={styles.heroArtWrap}
+        >
           <Vignette
             size={190}
             localKey={art?.localImageKey as SeedMealKey | undefined}
@@ -248,7 +256,7 @@ function HeroPopulated({
           {protein != null ? (
             <ProteinChip proteinG={protein} size="sm" style={styles.heroProtein} />
           ) : null}
-        </View>
+        </Animated.View>
       </Pressable>
 
       <View style={{ height: spacing.md }} />
@@ -274,9 +282,11 @@ function HeroPopulated({
 function MorePicks({
   picks,
   onSpotlight,
+  onOpenRecipe,
 }: {
   picks: { recipe: Recipe; idx: number }[];
   onSpotlight: (idx: number) => void;
+  onOpenRecipe: (id: string) => void;
 }) {
   return (
     <View>
@@ -284,16 +294,21 @@ function MorePicks({
       <View style={styles.sectionDivider}>
         <View style={styles.sectionRule} />
         <Mono size={10} bold color={palette.accentDeep}>
-          ALSO ON THE MENU
+          SWAP TONIGHT&rsquo;S PICK
         </Mono>
         <View style={styles.sectionRule} />
       </View>
+      <View style={{ height: spacing.sm }} />
+      <ItalicText size={14} style={styles.heroAside}>
+        Not feeling it? Tap a dish to trade.
+      </ItalicText>
       <View style={{ height: spacing.sm }} />
       {picks.map(({ recipe, idx }) => (
         <MorePickRow
           key={recipe.id}
           recipe={recipe}
           onSpotlight={() => onSpotlight(idx)}
+          onPeek={() => onOpenRecipe(recipe.id)}
         />
       ))}
     </View>
@@ -303,9 +318,11 @@ function MorePicks({
 function MorePickRow({
   recipe,
   onSpotlight,
+  onPeek,
 }: {
   recipe: Recipe;
   onSpotlight: () => void;
+  onPeek: () => void;
 }) {
   const art = useRecipeArt(recipe);
   return (
@@ -313,16 +330,24 @@ function MorePickRow({
       onPress={onSpotlight}
       style={styles.menuRowPress}
       accessibilityRole="button"
-      accessibilityLabel={`Spotlight ${recipe.title}`}
+      accessibilityLabel={`Swap ${recipe.title} in tonight`}
     >
-      <Vignette
-        size={80}
-        localKey={art?.localImageKey as SeedMealKey | undefined}
-        remoteUrl={art?.heroImageUrl}
-        blurhash={art?.blurhash}
-        imageStatus={art?.imageStatus}
-        title={recipe.title}
-      />
+      {/* Nested Pressable wins the tap over the row's — lets you peek at the
+          recipe without committing to the swap. */}
+      <Pressable
+        onPress={onPeek}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${recipe.title} recipe`}
+      >
+        <Vignette
+          size={80}
+          localKey={art?.localImageKey as SeedMealKey | undefined}
+          remoteUrl={art?.heroImageUrl}
+          blurhash={art?.blurhash}
+          imageStatus={art?.imageStatus}
+          title={recipe.title}
+        />
+      </Pressable>
       <View style={styles.menuRowLeader}>
         <MenuRow label={recipe.title} value={`${recipe.timeMinutes} min`} />
       </View>
