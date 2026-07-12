@@ -117,11 +117,15 @@ export function sessionExcludeTitles(state: DeckState): string[] {
   return state.dealt.map((d) => d.title);
 }
 
-// Over-keeps land on the bench (spec §1.1.7). Dedup-append.
+// Over-keeps land on the bench (spec §1.1.7). Dedup-append. Benched cards
+// leave `kept` — AllocationScreen benches straight OUT of the keeps, and
+// benchCards() excludes kept ids, so a card left in both would silently
+// vanish from the day sheet.
 export function addToBench(state: DeckState, recipes: Recipe[]): DeckState {
   let bench = state.bench;
   for (const r of recipes) bench = dedupePush(bench, r);
-  return { ...state, bench };
+  const benchedIds = new Set(recipes.map((r) => r.id));
+  return { ...state, bench, kept: state.kept.filter((r) => !benchedIds.has(r.id)) };
 }
 
 // The bench the day sheet shows: everything passed or over-kept this session,

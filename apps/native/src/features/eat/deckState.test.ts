@@ -120,6 +120,17 @@ describe('deckState bench', () => {
     expect(benchCards(s).map((r) => r.id)).toEqual(['a', 'c']);
   });
 
+  test('benching a kept card moves it out of kept so the bench shows it', () => {
+    // AllocationScreen's real call pattern: over-keeps are benched while still
+    // members of deck.kept.
+    let s = initDeck([rc('a', 'Thai'), rc('b', 'Italian')]);
+    s = keepAt(s); // keep a
+    s = keepAt(s); // keep b
+    s = addToBench(s, [s.kept[1]!]); // bench b straight out of the keeps
+    expect(s.kept.map((r) => r.id)).toEqual(['a']);
+    expect(benchCards(s).map((r) => r.id)).toEqual(['b']);
+  });
+
   test('round-trips through JSON unchanged', () => {
     let s = initDeck([rc('a', 'Thai')]);
     s = keepAt(s);
