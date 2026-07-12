@@ -147,4 +147,10 @@ describe('deckState encore', () => {
     expect(s.encoreId).toBe('enc');
     expect(s.dealt.map((d) => d.id).includes('enc')).toBe(true);
   });
+
+  test('dealFreshHand clears a stale encore id', () => {
+    let s = appendEncore(initDeck(HAND), rc('enc', 'French'));
+    s = dealFreshHand(s, [rc('f', 'Thai')]);
+    expect(s.encoreId).toBe(null);
+  });
 });

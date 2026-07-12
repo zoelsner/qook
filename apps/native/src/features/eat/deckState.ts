@@ -78,6 +78,8 @@ export function dealFreshHand(state: DeckState, proposals: Recipe[]): DeckState 
     position: 0,
     dealt: [...state.dealt, ...appended],
     nextHand: null,
+    // A stale encoreId must not survive into a hand it doesn't point into.
+    encoreId: null,
   };
 }
 

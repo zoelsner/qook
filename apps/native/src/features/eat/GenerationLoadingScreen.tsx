@@ -57,6 +57,11 @@ export function GenerationLoadingScreen() {
   const maybeAttachEncore = React.useCallback(
     async (dealtIds: string[]) => {
       if (mode !== 'week') return;
+      // Same staleness guard as every other async continuation in this file:
+      // the fetch below can resolve after the user backed out and a NEW
+      // session dealt its own hand — attaching then would bolt a stale encore
+      // onto the wrong deck (7 cards, or a hijacked encoreId).
+      const myRun = runId.current;
       const cookedIds = Object.values(plan)
         .filter((d) => d.cookedAt && d.recipes?.length)
         .map((d) => activePickFor(d)?.id)
@@ -72,6 +77,7 @@ export function GenerationLoadingScreen() {
       });
       if (!candidateId) return;
       const full = await api.getRecipeById(candidateId).catch(() => null);
+      if (!mountedRef.current || myRun !== runId.current) return;
       if (full) attachEncore(full);
     },
     [mode, plan, savedRecipeIds, attachEncore],
