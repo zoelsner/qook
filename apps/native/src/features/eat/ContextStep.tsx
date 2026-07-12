@@ -36,6 +36,7 @@ export function ContextStep() {
   const router = useRouter();
   const { press, tap } = useHaptics();
   const tier = useGenerationSession((s) => s.tier);
+  const mode = useGenerationSession((s) => s.mode);
   const storedContext = useGenerationSession((s) => s.context);
   const setContext = useGenerationSession((s) => s.setContext);
   const beginGeneration = useGenerationSession((s) => s.beginGeneration);
@@ -96,7 +97,7 @@ export function ContextStep() {
               <View style={{ height: spacing.md + 2 }} />
 
               <Mono size={10} bold color={palette.accentDeep}>
-                step 2 of 2 · optional
+                {mode === 'week' ? 'weekly reset · optional' : 'step 2 of 2 · optional'}
               </Mono>
               <View style={{ height: 6 }} />
               <DisplayText
@@ -104,7 +105,15 @@ export function ContextStep() {
                 color={palette.primary}
                 style={styles.headline}
               >
-                Anything <RNText style={styles.titleItalic}>specific?</RNText>
+                {mode === 'week' ? (
+                  <>
+                    How&rsquo;s your <RNText style={styles.titleItalic}>week?</RNText>
+                  </>
+                ) : (
+                  <>
+                    Anything <RNText style={styles.titleItalic}>specific?</RNText>
+                  </>
+                )}
               </DisplayText>
 
               <View style={{ height: spacing.md }} />
@@ -113,8 +122,9 @@ export function ContextStep() {
                 color={palette.textSecondary}
                 weight="medium"
               >
-                Tell us what you&rsquo;re in the mood for, what&rsquo;s already
-                in the fridge, or nothing at all. We&rsquo;ll tune the drafts.
+                {mode === 'week'
+                  ? "Tired nights, busy stretches, anything you're craving — tell us and we'll steer the hand. Or skip it."
+                  : "Tell us what you're in the mood for, what's already in the fridge, or nothing at all. We'll tune the drafts."}
               </BodyText>
 
               <View style={{ height: spacing.lg }} />
@@ -166,7 +176,15 @@ export function ContextStep() {
               <View style={styles.flexSpacer} />
 
               <PolishedButton
-                label={trimmed.length > 0 ? 'Use this, find dinner' : "Find tonight's dinner"}
+                label={
+                  mode === 'week'
+                    ? trimmed.length > 0
+                      ? 'Use this, plan my week'
+                      : 'Plan my week'
+                    : trimmed.length > 0
+                      ? 'Use this, find dinner'
+                      : "Find tonight's dinner"
+                }
                 tone="forest"
                 onPress={handleDraft}
                 trailingIcon={<ArrowRight size={14} color={palette.surface} />}
