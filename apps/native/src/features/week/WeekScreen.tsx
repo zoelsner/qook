@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PolishedButton } from '../../components/PolishedButton';
@@ -10,10 +10,10 @@ import { ScreenShell } from '../../components/ScreenShell';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette, screen, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
-import { useBatchSession } from '../../stores/batchSession';
+import { useGenerationSession } from '../../stores/generationSession';
 import { taggedFutureOrTodayDays, useWeekPlan } from '../../stores/weekPlan';
+import type { ResetNight } from '../eat/weekReset';
 import { DayRow } from './DayRow';
-import { batchDraft } from './batchDraft';
 import { formatDayShort, upcomingDays, todayISO } from './weekDates';
 
 export function WeekScreen() {
@@ -23,28 +23,28 @@ export function WeekScreen() {
   const plan = useWeekPlan((state) => state.plan);
   const hasHydrated = useWeekPlan((state) => state.hasHydrated);
   const clearFuture = useWeekPlan((state) => state.clearFuture);
-  const batch = useBatchSession();
+  const startWeekReset = useGenerationSession((state) => state.startWeekReset);
 
   const today = todayISO();
   const days = upcomingDays(7, today);
   const tagged = taggedFutureOrTodayDays(plan, today);
-  const drafting = batch.status === 'drafting';
-  const failed = batch.status === 'error';
 
   const first = formatDayShort(days[0]);
   const last = formatDayShort(days[days.length - 1]);
   const rangeKicker = `${first.month} ${first.day} — ${last.month} ${last.day}`;
 
-  const onDraft = async () => {
+  const onPlanWeek = () => {
     if (!hasHydrated || tagged.length === 0) return;
     press();
-    useBatchSession.getState().reset();
-    await batchDraft(tagged);
-  };
-
-  const onRetry = async () => {
-    press();
-    await batchDraft(tagged);
+    const nights: ResetNight[] = tagged
+      .map((date) => {
+        const tier = plan[date]?.energy;
+        return tier ? { date, tier } : null;
+      })
+      .filter((n): n is ResetNight => n !== null);
+    if (nights.length === 0) return;
+    startWeekReset(nights);
+    router.push('/(eat)/context');
   };
 
   const onOpenRecipe = (recipeId: string) => {
@@ -53,13 +53,8 @@ export function WeekScreen() {
   };
 
   const onClearFuture = () => {
-    // Guard: blocking clearFuture while a batch draft is in flight avoids the
-    // stale-write race where in-flight responses repopulate days the user
-    // just cleared (Codex adversarial finding #2).
-    if (drafting) return;
     tap();
     clearFuture();
-    useBatchSession.getState().reset();
   };
 
   return (
@@ -121,12 +116,8 @@ export function WeekScreen() {
             scroll for more
           </Mono>
         </View>
-        <Pressable hitSlop={6} onPress={onClearFuture} disabled={drafting}>
-          <BodyText
-            size={12}
-            weight="medium"
-            color={drafting ? palette.textTertiary : palette.accentDeep}
-          >
+        <Pressable hitSlop={6} onPress={onClearFuture}>
+          <BodyText size={12} weight="medium" color={palette.accentDeep}>
             Clear upcoming
           </BodyText>
         </Pressable>
@@ -135,32 +126,12 @@ export function WeekScreen() {
       <View style={{ height: spacing.sm }} />
 
       {!hasHydrated ? (
-        <PolishedButton
-          label="Loading..."
-          tone="forest"
-          onPress={() => undefined}
-          disabled
-        />
-      ) : drafting ? (
-        <View style={styles.draftingCard}>
-          <ActivityIndicator size="small" color={palette.primary} />
-          <View style={{ height: spacing.xs }} />
-          <BodyText size={13} weight="semi" color={palette.ink}>
-            Drafting {Math.min(batch.completed + 1, batch.total)} of {batch.total}
-            {batch.currentDate ? ` · ${formatDayShort(batch.currentDate).weekday}` : ''}
-          </BodyText>
-        </View>
-      ) : failed ? (
-        <PolishedButton label="Resume draft" tone="rust" onPress={onRetry} />
+        <PolishedButton label="Loading..." tone="forest" onPress={() => undefined} disabled />
       ) : (
         <PolishedButton
-          label={
-            tagged.length === 0
-              ? 'Tag a night to start'
-              : `Draft ${tagged.length} ${tagged.length === 1 ? 'dinner' : 'dinners'}`
-          }
+          label={tagged.length === 0 ? 'Tag a night to start' : 'Plan my week'}
           tone="forest"
-          onPress={onDraft}
+          onPress={onPlanWeek}
           disabled={tagged.length === 0}
           trailingIcon={
             tagged.length > 0 ? <ArrowRight size={14} color={palette.surface} /> : undefined
@@ -175,7 +146,7 @@ export function WeekScreen() {
         color={palette.textTertiary}
         style={{ textAlign: 'center' }}
       >
-        About 15 seconds · one shopping list at the end
+        Swipe a hand of ideas, place your keeps
       </BodyText>
 
       <View style={{ height: insets.bottom + screen.tabBarHeight + spacing.sm }} />
@@ -227,13 +198,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  draftingCard: {
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderRadius: 18,
-    backgroundColor: palette.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.glassBorder,
   },
 });
