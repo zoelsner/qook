@@ -32,4 +32,13 @@ describe('buildRedealContext', () => {
     expect(out.length <= REDEAL_CONTEXT_MAX).toBe(true);
     expect(out.startsWith(voice)).toBe(true);
   });
+
+  test('an oversized voice context is capped whole, nothing appended mid-slice', () => {
+    const out = buildRedealContext({
+      voiceContext: 'a'.repeat(REDEAL_CONTEXT_MAX + 100),
+      summary: { keptTitles: [], keptCuisines: [], passedCuisines: ['Italian'] },
+      excludeTitles: ['Cacio e Pepe'],
+    });
+    expect(out).toBe('a'.repeat(REDEAL_CONTEXT_MAX));
+  });
 });

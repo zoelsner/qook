@@ -2,8 +2,10 @@
 // compact swipe summary (kept/passed by cuisine — steers toward keeps, away
 // from passes), and an exclusion list of titles already dealt this session.
 // TITLES ONLY, never full recipes (token-cheap, spec §1.1.5/§1.1.9). Voice
-// context leads and is never truncated; steering + exclusions are trimmed to
-// fit the server's 500-char `context` ceiling. Pure — bun-testable.
+// context leads and is only truncated when it alone exceeds the cap (client
+// input is capped at 240 chars, so that path is defensive); steering +
+// exclusions are trimmed to fit the server's 500-char `context` ceiling.
+// Pure — bun-testable.
 export const REDEAL_CONTEXT_MAX = 500;
 
 export function buildRedealContext(input: {
@@ -12,7 +14,9 @@ export function buildRedealContext(input: {
   excludeTitles: string[];
 }): string {
   const { voiceContext, summary, excludeTitles } = input;
-  const head = voiceContext.trim();
+  // Cap the head itself so an oversized voice context can't push the final
+  // slice into chopping a joined section mid-way.
+  const head = voiceContext.trim().slice(0, REDEAL_CONTEXT_MAX);
 
   const steer: string[] = [];
   if (summary.keptCuisines.length) steer.push(`More like: ${summary.keptCuisines.join(', ')}.`);
