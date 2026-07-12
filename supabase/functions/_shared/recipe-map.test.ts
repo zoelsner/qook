@@ -38,6 +38,7 @@ const R = {
       steps: [{ instruction: "Fry until golden", durationMin: 8 }],
     },
   ],
+  nutrition: { calories: 340, proteinG: 12, carbG: 55, fatG: 8 },
 };
 
 Deno.test("computeSignature is deterministic hex", async () => {

@@ -62,14 +62,15 @@ export const Recipe = z.object({
   servings: z.number().int().positive().max(12),
   ingredientGroups: z.array(RecipeIngredientGroup).min(1),
   workflowSections: z.array(RecipeWorkflowSection).min(1),
-  nutrition: z
-    .object({
-      calories: z.number().int().nullish(),
-      proteinG: z.number().int().nullish(),
-      carbG: z.number().int().nullish(),
-      fatG: z.number().int().nullish(),
-    })
-    .nullish(),
+  // Protein estimate is always present — the model can always produce a
+  // realistic per-serving estimate, even for quick/simple dishes. Other
+  // macros stay optional; nothing else forces the object itself to exist.
+  nutrition: z.object({
+    calories: z.number().int().nullish(),
+    proteinG: z.number().int().nonnegative().max(300),
+    carbG: z.number().int().nullish(),
+    fatG: z.number().int().nullish(),
+  }),
   notes: z.string().max(300).nullish(),
 });
 
@@ -214,12 +215,13 @@ export const RecipeJsonSchema = {
         },
       },
       nutrition: {
-        type: ["object", "null"],
+        type: "object",
         additionalProperties: false,
         required: ["calories", "proteinG", "carbG", "fatG"],
         properties: {
           calories: { type: ["integer", "null"] },
-          proteinG: { type: ["integer", "null"] },
+          // Always present — no null branch, unlike the other macros.
+          proteinG: { type: "integer" },
           carbG: { type: ["integer", "null"] },
           fatG: { type: ["integer", "null"] },
         },

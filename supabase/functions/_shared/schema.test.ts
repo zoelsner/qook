@@ -34,6 +34,7 @@ const VALID = {
       steps: [{ instruction: "Sear skin-side down until crisp", durationMin: 6 }],
     },
   ],
+  nutrition: { calories: 420, proteinG: 32, carbG: 30, fatG: 18 },
 };
 
 Deno.test("Recipe parses a valid structured recipe", () => {
@@ -85,7 +86,7 @@ Deno.test("RecipeJsonSchema is exhaustively strict: every properties key is requ
 Deno.test("Recipe accepts explicit nulls for optional fields", () => {
   const withNulls = structuredClone(VALID);
   // deno-lint-ignore no-explicit-any
-  (withNulls as any).nutrition = null;
+  (withNulls as any).nutrition.calories = null;
   // deno-lint-ignore no-explicit-any
   (withNulls as any).notes = null;
   // deno-lint-ignore no-explicit-any
@@ -93,8 +94,24 @@ Deno.test("Recipe accepts explicit nulls for optional fields", () => {
   // deno-lint-ignore no-explicit-any
   (withNulls as any).ingredientGroups[0].items[0].notes = null;
   const r = Recipe.parse(withNulls);
-  assertEquals(r.nutrition, null);
+  assertEquals(r.nutrition?.calories, null);
   assertEquals(r.notes, null);
   assertEquals(r.ingredientGroups[0].items[0].quantity, null);
   assertEquals(r.ingredientGroups[0].items[0].notes, null);
+});
+
+Deno.test("Recipe requires nutrition.proteinG", () => {
+  const missing = structuredClone(VALID);
+  // deno-lint-ignore no-explicit-any
+  delete (missing as any).nutrition.proteinG;
+  const res = Recipe.safeParse(missing);
+  assertEquals(res.success, false);
+});
+
+Deno.test("Recipe rejects a null nutrition object", () => {
+  const nullNutrition = structuredClone(VALID);
+  // deno-lint-ignore no-explicit-any
+  (nullNutrition as any).nutrition = null;
+  const res = Recipe.safeParse(nullNutrition);
+  assertEquals(res.success, false);
 });

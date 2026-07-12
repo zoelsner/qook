@@ -75,6 +75,7 @@ export function buildLiveUserPrompt(ctx: LiveContext): string {
     STRUCTURED_INGREDIENT_DIRECTIVE,
     ``,
     `Every step needs a concrete durationMin > 0 and specific doneness cues ("until edges curl", NOT "until done").`,
+    `Every recipe needs a realistic protein-grams-per-serving estimate in nutrition.proteinG — even quick, simple dishes. Never omit it.`,
     `Return JSON shape: { "recipes": Recipe[] } with exactly 3 recipes.`,
   ].join("\n");
 }

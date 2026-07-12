@@ -53,6 +53,7 @@ export function buildFillUserPrompt(
     STRUCTURED_INGREDIENT_DIRECTIVE,
     ``,
     `Every step needs a concrete durationMin > 0 and specific doneness cues ("until edges curl", NOT "until done").`,
+    `Include a realistic protein-grams-per-serving estimate in nutrition.proteinG — even for a quick, simple dish. Never omit it.`,
     `Return a single JSON Recipe object (not an array, not an envelope).`,
   ].filter(Boolean).join("\n");
 }
