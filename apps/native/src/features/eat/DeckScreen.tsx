@@ -436,11 +436,13 @@ function DeckCard({
       { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` },
     ],
   }));
+  // Back rotates -180 → 0 (not 180 → 360): the visible half of the flip
+  // stays inside the well-supported 3D range on device.
   const backFaceStyle = useAnimatedStyle(() => ({
     opacity: flip.value < 0.5 ? 0 : 1,
     transform: [
       { perspective: 1200 },
-      { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` },
+      { rotateY: `${interpolate(flip.value, [0, 1], [-180, 0])}deg` },
     ],
   }));
 
@@ -499,7 +501,12 @@ function DeckCard({
                 accessibilityRole="button"
                 accessibilityLabel="Flip back to the recipe card"
               >
-                <PaperCard padding={0} cornerRadius={radius.sheet} style={styles.backCard}>
+                {/* Plain View, NOT PaperCard: PaperCard puts `style` on its
+                    inner view while its outer shadow wrapper has no height,
+                    breaking the flex:1 chain — on device (Fabric) the whole
+                    back subtree collapsed to zero height and the flipped
+                    card rendered blank. (Codex-diagnosed, 2026-07-13.) */}
+                <View style={styles.backCard}>
                   <View style={styles.backBody}>
                     <Mono size={10} bold color={palette.accentDeep}>
                       {recipe.cuisine.toLowerCase()}
@@ -547,7 +554,7 @@ function DeckCard({
                       {cardBack.microcopy}
                     </Mono>
                   </View>
-                </PaperCard>
+                </View>
               </Pressable>
             </Animated.View>
 
@@ -621,8 +628,15 @@ const styles = StyleSheet.create({
   backPressable: {
     flex: 1,
   },
+  // Carries PaperCard's look (surface, radius, hairline ring) directly so
+  // flex:1 reaches a bounded parent — see the render-site comment.
   backCard: {
     flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: radius.sheet,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.haloRing,
+    overflow: 'hidden',
   },
   backBody: {
     flex: 1,
