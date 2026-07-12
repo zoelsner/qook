@@ -9,6 +9,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import type {
   IngredientGroup,
   Ingredient,
@@ -28,7 +29,7 @@ import {
   IconCookingSteam,
 } from '../../components/painted';
 import { X, Bookmark, Share, Minus, Plus } from 'lucide-react-native';
-import { palette, spacing } from '../../design';
+import { palette, spacing, typeScale } from '../../design';
 import { ENERGY_TIER_SUBTITLE } from '../../types/energy';
 import { api } from '../../services/api';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -38,6 +39,8 @@ import { scaledIngredientQuantity } from '../../lib/scaleQuantity';
 import { todayISO } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 import { shouldPollRecipeArt } from '../../hooks/recipeArtState';
+
+const glassAvailable = isLiquidGlassAvailable();
 
 export interface RecipeDetailModalProps {
   recipeId: string;
@@ -156,11 +159,11 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
 
       <SafeAreaView edges={['top']} style={styles.heroNav} pointerEvents="box-none">
         <View style={styles.heroNavInner}>
-          <IconPill onPress={close} accessibilityLabel="Close">
+          <HeroPill onPress={close} accessibilityLabel="Close">
             <X size={16} color={palette.ink} strokeWidth={2.2} />
-          </IconPill>
+          </HeroPill>
           <View style={styles.heroNavRight}>
-            <IconPill
+            <HeroPill
               onPress={() => {
                 press();
                 toggleSavedRecipe(recipeId);
@@ -173,10 +176,10 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
                 fill={saved ? palette.ink : 'transparent'}
                 strokeWidth={1.8}
               />
-            </IconPill>
-            <IconPill onPress={onShare} accessibilityLabel="Share recipe">
+            </HeroPill>
+            <HeroPill onPress={onShare} accessibilityLabel="Share recipe">
               <Share size={16} color={palette.ink} strokeWidth={1.8} />
-            </IconPill>
+            </HeroPill>
           </View>
         </View>
       </SafeAreaView>
@@ -506,6 +509,52 @@ function LoadingState() {
   );
 }
 
+// Clear glass circle for the hero-nav pills (close / save / share) when
+// Liquid Glass is available; falls back to the cream IconPill otherwise.
+// GlassView renders as an absolute-fill sibling *under* the Pressable inside
+// a rounded, overflow-hidden wrapper — it must never be an ancestor of the
+// touch target (expo-glass-effect renders as a UIVisualEffectView) and must
+// never receive an opacity/animation (breaks glass rendering).
+function HeroPill({
+  children,
+  onPress,
+  accessibilityLabel,
+}: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}) {
+  if (!glassAvailable) {
+    return (
+      <IconPill onPress={onPress} accessibilityLabel={accessibilityLabel}>
+        {children}
+      </IconPill>
+    );
+  }
+  return (
+    <View style={styles.glassHeroPillWrap}>
+      <GlassView
+        glassEffectStyle="regular"
+        tintColor="rgba(255, 252, 246, 0.16)"
+        isInteractive
+        style={StyleSheet.absoluteFillObject}
+      />
+      <Pressable
+        onPress={onPress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="button"
+        hitSlop={6}
+        style={({ pressed }) => [
+          styles.glassHeroPillPressable,
+          pressed ? { transform: [{ scale: 0.94 }] } : null,
+        ]}
+      >
+        {children}
+      </Pressable>
+    </View>
+  );
+}
+
 function CookDock({
   bottomInset,
   isTodaysPick,
@@ -522,14 +571,68 @@ function CookDock({
         { bottom: Math.max(bottomInset, spacing.sm) + spacing.sm },
       ]}
     >
-      <PolishedButton
-        label={isTodaysPick ? "Cooking tonight ✓" : 'Cook tonight'}
-        tone="forest"
-        onPress={onCook}
-        leadingIcon={isTodaysPick ? undefined : <IconCookingSteam />}
-        disabled={isTodaysPick}
-        style={styles.cookCta}
+      {glassAvailable ? (
+        <GlassCookButton isTodaysPick={isTodaysPick} onCook={onCook} />
+      ) : (
+        <PolishedButton
+          label={isTodaysPick ? "Cooking tonight ✓" : 'Cook tonight'}
+          tone="forest"
+          onPress={onCook}
+          leadingIcon={isTodaysPick ? undefined : <IconCookingSteam />}
+          disabled={isTodaysPick}
+          style={styles.cookCta}
+        />
+      )}
+    </View>
+  );
+}
+
+// Prominent tinted glass CTA — Apple's "prominent" glass is a near-opaque
+// tint so the primary action doesn't wash out over the scrolling recipe
+// body. Same sibling structure as HeroPill: GlassView absolute-fill under
+// the Pressable, wrapper carries the rounding + overflow hidden. The
+// "cooking tonight" state is expressed via a muted tint + dimmed label
+// instead of opacity, since opacity on the GlassView (or an ancestor of it)
+// breaks glass rendering.
+function GlassCookButton({
+  isTodaysPick,
+  onCook,
+}: {
+  isTodaysPick: boolean;
+  onCook: () => void;
+}) {
+  return (
+    <View style={styles.cookCtaGlassWrap}>
+      <GlassView
+        glassEffectStyle="regular"
+        tintColor={isTodaysPick ? 'rgba(95, 112, 87, 0.55)' : 'rgba(195, 106, 72, 0.85)'}
+        isInteractive
+        style={StyleSheet.absoluteFillObject}
       />
+      <Pressable
+        onPress={onCook}
+        disabled={isTodaysPick}
+        accessibilityRole="button"
+        accessibilityLabel={isTodaysPick ? 'Cooking tonight' : 'Cook tonight'}
+        style={({ pressed }) => [
+          styles.cookCtaGlassPressable,
+          pressed && !isTodaysPick ? { transform: [{ scale: 0.985 }] } : null,
+        ]}
+      >
+        {isTodaysPick ? null : (
+          <View style={styles.slot}>
+            <IconCookingSteam />
+          </View>
+        )}
+        <BodyText
+          weight="semi"
+          size={typeScale.bodyLG}
+          color={isTodaysPick ? 'rgba(255, 252, 246, 0.75)' : palette.surface}
+          style={styles.cookCtaGlassLabel}
+        >
+          {isTodaysPick ? "Cooking tonight ✓" : 'Cook tonight'}
+        </BodyText>
+      </Pressable>
     </View>
   );
 }
@@ -571,6 +674,18 @@ const styles = StyleSheet.create({
   heroNavRight: {
     flexDirection: 'row',
     gap: 10,
+  },
+  glassHeroPillWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  glassHeroPillPressable: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleBlock: {
     marginTop: -18,
@@ -706,5 +821,27 @@ const styles = StyleSheet.create({
   },
   cookCta: {
     flex: 1,
+  },
+  cookCtaGlassWrap: {
+    flex: 1,
+    height: 54,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  cookCtaGlassPressable: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    gap: 10,
+  },
+  cookCtaGlassLabel: {
+    letterSpacing: 0.1,
+    textAlign: 'center',
+  },
+  slot: {
+    flexShrink: 0,
   },
 });
