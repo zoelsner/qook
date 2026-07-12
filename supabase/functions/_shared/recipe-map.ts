@@ -57,6 +57,8 @@ export type ClientRecipe = {
   imageStatus: string;
   contentStatus: string;
   hook?: string;
+  proposalIngredients?: string[];
+  proposalSteps?: string[];
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -120,7 +122,15 @@ export function toRecipeInsert(r: Recipe, signature: string) {
 // image_status 'pending' so the client can fire art immediately (the image
 // prompt is title-only). content_status 'proposal' flags it as not-yet-written.
 export function toSkeletonInsert(
-  p: { title: string; cuisine: string; timeMinutes: number; proteinG: number; hook: string },
+  p: {
+    title: string;
+    cuisine: string;
+    timeMinutes: number;
+    proteinG: number;
+    hook: string;
+    ingredientNames: string[];
+    stepOutline: string[];
+  },
   tier: string,
   serves: number,
 ) {
@@ -135,6 +145,8 @@ export function toSkeletonInsert(
     energy_tier: tier,
     content_status: "proposal" as const,
     hook: p.hook,
+    proposal_ingredients: p.ingredientNames,
+    proposal_steps: p.stepOutline,
     nutrition: { calories: null, proteinG: p.proteinG, carbG: null, fatG: null },
     source: "ai" as const,
     image_status: "pending" as const,
@@ -288,6 +300,12 @@ export function dbRowToClientRecipe(
     imageStatus: String(row.image_status ?? "pending"),
     contentStatus: String(row.content_status ?? "full"),
     ...(row.hook != null ? { hook: String(row.hook) } : {}),
+    ...(Array.isArray(row.proposal_ingredients) && row.proposal_ingredients.length
+      ? { proposalIngredients: row.proposal_ingredients.map(String) }
+      : {}),
+    ...(Array.isArray(row.proposal_steps) && row.proposal_steps.length
+      ? { proposalSteps: row.proposal_steps.map(String) }
+      : {}),
     source: String(row.source ?? "ai"),
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),

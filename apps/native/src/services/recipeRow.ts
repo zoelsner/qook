@@ -190,6 +190,12 @@ export function dbRowToRecipe(
     imageStatus: String(row.image_status ?? 'pending') as ImageStatus,
     contentStatus: (String(row.content_status ?? 'full')) as ContentStatus,
     ...(row.hook != null ? { hook: String(row.hook) } : {}),
+    ...(Array.isArray(row.proposal_ingredients) && row.proposal_ingredients.length
+      ? { proposalIngredients: row.proposal_ingredients.map(String) }
+      : {}),
+    ...(Array.isArray(row.proposal_steps) && row.proposal_steps.length
+      ? { proposalSteps: row.proposal_steps.map(String) }
+      : {}),
     source: String(row.source ?? 'ai') as RecipeSource,
     createdAt: toTimestamp(row.created_at),
     updatedAt: toTimestamp(row.updated_at),

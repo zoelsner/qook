@@ -7,6 +7,8 @@ const five = Array.from({ length: 5 }, (_, i) => ({
   timeMinutes: 25,
   proteinG: 32,
   cuisine: "Thai",
+  ingredientNames: ["shrimp", "yogurt", "garlic", "lime", "cilantro"],
+  stepOutline: ["marinate shrimp in yogurt and spices", "grill until charred", "serve with lime"],
 }));
 
 Deno.test("ProposalsEnvelope parses exactly five well-formed proposals", () => {
@@ -22,6 +24,18 @@ Deno.test("ProposalsEnvelope rejects a hand that is not length five", () => {
 
 Deno.test("ProposalsEnvelope rejects a proposal missing proteinG", () => {
   const bad = [{ ...five[0], proteinG: undefined }, ...five.slice(1)];
+  const res = ProposalsEnvelope.safeParse({ proposals: bad, refusal: null });
+  assertEquals(res.success, false);
+});
+
+Deno.test("ProposalsEnvelope rejects a proposal with too few ingredientNames", () => {
+  const bad = [{ ...five[0], ingredientNames: ["shrimp"] }, ...five.slice(1)];
+  const res = ProposalsEnvelope.safeParse({ proposals: bad, refusal: null });
+  assertEquals(res.success, false);
+});
+
+Deno.test("ProposalsEnvelope rejects a proposal missing stepOutline", () => {
+  const bad = [{ ...five[0], stepOutline: undefined }, ...five.slice(1)];
   const res = ProposalsEnvelope.safeParse({ proposals: bad, refusal: null });
   assertEquals(res.success, false);
 });

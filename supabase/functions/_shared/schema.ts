@@ -264,6 +264,12 @@ export const Proposal = z.object({
   timeMinutes: z.number().int().positive().max(240),
   proteinG: z.number().int().nonnegative().max(300),
   cuisine: z.string().min(2),
+  // Card-back teaser (feature: flippable info back, 2026-07-12). Main
+  // ingredient names only, no amounts — those are written at fill time.
+  ingredientNames: z.array(z.string()).min(4).max(12),
+  // High-level plan lines — 3 to 5 imperative sketch steps, not detailed
+  // instructions (those are written at fill time).
+  stepOutline: z.array(z.string()).min(3).max(5),
 });
 export type Proposal = z.infer<typeof Proposal>;
 
@@ -289,13 +295,26 @@ export const ProposalsEnvelopeJsonSchema = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "hook", "timeMinutes", "proteinG", "cuisine"],
+          required: [
+            "title",
+            "hook",
+            "timeMinutes",
+            "proteinG",
+            "cuisine",
+            "ingredientNames",
+            "stepOutline",
+          ],
           properties: {
             title: { type: "string" },
             hook: { type: "string" },
             timeMinutes: { type: "integer" },
             proteinG: { type: "integer" },
             cuisine: { type: "string" },
+            // No minItems/maxItems — kept out for provider-portability, same
+            // as the other arrays above; the Zod schema enforces 4-12/3-5
+            // after the stream.
+            ingredientNames: { type: "array", items: { type: "string" } },
+            stepOutline: { type: "array", items: { type: "string" } },
           },
         },
       },

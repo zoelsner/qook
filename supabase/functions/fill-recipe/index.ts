@@ -87,7 +87,13 @@ Deno.serve(async (req) => {
         { role: "system", content: buildFillSystemPrompt() },
         {
           role: "user",
-          content: buildFillUserPrompt(liveCtx, String(row.title), row.hook ? String(row.hook) : null),
+          content: buildFillUserPrompt(
+            liveCtx,
+            String(row.title),
+            row.hook ? String(row.hook) : null,
+            Array.isArray(row.proposal_ingredients) ? row.proposal_ingredients.map(String) : null,
+            Array.isArray(row.proposal_steps) ? row.proposal_steps.map(String) : null,
+          ),
         },
       ],
       jsonSchema: RecipeJsonSchema,

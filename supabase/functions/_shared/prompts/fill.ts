@@ -20,6 +20,8 @@ export function buildFillUserPrompt(
   ctx: LiveContext,
   title: string,
   hook: string | null,
+  proposalIngredients?: string[] | null,
+  proposalSteps?: string[] | null,
 ): string {
   const rule = TIER_RULES[ctx.tier];
   const avoid = ctx.avoidIngredients.length
@@ -31,6 +33,13 @@ export function buildFillUserPrompt(
   return [
     `Write the full recipe for this dish, titled EXACTLY: "${title}".`,
     hook ? `Its promise to the cook: "${hook}". Honour it.` : ``,
+    proposalIngredients?.length || proposalSteps?.length
+      ? `The proposal card promised these ingredients: ${
+        (proposalIngredients ?? []).join(", ") || "none listed"
+      }. And this plan: ${
+        (proposalSteps ?? []).join("; ") || "none listed"
+      }. Stay faithful to them; pantry staples may be added.`
+      : ``,
     `Tier: "${ctx.tier}" (${rule.label}). ${rule.directive}`,
     `timeMinutes ceiling: ${rule.maxMinutes}. Use tier "${ctx.tier}" in the "tier" field.`,
     ``,

@@ -2,9 +2,11 @@ import { TIER_RULES } from "../tiers.ts";
 import type { LiveContext } from "./live.ts";
 
 // Phase-1: one cheap Luna call returns 5 dinner PROPOSALS — a title, a punchy
-// hook, a time estimate, a protein estimate, and a cuisine. No ingredients or
-// steps (those are written later, only for dishes the user keeps). This is the
-// "deal a hand" moment: five distinct options the user swipes through.
+// hook, a time estimate, a protein estimate, a cuisine, and now a card-back
+// teaser: main ingredient names and a high-level step outline. Detailed
+// amounts and step-by-step instructions are still written later, only for
+// dishes the user keeps. This is the "deal a hand" moment: five distinct
+// options the user swipes through.
 
 export function buildProposalsSystemPrompt(): string {
   return [
@@ -12,6 +14,7 @@ export function buildProposalsSystemPrompt(): string {
     "A real person opened the app right now and wants five distinct dinner ideas for tonight.",
     "Output STRICT JSON, no prose, no markdown.",
     "Each proposal is a teaser card: an appetising title, a single vivid one-line hook (max ~14 words, no period needed), an honest total-time estimate in minutes, a realistic protein-grams-per-serving estimate, and a cuisine.",
+    "Each proposal also carries a card back: `ingredientNames` — 6 to 10 main ingredients, lowercase names only, NO quantities (those are written at fill time) — and `stepOutline` — 3 to 5 imperative lines, each at most 8 words, sketching the cook (\"marinate shrimp in yogurt and spices\"), not detailed instructions.",
     "Make the five feel genuinely different from each other — vary cuisine, protein, and technique.",
     "Treat voice context as the most important signal — it's what the user just said out loud about their evening.",
     'Safety: if voice context mentions self-harm, unsafe food practices, or requests dangerous behavior, set `refusal` to "Let\'s plan something nourishing instead. Can you tell me what you have in the fridge?" and set `proposals` to an empty array. Otherwise set `refusal` to null.',
@@ -29,7 +32,7 @@ export function buildProposalsUserPrompt(ctx: LiveContext): string {
     `timeMinutes ceiling: ${rule.maxMinutes}.`,
     ``,
     `Serves: ${ctx.householdSize}.`,
-    `Avoid ingredients: ${avoid}.`,
+    `Avoid ingredients: ${avoid}. This rule also applies to ingredientNames — never list an avoided ingredient there.`,
     `Loved cuisines (priority order): ${ctx.lovedCuisines.join(", ") || "open"}.`,
     ``,
     ctx.voiceContext

@@ -89,6 +89,12 @@ export interface Recipe {
   contentStatus?: ContentStatus;
   hook?: string;
 
+  // Card-back teaser (feature: flippable info back, 2026-07-12). Written
+  // alongside the skeleton at proposal time; superseded (not overwritten) by
+  // `ingredients`/`steps` at fill time.
+  proposalIngredients?: string[];
+  proposalSteps?: string[];
+
   heroImageUrl?: string;
   localImageKey?: string;
   blurhash?: string;

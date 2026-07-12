@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
 import { useRouter, type Href } from 'expo-router';
 import type { Recipe } from '@qook/shared';
@@ -8,10 +13,10 @@ import type { Recipe } from '@qook/shared';
 import { ScreenShell } from '../../components/ScreenShell';
 import { PaperCard } from '../../components/PaperCard';
 import { Vignette } from '../../components/Vignette';
-import { DisplayText, Mono, ItalicText } from '../../components/Text';
+import { DisplayText, Mono, ItalicText, BodyText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
-import { X } from 'lucide-react-native';
+import { X, Eye } from 'lucide-react-native';
 import { palette, radius, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
@@ -24,6 +29,47 @@ import { api } from '../../services/api';
 import type { SeedMealKey } from '../../lib/assets';
 
 const DOT_LEADER = '·'.repeat(80);
+const FLIP_DURATION = 350;
+const MAX_BACK_INGREDIENTS = 12;
+const MAX_BACK_PLAN_LINES = 5;
+
+// Card-back content: proposal teaser (ingredientNames/stepOutline written at
+// deal time) takes priority; falls back to deriving from a full recipe's real
+// ingredients/steps (cache-hit path); falls back to microcopy-only when
+// neither exists yet.
+function deriveCardBack(recipe: Recipe): {
+  ingredients: string[];
+  plan: string[];
+  microcopy: string;
+} {
+  if (recipe.proposalIngredients?.length || recipe.proposalSteps?.length) {
+    return {
+      ingredients: recipe.proposalIngredients ?? [],
+      plan: recipe.proposalSteps ?? [],
+      microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU KEEP IT',
+    };
+  }
+  const isFull = recipe.contentStatus !== 'proposal' || recipe.ingredients.length > 0;
+  if (isFull) {
+    const ingredients = recipe.ingredients
+      .flatMap((g) => g.items.map((it) => it.parsed?.name ?? it.item))
+      .filter(Boolean)
+      .slice(0, MAX_BACK_INGREDIENTS);
+    const plan = recipe.steps
+      .flatMap((section) => section.steps.map((s) => truncateLine(s.instruction)))
+      .filter(Boolean)
+      .slice(0, MAX_BACK_PLAN_LINES);
+    if (ingredients.length || plan.length) {
+      return { ingredients, plan, microcopy: 'FULL RECIPE READY' };
+    }
+  }
+  return { ingredients: [], plan: [], microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU KEEP IT' };
+}
+
+function truncateLine(text: string, maxLen = 40): string {
+  const trimmed = text.trim();
+  return trimmed.length <= maxLen ? trimmed : `${trimmed.slice(0, maxLen).trimEnd()}…`;
+}
 
 // Task 10 creates app/(eat)/allocate.tsx; typed routes can't see it yet from
 // here, so this cast keeps the (identical at runtime) navigation working
@@ -262,44 +308,149 @@ function DeckCard({
     onLike: onKeep,
     onPass,
   });
+  const { tap } = useHaptics();
   const proteinG = recipe.nutritionalEstimate?.proteinG;
+
+  // 0 = showing the front face, 1 = showing the back. Resets on remount —
+  // the caller keys DeckCard by `${recipe.id}-${position}`, so a fresh card
+  // always starts unflipped.
+  const flip = useSharedValue(0);
+  const [flipped, setFlipped] = useState(false);
+  const toggleFlip = useCallback(() => {
+    tap();
+    const next = flip.value === 0 ? 1 : 0;
+    flip.value = withTiming(next, { duration: FLIP_DURATION });
+    setFlipped(next === 1);
+  }, [tap, flip]);
+
+  const frontFaceStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1200 },
+      { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` },
+    ],
+  }));
+  const backFaceStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1200 },
+      { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` },
+    ],
+  }));
+
+  const cardBack = deriveCardBack(recipe);
 
   return (
     <View style={styles.cardArea}>
       <GestureDetector gesture={pan}>
         <Animated.View style={cardStyle}>
-          <PaperCard padding={0} cornerRadius={radius.sheet}>
-            <CardArt recipe={recipe} />
-            <View style={styles.cardBody}>
-              <Mono size={10} bold color={palette.accentDeep}>
-                {recipe.cuisine.toLowerCase()}
-              </Mono>
-              <View style={{ height: 4 }} />
-              <DisplayText size={26} color={palette.ink} numberOfLines={2} style={styles.cardTitle}>
-                {recipe.title}
-              </DisplayText>
-              {recipe.hook ? (
-                <>
+          <View style={styles.flipStack}>
+            <Animated.View
+              style={[styles.flipFace, frontFaceStyle]}
+              pointerEvents={flipped ? 'none' : 'auto'}
+            >
+              <PaperCard padding={0} cornerRadius={radius.sheet}>
+                <CardArt recipe={recipe} />
+                <View style={styles.cardBody}>
+                  <Mono size={10} bold color={palette.accentDeep}>
+                    {recipe.cuisine.toLowerCase()}
+                  </Mono>
                   <View style={{ height: 4 }} />
-                  <ItalicText size={15} color={palette.textSecondary}>
-                    {recipe.hook}
-                  </ItalicText>
-                </>
-              ) : null}
-              <View style={{ height: spacing.sm }} />
-              <View style={styles.statRow}>
-                <Mono size={10} color={palette.textSecondary}>
-                  {recipe.timeMinutes} min
-                </Mono>
-                <Text style={styles.leaderText} numberOfLines={1} ellipsizeMode="clip">
-                  {DOT_LEADER}
-                </Text>
-                <Mono size={10} color={palette.textSecondary}>
-                  {proteinG ? `${proteinG}g pro` : recipe.cuisine.toLowerCase()}
-                </Mono>
-              </View>
-            </View>
-          </PaperCard>
+                  <DisplayText size={26} color={palette.ink} numberOfLines={2} style={styles.cardTitle}>
+                    {recipe.title}
+                  </DisplayText>
+                  {recipe.hook ? (
+                    <>
+                      <View style={{ height: 4 }} />
+                      <ItalicText size={15} color={palette.textSecondary}>
+                        {recipe.hook}
+                      </ItalicText>
+                    </>
+                  ) : null}
+                  <View style={{ height: spacing.sm }} />
+                  <View style={styles.statRow}>
+                    <Mono size={10} color={palette.textSecondary}>
+                      {recipe.timeMinutes} min
+                    </Mono>
+                    <Text style={styles.leaderText} numberOfLines={1} ellipsizeMode="clip">
+                      {DOT_LEADER}
+                    </Text>
+                    <Mono size={10} color={palette.textSecondary}>
+                      {proteinG ? `${proteinG}g pro` : recipe.cuisine.toLowerCase()}
+                    </Mono>
+                  </View>
+                </View>
+              </PaperCard>
+            </Animated.View>
+
+            <Animated.View
+              style={[styles.flipFace, styles.flipFaceBack, backFaceStyle]}
+              pointerEvents={flipped ? 'auto' : 'none'}
+            >
+              <Pressable
+                style={styles.backPressable}
+                onPress={toggleFlip}
+                accessibilityRole="button"
+                accessibilityLabel="Flip back to the recipe card"
+              >
+                <PaperCard padding={0} cornerRadius={radius.sheet} style={styles.backCard}>
+                  <View style={styles.backBody}>
+                    <Mono size={10} bold color={palette.accentDeep}>
+                      {recipe.cuisine.toLowerCase()}
+                    </Mono>
+                    <View style={{ height: 4 }} />
+                    <DisplayText size={18} color={palette.ink} numberOfLines={2}>
+                      {recipe.title}
+                    </DisplayText>
+                    <View style={{ height: spacing.md }} />
+
+                    {cardBack.ingredients.length ? (
+                      <>
+                        <Mono size={10} bold color={palette.accentDeep}>
+                          ingredients
+                        </Mono>
+                        <View style={{ height: spacing.xs }} />
+                        <BodyText size={14} color={palette.text}>
+                          {cardBack.ingredients.join(', ')}
+                        </BodyText>
+                        <View style={{ height: spacing.md }} />
+                      </>
+                    ) : null}
+
+                    {cardBack.plan.length ? (
+                      <>
+                        <Mono size={10} bold color={palette.accentDeep}>
+                          the plan
+                        </Mono>
+                        <View style={{ height: spacing.xs }} />
+                        {cardBack.plan.map((line, i) => (
+                          <View key={i} style={styles.planRow}>
+                            <Mono size={11} color={palette.textSecondary}>
+                              {String(i + 1).padStart(2, '0')}
+                            </Mono>
+                            <BodyText size={14} color={palette.text} style={styles.planLineText}>
+                              {line}
+                            </BodyText>
+                          </View>
+                        ))}
+                      </>
+                    ) : null}
+
+                    <View style={styles.backSpacer} />
+                    <Mono size={9} color={palette.textTertiary} style={styles.backMicrocopy}>
+                      {cardBack.microcopy}
+                    </Mono>
+                  </View>
+                </PaperCard>
+              </Pressable>
+            </Animated.View>
+
+            <IconPill
+              onPress={toggleFlip}
+              accessibilityLabel={flipped ? 'Show the recipe card' : 'Show ingredients and plan'}
+              style={styles.infoPill}
+            >
+              <Eye size={16} color={palette.ink} strokeWidth={2.2} />
+            </IconPill>
+          </View>
 
           <Animated.View pointerEvents="none" style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
             <Mono bold size={14} color={palette.accent}>
@@ -345,6 +496,52 @@ const styles = StyleSheet.create({
   cardTitle: {
     letterSpacing: -0.5,
     lineHeight: 30,
+  },
+  flipStack: {
+    width: '100%',
+  },
+  flipFace: {
+    width: '100%',
+    backfaceVisibility: 'hidden',
+  },
+  flipFaceBack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backPressable: {
+    flex: 1,
+  },
+  backCard: {
+    flex: 1,
+  },
+  backBody: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  backSpacer: {
+    flex: 1,
+    minHeight: spacing.md,
+  },
+  backMicrocopy: {
+    textAlign: 'center',
+  },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  planLineText: {
+    flex: 1,
+    marginLeft: spacing.xs,
+  },
+  infoPill: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    zIndex: 5,
   },
   statRow: {
     flexDirection: 'row',
