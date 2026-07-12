@@ -423,19 +423,21 @@ function DeckCard({
     setFlipped(next === 1);
   }, [tap, flip]);
 
-  // backfaceVisibility lives INSIDE the animated styles: reanimated applies
-  // the transform natively, and on-device (Fabric) that update clobbers the
-  // static style's backfaceVisibility — both faces get culled as back-facing
-  // and the flipped card renders blank. (Simulator doesn't reproduce it.)
+  // NO backfaceVisibility anywhere: on-device Fabric mishandles it under
+  // animated rotateY (both faces culled → blank card; sim doesn't reproduce
+  // it, and moving it into the animated style didn't fix it either). Instead
+  // each face hard-cuts opacity at the flip midpoint — the card is edge-on
+  // and invisible there, so the cut is imperceptible, and exactly one face
+  // is ever composited regardless of how the renderer treats culling.
   const frontFaceStyle = useAnimatedStyle(() => ({
-    backfaceVisibility: 'hidden' as const,
+    opacity: flip.value < 0.5 ? 1 : 0,
     transform: [
       { perspective: 1200 },
       { rotateY: `${interpolate(flip.value, [0, 1], [0, 180])}deg` },
     ],
   }));
   const backFaceStyle = useAnimatedStyle(() => ({
-    backfaceVisibility: 'hidden' as const,
+    opacity: flip.value < 0.5 ? 0 : 1,
     transform: [
       { perspective: 1200 },
       { rotateY: `${interpolate(flip.value, [0, 1], [180, 360])}deg` },
