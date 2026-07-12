@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { Recipe } from '@qook/shared';
 
 import type { ISODate } from '../week/weekDates';
-import { aggregateIngredients, collectShopMeals } from './aggregateIngredients';
+import { aggregateIngredients, collectShopMeals, formatQuantity } from './aggregateIngredients';
 
 const TODAY = '2026-07-10' as ISODate;
 
@@ -73,6 +73,104 @@ describe('aggregateIngredients staged recipes', () => {
     expect(items[0].name).toBe('salmon fillets');
     expect(items[0].key).toBe('salmon fillets');
     expect(items[0].category).toBe('Protein');
+  });
+});
+
+function parsedRecipe(
+  id: string,
+  item: string,
+  quantity: string,
+  amount: number | null,
+  unit: string | null,
+): Recipe {
+  return {
+    id,
+    title: `Recipe ${id}`,
+    ingredients: [
+      {
+        title: 'main',
+        items: [
+          {
+            item,
+            quantity,
+            parsed: {
+              canonicalKey: item,
+              name: item,
+              category: 'Other',
+              quantityAmount: amount ?? undefined,
+              quantityUnit: unit ?? undefined,
+            },
+          },
+        ],
+      },
+    ],
+  } as unknown as Recipe;
+}
+
+describe('quantity summing across recipes', () => {
+  test('sums matching units: 12 oz + 8 oz → 20 oz', () => {
+    const a = parsedRecipe('a', 'ground turkey', '12 oz', 12, 'oz');
+    const b = parsedRecipe('b', 'ground turkey', '8 oz', 8, 'oz');
+
+    const items = aggregateIngredients({}, TODAY, [a, b]);
+
+    expect(formatQuantity(items[0])).toBe('20 oz');
+  });
+
+  test('treats bare amounts and explicit counts alike: 4 count + 2 → 6', () => {
+    const a = parsedRecipe('a', 'garlic', '4 count', 4, 'count');
+    const b = parsedRecipe('b', 'garlic', '2', 2, null);
+
+    const items = aggregateIngredients({}, TODAY, [a, b]);
+
+    expect(formatQuantity(items[0])).toBe('6');
+  });
+
+  test('mixed units stay joined, never converted', () => {
+    const a = parsedRecipe('a', 'black beans', '1 (15 oz) can', 1, 'count');
+    const b = parsedRecipe('b', 'black beans', '1 cup', 1, 'cup');
+
+    const items = aggregateIngredients({}, TODAY, [a, b]);
+
+    expect(formatQuantity(items[0])).toBe('1 (15 oz) can + 1 cup');
+  });
+
+  test('a missing parsed amount disables summing for that item', () => {
+    const a = parsedRecipe('a', 'cilantro', '1/4 cup', 0.25, 'cup');
+    const b = recipe('b', 'Recipe b', 'cilantro'); // no parsed data
+
+    const items = aggregateIngredients({}, TODAY, [a, b]);
+
+    expect(formatQuantity(items[0])).toBe('1/4 cup + 1 bunch');
+  });
+
+  test('fractions render kitchen-style: 1/2 + 1/4 cup → 3/4 cup', () => {
+    const a = parsedRecipe('a', 'sour cream', '1/2 cup', 0.5, 'cup');
+    const b = parsedRecipe('b', 'sour cream', '1/4 cup', 0.25, 'cup');
+
+    const items = aggregateIngredients({}, TODAY, [a, b]);
+
+    expect(formatQuantity(items[0])).toBe('3/4 cup');
+  });
+
+  test('a dish planned two nights doubles its ingredients: 1 lb ×2 → 2 lb', () => {
+    const dish = parsedRecipe('dish', 'ground beef', '1 lb', 1, 'lb');
+    const plan = {
+      ['2026-07-11' as ISODate]: { recipes: [dish], pickIndex: 0 },
+      ['2026-07-12' as ISODate]: { recipes: [dish], pickIndex: 0 },
+    };
+
+    const items = aggregateIngredients(plan, TODAY);
+
+    expect(formatQuantity(items[0])).toBe('2 lb');
+  });
+
+  test('single occurrence keeps its raw descriptive string', () => {
+    const a = parsedRecipe('a', 'canned tuna', '2 cans (5 oz each), drained', 2, 'count');
+
+    const items = aggregateIngredients({}, TODAY, [a]);
+
+    expect(formatQuantity(items[0])).toBe('2 cans (5 oz each), drained');
   });
 });
 

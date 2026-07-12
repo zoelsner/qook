@@ -47,7 +47,8 @@ function toGroceryItem(item: ShopItem): GroceryItem {
     userId: 'local',
     canonicalKey: item.key,
     name: item.name,
-    quantityText: item.quantities.join(' + ') || undefined,
+    quantityText:
+      item.summedQuantity ?? (item.quantities.join(' + ') || undefined),
     category: item.category,
     checked: false,
     source: 'recipe_import',

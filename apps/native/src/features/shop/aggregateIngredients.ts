@@ -14,6 +14,9 @@ export interface ShopItem {
   quantities: string[];   // distinct quantity strings, in insertion order
   recipeCount: number;    // how many picks referenced this ingredient
   recipeTitles: string[]; // distinct recipe titles, in insertion order
+  // "2 lb" instead of "1 lb + 1 lb" — set only when every occurrence has a
+  // parsed amount and the units agree (no cross-unit conversion attempted).
+  summedQuantity?: string;
 }
 
 /**
@@ -72,6 +75,9 @@ export function aggregateIngredients(
   excludeIds?: ReadonlySet<string>,
 ): ShopItem[] {
   const map = new Map<string, ShopItem>();
+  // One {amount, unit} per occurrence; null once any occurrence arrives
+  // without a parsed amount (that item can never sum honestly).
+  const sums = new Map<string, { amount: number; unit: string | null }[] | null>();
 
   const picks: Recipe[] = [];
   for (const [date, day] of Object.entries(plan)) {
@@ -104,6 +110,16 @@ export function aggregateIngredients(
       const category: GroceryCategory =
         ingredient.parsed?.category ?? categorizeIngredient(displayName);
       const quantity = ingredient.quantity?.trim() || '';
+
+      const amount = ingredient.parsed?.quantityAmount;
+      if (typeof amount === 'number' && sums.get(key) !== null) {
+        const entries = sums.get(key) ?? [];
+        entries.push({ amount, unit: ingredient.parsed?.quantityUnit ?? null });
+        sums.set(key, entries);
+      } else if (typeof amount !== 'number') {
+        sums.set(key, null);
+      }
+
       const existing = map.get(key);
 
       if (existing) {
@@ -128,10 +144,48 @@ export function aggregateIngredients(
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  const items = Array.from(map.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+
+  for (const item of items) {
+    const entries = sums.get(item.key);
+    if (!entries || entries.length < 2) continue;
+    // A bare amount ("2") and an explicit "count" mean the same thing.
+    const units = new Set(entries.map((e) => (e.unit === 'count' ? null : e.unit)));
+    if (units.size !== 1) continue;
+    const unit = units.values().next().value;
+    const total = entries.reduce((sum, e) => sum + e.amount, 0);
+    item.summedQuantity = unit ? `${formatAmount(total)} ${unit}` : formatAmount(total);
+  }
+
+  return items;
+}
+
+// 0.5 → "1/2", 1.5 → "1 1/2"; anything not near a kitchen fraction keeps
+// two decimals at most.
+const KITCHEN_FRACTIONS: [number, string][] = [
+  [1 / 4, '1/4'],
+  [1 / 3, '1/3'],
+  [1 / 2, '1/2'],
+  [2 / 3, '2/3'],
+  [3 / 4, '3/4'],
+];
+
+function formatAmount(value: number): string {
+  const whole = Math.floor(value);
+  const frac = value - whole;
+  if (frac < 0.02) return String(whole);
+  for (const [target, label] of KITCHEN_FRACTIONS) {
+    if (Math.abs(frac - target) < 0.02) {
+      return whole > 0 ? `${whole} ${label}` : label;
+    }
+  }
+  return String(Math.round(value * 100) / 100);
 }
 
 export function formatQuantity(item: ShopItem): string {
+  if (item.summedQuantity) return item.summedQuantity;
   if (item.quantities.length === 0) return 'to taste';
   if (item.quantities.length === 1) return item.quantities[0];
   const distinct = Array.from(new Set(item.quantities));
