@@ -7,6 +7,7 @@ import {
   passAt as reducePass,
   reconcileKept as reduceReconcile,
   setCookTonight as reduceSetCook,
+  stageNextHand as reduceStageNext,
   type DeckState,
 } from '../features/eat/deckState';
 import { representativeTier, type ResetNight } from '../features/eat/weekReset';
@@ -51,6 +52,8 @@ interface GenerationSessionState {
   setCookTonight: (id: string) => void;
   reconcileKept: (oldId: string, recipe: Recipe) => void;
   startWeekReset: (nights: ResetNight[]) => void;
+  stageNextHand: (recipes: Recipe[]) => void;
+  promoteNextHand: () => void;
 }
 
 export const useGenerationSession = create<GenerationSessionState>((set) => ({
@@ -125,4 +128,13 @@ export const useGenerationSession = create<GenerationSessionState>((set) => ({
       error: null,
       deck: null,
     }),
+
+  // Background prefetch stashed a hand — hold it until the swiper exhausts the
+  // current one, then promote it into place (dealFreshHand keeps prior keeps).
+  stageNextHand: (recipes) =>
+    set((s) => (s.deck ? { deck: reduceStageNext(s.deck, recipes) } : s)),
+  promoteNextHand: () =>
+    set((s) =>
+      s.deck && s.deck.nextHand ? { deck: dealFreshHand(s.deck, s.deck.nextHand) } : s,
+    ),
 }));

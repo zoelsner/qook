@@ -237,7 +237,8 @@ export async function requestRecipeImage(recipeId: string): Promise<void> {
 // 5 tier-matched fixtures (already full, with local art).
 export async function generateProposals(
   tier: EnergyTier,
-  context?: string
+  context?: string,
+  energyMix?: string
 ): Promise<Recipe[]> {
   if (mode === 'mock') {
     await lag(1200);
@@ -245,7 +246,7 @@ export async function generateProposals(
   }
   await ensureSession();
   const { data, error } = await supabase.functions.invoke('generate-proposals', {
-    body: { tier, context: context?.trim() || undefined },
+    body: { tier, context: context?.trim() || undefined, energyMix: energyMix?.trim() || undefined },
   });
   if (error) {
     const msg = (error as { message?: string }).message ?? 'Something went wrong.';
