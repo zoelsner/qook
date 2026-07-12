@@ -51,8 +51,10 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
   const { select } = useHaptics();
   const [innerWidth, setInnerWidth] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
+  const lensScale = useRef(new Animated.Value(1)).current;
   const routeCount = state.routes.length;
   const hoveredIndexRef = useRef(state.index);
+  const draggingRef = useRef(false);
   const slotWidth = innerWidth / routeCount;
 
   // The PanResponder below is created once, so its callbacks must read
@@ -73,6 +75,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
   useEffect(() => {
     if (innerWidth === 0) return;
+    // Mid-drag the finger owns the lens; the release handler re-syncs.
+    // Springing here would fight setValue and yank the lens to slot centers.
+    if (draggingRef.current) return;
     hoveredIndexRef.current = state.index;
     animateTo(state.index);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,6 +112,15 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dx) > 6,
+      onPanResponderGrant: () => {
+        draggingRef.current = true;
+        // Kill any in-flight settle spring — an active animation keeps
+        // writing the value every frame and fights the finger tracking
+        // (this was the "magnetizing between slots" feel).
+        translateX.stopAnimation();
+        // Apple's lens swells slightly while held.
+        Animated.spring(lensScale, { toValue: 1.12, ...SPRING_CONFIG }).start();
+      },
       // locationX is unreliable after a responder capture (it stays relative
       // to the child Pressable that took the touch), so track the finger in
       // page coordinates against the row's measured window position.
@@ -128,14 +142,18 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         }
       },
       onPanResponderRelease: () => {
+        draggingRef.current = false;
+        Animated.spring(lensScale, { toValue: 1, ...SPRING_CONFIG }).start();
         const target = hoveredIndexRef.current;
-        if (target === stateIndexRef.current) {
-          animateTo(target);
-        } else {
+        // Always spring to the nearest slot; navigate too if it changed.
+        animateTo(target);
+        if (target !== stateIndexRef.current) {
           goToIndexRef.current(target);
         }
       },
       onPanResponderTerminate: () => {
+        draggingRef.current = false;
+        Animated.spring(lensScale, { toValue: 1, ...SPRING_CONFIG }).start();
         hoveredIndexRef.current = stateIndexRef.current;
         animateTo(stateIndexRef.current);
       },
@@ -151,7 +169,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           width: slotWidth - HIGHLIGHT_INSET * 2,
           height: highlightHeight,
           borderRadius: highlightRadius,
-          transform: [{ translateX }],
+          transform: [{ translateX }, { scale: lensScale }],
         },
       ]}
     >
