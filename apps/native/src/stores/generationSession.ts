@@ -40,6 +40,11 @@ interface GenerationSessionState {
   mode: 'tonight' | 'week';
   resetNights: ResetNight[];
 
+  // One-shot toast for the Plan tab after allocation benches over-keeps.
+  // Transient by design: NOT in partialize, cleared by start/reset/startWeekReset.
+  benchNotice: string | null;
+  setBenchNotice: (message: string | null) => void;
+
   start: (tier: EnergyTier) => void;
   setContext: (context: string) => void;
   beginGeneration: () => void;
@@ -75,6 +80,8 @@ export const useGenerationSession = create<GenerationSessionState>()(
       deck: null,
       mode: 'tonight',
       resetNights: [],
+      benchNotice: null,
+      setBenchNotice: (message) => set({ benchNotice: message }),
 
       start: (tier) =>
         set({
@@ -87,6 +94,7 @@ export const useGenerationSession = create<GenerationSessionState>()(
           deck: null,
           mode: 'tonight',
           resetNights: [],
+          benchNotice: null,
         }),
       setContext: (context) => set({ context }),
       beginGeneration: () => set({ state: 'generating_text' }),
@@ -110,6 +118,7 @@ export const useGenerationSession = create<GenerationSessionState>()(
           deck: null,
           mode: 'tonight',
           resetNights: [],
+          benchNotice: null,
         }),
 
       setProposals: (recipes) =>
@@ -138,6 +147,7 @@ export const useGenerationSession = create<GenerationSessionState>()(
           streamedTitles: [],
           error: null,
           deck: null,
+          benchNotice: null,
         }),
 
       // Background prefetch stashed a hand — hold it until the swiper exhausts the

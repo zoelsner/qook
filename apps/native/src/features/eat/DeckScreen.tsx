@@ -338,15 +338,19 @@ export function DeckScreen() {
             {prefetchFailed ? 'Deal again?' : 'Nothing grabbed you?'}
           </DisplayText>
           <View style={{ height: spacing.md }} />
-          <PolishedButton label="Deal a fresh hand" tone="forest" onPress={handleFreshHand} />
           {keptCount > 0 ? (
             <>
-              <View style={{ height: spacing.sm }} />
               <ItalicText size={14} style={{ textAlign: 'center' }}>
                 {keptCount === 1 ? '1 keep waiting to be placed.' : `${keptCount} keeps waiting to be placed.`}
               </ItalicText>
+              <View style={{ height: spacing.md }} />
+              <PolishedButton label="Continue to planning" tone="forest" onPress={goAllocateOrHome} />
+              <View style={{ height: spacing.sm }} />
+              <PolishedButton label="Deal a fresh hand" tone="cream" onPress={handleFreshHand} />
             </>
-          ) : null}
+          ) : (
+            <PolishedButton label="Deal a fresh hand" tone="forest" onPress={handleFreshHand} />
+          )}
         </View>
       ) : focused ? (
         <DeckCard
@@ -682,7 +686,8 @@ const styles = StyleSheet.create({
   },
   emptyWell: {
     borderRadius: 18,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl + spacing.lg,
     backgroundColor: palette.well,
     alignItems: 'center',
   },

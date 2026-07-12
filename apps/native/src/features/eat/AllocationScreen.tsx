@@ -10,14 +10,20 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
-import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
+import { useWeekPlan } from '../../stores/weekPlan';
 import { allocateKeeps, tierMismatch } from './allocation';
-import { unfilledResetNights } from './weekReset';
+import { TIER_MAX_MINUTES } from './weekReset';
 import { api } from '../../services/api';
 import { addDaysISO, todayISO, type ISODate } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function benchNoticeCopy(count: number): string {
+  return count === 1
+    ? '1 extra saved to your bench — tap a night to use it.'
+    : `${count} extras saved to your bench — tap a night to use them.`;
+}
 
 function dayOptions(): { date: ISODate; label: string }[] {
   const today = todayISO();
@@ -34,27 +40,25 @@ export function AllocationScreen() {
   const deck = useGenerationSession((s) => s.deck);
   const mode = useGenerationSession((s) => s.mode);
   const resetNights = useGenerationSession((s) => s.resetNights);
-  const plan = useWeekPlan((s) => s.plan);
   const reset = useGenerationSession((s) => s.reset);
   const addToBench = useGenerationSession((s) => s.addToBench);
+  const setBenchNotice = useGenerationSession((s) => s.setBenchNotice);
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
 
   const kept = deck?.kept ?? [];
   const cookTonightId = deck?.cookTonightId ?? null;
+  // Every upcoming day is placeable — extras can land on untagged nights too
+  // (Zach 2026-07-13: "why doesn't it show Thu–Sun?"). Tagged reset nights
+  // carry their tier so the chip can show the time budget.
   const days = useMemo(() => {
+    const base = dayOptions();
     if (mode !== 'week') {
-      return dayOptions().map((d) => ({ ...d, tier: undefined as EnergyTier | undefined }));
+      return base.map((d) => ({ ...d, tier: undefined as EnergyTier | undefined }));
     }
-    const filled = new Set(
-      Object.keys(plan).filter((date) => activePickFor(plan[date as ISODate]) != null),
-    );
-    return unfilledResetNights(resetNights, filled).map((n) => ({
-      date: n.date,
-      label: n.date === todayISO() ? 'Tonight' : WEEKDAY[new Date(`${n.date}T00:00:00`).getDay()],
-      tier: n.tier as EnergyTier | undefined,
-    }));
-  }, [mode, resetNights, plan]);
+    const tierByDate = new Map(resetNights.map((n) => [n.date, n.tier]));
+    return base.map((d) => ({ ...d, tier: tierByDate.get(d.date) }));
+  }, [mode, resetNights]);
 
   // Pre-select "Tonight" for the cooked recipe; others start unassigned.
   // Keyed by POSITION, not recipe id: reconcileKept (deckState.ts) swaps a kept
@@ -105,6 +109,7 @@ export function AllocationScreen() {
     }
     if (mode === 'week' && outcome.benched.length) {
       addToBench(outcome.benched);
+      setBenchNotice(benchNoticeCopy(outcome.benched.length));
     }
 
     // Live read, like liveKept above — a reconcile can swap the id between render and Done.
@@ -125,7 +130,9 @@ export function AllocationScreen() {
     if (mode === 'week') {
       // In week mode keeps were already saved (savedRecipeIds) and passes/
       // over-keeps stay on the bench for the day sheet; leave the session.
-      addToBench(useGenerationSession.getState().deck?.kept ?? []);
+      const benching = useGenerationSession.getState().deck?.kept ?? [];
+      addToBench(benching);
+      if (benching.length) setBenchNotice(benchNoticeCopy(benching.length));
     } else {
       reset();
     }
@@ -203,8 +210,13 @@ function AllocationRow({
       </View>
       <View style={styles.chipRow}>
         {days.map((d) => {
+          const budget = d.tier ? TIER_MAX_MINUTES[d.tier] : null;
           const active = selected === d.date;
           const over = d.tier ? tierMismatch(recipe.timeMinutes, d.tier) : false;
+          // Tagged nights show their time budget so "over" reads as "over 15m",
+          // not a mystery word (Zach 2026-07-13). Untagged days are just the day.
+          const label =
+            budget == null ? d.label : over ? `${d.label} · over ${budget}m` : `${d.label} · ${budget}m`;
           return (
             <Pressable
               key={d.date}
@@ -214,7 +226,7 @@ function AllocationRow({
               style={[styles.chip, active ? styles.chipActive : null, over && !active ? styles.chipOver : null]}
             >
               <Mono size={10} bold color={active ? palette.surface : over ? palette.utility : palette.textSecondary}>
-                {over ? `${d.label} · over` : d.label}
+                {label}
               </Mono>
             </Pressable>
           );

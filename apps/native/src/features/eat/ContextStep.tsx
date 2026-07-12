@@ -290,9 +290,14 @@ const styles = StyleSheet.create({
     minHeight: spacing.lg,
     maxHeight: 96,
   },
+  // Same pill outline as the suggestion chips so skip reads as tappable
+  // (Zach 2026-07-13: "put a little oval around it").
   skipRow: {
     alignSelf: 'center',
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.md + 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(42, 58, 38, 0.22)',
   },
 });

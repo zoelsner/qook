@@ -1,6 +1,6 @@
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowRight, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EnergyTier } from '@qook/shared';
@@ -8,7 +8,7 @@ import type { EnergyTier } from '@qook/shared';
 import { PolishedButton } from '../../components/PolishedButton';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { ScreenShell } from '../../components/ScreenShell';
-import { BodyText, DisplayText, Mono } from '../../components/Text';
+import { BodyText, DisplayText, ItalicText, Mono } from '../../components/Text';
 import { palette, screen, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
@@ -18,6 +18,8 @@ import { DaySheet } from './DaySheet';
 import { DayRow } from './DayRow';
 import { formatDayShort, upcomingDays, todayISO, type ISODate } from './weekDates';
 
+const BENCH_NOTICE_TIMEOUT_MS = 8000;
+
 export function WeekScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -26,7 +28,15 @@ export function WeekScreen() {
   const hasHydrated = useWeekPlan((state) => state.hasHydrated);
   const clearFuture = useWeekPlan((state) => state.clearFuture);
   const startWeekReset = useGenerationSession((state) => state.startWeekReset);
+  const benchNotice = useGenerationSession((state) => state.benchNotice);
+  const setBenchNotice = useGenerationSession((state) => state.setBenchNotice);
   const [sheet, setSheet] = useState<{ date: ISODate; tier: EnergyTier } | null>(null);
+
+  useEffect(() => {
+    if (!benchNotice) return;
+    const id = setTimeout(() => setBenchNotice(null), BENCH_NOTICE_TIMEOUT_MS);
+    return () => clearTimeout(id);
+  }, [benchNotice, setBenchNotice]);
 
   const today = todayISO();
   const days = upcomingDays(7, today);
@@ -67,33 +77,50 @@ export function WeekScreen() {
 
   return (
     <ScreenShell horizontalPadding={24} scrollable={false}>
-      <View style={styles.header}>
-        <View style={styles.kickerRow}>
-          <Mono size={10} bold color={palette.accentDeep}>
-            PLAN
-          </Mono>
-          <View style={styles.kickerDot} />
-          <Mono size={10} color={palette.textSecondary}>
-            {rangeKicker}
-          </Mono>
-        </View>
-        <View style={styles.titleWrap}>
-          <DisplayText size={38} color={palette.primary} style={styles.title}>
-            This week.
-          </DisplayText>
-          <BrushstrokeUnderline
-            width={200}
-            color={palette.accent}
-            strokeWidth={2.4}
-            style={styles.displayUnderline}
-          />
-        </View>
+      <View style={styles.masthead}>
+        <DisplayText size={20} color={palette.ink}>qook</DisplayText>
+        <Mono size={10} color={palette.textSecondary}>
+          {rangeKicker}
+        </Mono>
+      </View>
+      <View style={styles.mastheadRule} />
+
+      <View style={{ height: spacing.md + 2 }} />
+      <View style={styles.titleWrap}>
+        <DisplayText size={38} color={palette.primary} style={styles.title}>
+          This week.
+        </DisplayText>
+        <BrushstrokeUnderline
+          width={200}
+          color={palette.accent}
+          strokeWidth={2.4}
+          style={styles.displayUnderline}
+        />
       </View>
 
       <View style={{ height: spacing.md }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
         Tap a time on the nights you&apos;ll cook. Scroll for the rest.
       </BodyText>
+
+      {benchNotice ? (
+        <>
+          <View style={{ height: spacing.xs }} />
+          <View style={styles.benchNoticeRow}>
+            <ItalicText size={14} color={palette.accent} style={styles.benchNoticeText}>
+              {benchNotice}
+            </ItalicText>
+            <Pressable
+              onPress={() => setBenchNotice(null)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+            >
+              <X size={14} color={palette.accent} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+        </>
+      ) : null}
 
       <View style={{ height: spacing.lg }} />
 
@@ -126,7 +153,7 @@ export function WeekScreen() {
         </View>
         <Pressable hitSlop={6} onPress={onClearFuture}>
           <BodyText size={12} weight="medium" color={palette.accentDeep}>
-            Clear upcoming
+            Clear future nights
           </BodyText>
         </Pressable>
       </View>
@@ -171,19 +198,30 @@ export function WeekScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: 6,
-  },
-  kickerRow: {
+  masthead: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  mastheadRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: palette.statRuleColor,
+    marginTop: spacing.sm,
   },
   kickerDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: palette.textSecondary,
+  },
+  benchNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  benchNoticeText: {
+    flex: 1,
   },
   titleWrap: {
     position: 'relative',

@@ -80,7 +80,7 @@ export function DayRow({
         <View style={styles.dayLabel}>
           {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}
           <Mono size={12} bold color={palette.ink}>
-            {weekday}
+            {isToday(date) ? 'TONIGHT' : weekday}
           </Mono>
         </View>
         {isToday(date) ? (
