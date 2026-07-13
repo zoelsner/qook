@@ -790,8 +790,14 @@ const styles = StyleSheet.create({
     letterSpacing: -0.15,
     lineHeight: 20,
   },
+  // Cap long descriptive quantities ("2, sliced into 1-inch strips") at half
+  // the row and wrap them right-aligned — otherwise they crush the name
+  // column into breaking mid-word.
   ingredientQty: {
     letterSpacing: 1.2,
+    flexShrink: 1,
+    maxWidth: '50%',
+    textAlign: 'right',
   },
   servesRow: {
     flexDirection: 'row',

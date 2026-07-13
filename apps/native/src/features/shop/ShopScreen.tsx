@@ -422,8 +422,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.15,
     lineHeight: 20,
   },
+  // Same guard as the detail modal's ingredientQty: long descriptive
+  // quantities wrap right-aligned instead of crushing the name column.
   rowQty: {
     letterSpacing: 1.2,
+    flexShrink: 1,
+    maxWidth: '50%',
+    textAlign: 'right',
   },
   empty: {
     borderRadius: 22,
