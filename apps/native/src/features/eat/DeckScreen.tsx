@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
+import Svg, { Path } from 'react-native-svg';
 import { useRouter, type Href } from 'expo-router';
 import type { Recipe } from '@qook/shared';
 
@@ -567,31 +568,95 @@ function DeckCard({
             </IconPill>
           </View>
 
+          {/* Drag-following card tint: green wash growing toward keep,
+              rust wash toward toss. Same drivers as the stamps. */}
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.dragWash, { backgroundColor: palette.washAffirm }, likeOverlayStyle]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.dragWash, { backgroundColor: palette.washRust }, passOverlayStyle]}
+          />
           <Animated.View pointerEvents="none" style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
-            <Mono bold size={14} color={palette.accent}>
+            <Mono bold size={14} color={palette.affirm}>
               keep
             </Mono>
           </Animated.View>
           <Animated.View pointerEvents="none" style={[styles.overlay, styles.passOverlay, passOverlayStyle]}>
-            <Mono bold size={14} color={palette.utility}>
-              pass
+            <Mono bold size={14} color={palette.accentDeep}>
+              toss
             </Mono>
           </Animated.View>
         </Animated.View>
       </GestureDetector>
 
-      <View style={{ height: spacing.md }} />
+      <SwipeHints />
+
       <View style={styles.actionRow}>
         <View style={styles.actionHalf}>
-          <PolishedButton label="Pass" tone="ghost" onPress={onPass} />
+          <PolishedButton label="Toss" tone="ghost" onPress={onPass} />
         </View>
         <View style={{ width: spacing.sm }} />
         <View style={styles.actionHalf}>
-          <PolishedButton label="Keep" tone="rust" onPress={onKeep} />
+          <PolishedButton label="Keep" tone="forest" onPress={onKeep} />
         </View>
       </View>
       <View style={{ height: spacing.sm }} />
       <PolishedButton label="Cook this tonight →" tone="forest" onPress={onCookTonight} />
+    </View>
+  );
+}
+
+// Swipe-direction hints under the card: an arrow arcing down-left for toss,
+// down-right for keep, in the decision colors at whisper volume.
+function SwipeHints() {
+  return (
+    <View style={styles.hintRow}>
+      <View style={styles.hintSide}>
+        <Svg width={44} height={20} viewBox="0 0 44 20">
+          <Path
+            d="M40 3 Q22 18 6 10"
+            stroke={palette.accentDeep}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <Path
+            d="M11 10.1 L6 10 L9.1 13.9"
+            stroke={palette.accentDeep}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </Svg>
+        <Mono size={9} color={palette.accentDeep}>
+          toss
+        </Mono>
+      </View>
+      <View style={styles.hintSide}>
+        <Mono size={9} color={palette.affirm}>
+          keep
+        </Mono>
+        <Svg width={44} height={20} viewBox="0 0 44 20">
+          <Path
+            d="M4 3 Q22 18 38 10"
+            stroke={palette.affirm}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            fill="none"
+          />
+          <Path
+            d="M33 10.1 L38 10 L34.9 13.9"
+            stroke={palette.affirm}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </Svg>
+      </View>
     </View>
   );
 }
@@ -692,13 +757,30 @@ const styles = StyleSheet.create({
   },
   likeOverlay: {
     right: spacing.md,
-    borderColor: palette.accent,
+    borderColor: palette.affirm,
     transform: [{ rotate: '-8deg' }],
   },
   passOverlay: {
     left: spacing.md,
-    borderColor: palette.utility,
+    borderColor: palette.accentDeep,
     transform: [{ rotate: '8deg' }],
+  },
+  dragWash: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.sheet,
+  },
+  hintRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    opacity: 0.55,
+  },
+  hintSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   emptyWell: {
     borderRadius: 18,

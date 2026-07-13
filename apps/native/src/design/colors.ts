@@ -36,6 +36,11 @@ export const palette = {
   // Ochre — palette C highlight. Rare; reserved for warm-side callouts.
   highlight: '#E2BA7C',
 
+  // Green — affirmative decision (deck keep). Deeper cousin of the
+  // gotEnergy tier green so it reads on cream; rust is its "toss" opposite.
+  affirm: '#4C7A4F',
+  washAffirm: 'rgba(125, 184, 127, 0.20)',
+
   // Borders / rings
   glassBorder: 'rgba(42, 58, 38, 0.10)',
   haloRing: 'rgba(195, 106, 72, 0.08)',
