@@ -1,8 +1,40 @@
+// Pull the ingredient names out of the stored ingredient_groups jsonb.
+// Defensive: the column is untyped at this boundary, and older rows may
+// predate the current shape. Names only — the item strings already carry
+// the form words that matter ("ground beef", "canned tuna").
+function ingredientNames(groups: unknown, max = 12): string[] {
+  if (!Array.isArray(groups)) return [];
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const group of groups) {
+    const items = (group as { items?: unknown })?.items;
+    if (!Array.isArray(items)) continue;
+    for (const entry of items) {
+      const item = (entry as { item?: unknown })?.item;
+      if (typeof item !== "string") continue;
+      const name = item.trim();
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) continue;
+      seen.add(key);
+      names.push(name);
+      if (names.length >= max) return names;
+    }
+  }
+  return names;
+}
+
 export function buildImagePrompt(
   recipe: { title: string; ingredientGroups?: unknown },
 ): string {
+  const names = ingredientNames(recipe.ingredientGroups);
   return [
     `Hand-painted watercolor illustration, editorial cookbook style, of ${recipe.title}.`,
+    // Protein-form round (2026-07-13): the title alone let the model
+    // glamorize humble ingredients — canned tuna painted as a seared steak,
+    // ground beef as sirloin chunks. Name the actual ingredients and pin
+    // their prepared form.
+    ...(names.length ? [`The dish is made of: ${names.join(", ")}.`] : []),
+    `Depict each ingredient in its actual prepared form — canned or flaked fish stays flaked, ground meat stays crumbled; never upgrade an ingredient to steaks, fillets, or whole cuts.`,
     // Regen round (2026-07-08): first-round art read as a tiny plate lost on
     // a table — unreadable at thumbnail size and inside circular crops. The
     // dish must dominate the frame.
