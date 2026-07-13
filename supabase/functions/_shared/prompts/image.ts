@@ -23,16 +23,67 @@ function ingredientNames(groups: unknown, max = 12): string[] {
   return names;
 }
 
-export function buildImagePrompt(
-  recipe: { title: string; ingredientGroups?: unknown },
-): string {
+// Step instructions out of the stored workflow_sections jsonb — same
+// defensive posture as ingredientNames.
+function stepInstructions(sections: unknown, max = 10): string[] {
+  if (!Array.isArray(sections)) return [];
+  const out: string[] = [];
+  for (const section of sections) {
+    const steps = (section as { steps?: unknown })?.steps;
+    if (!Array.isArray(steps)) continue;
+    for (const step of steps) {
+      const instruction = (step as { instruction?: unknown })?.instruction;
+      if (typeof instruction !== "string" || !instruction.trim()) continue;
+      out.push(instruction.trim());
+      if (out.length >= max) return out;
+    }
+  }
+  return out;
+}
+
+// Describe-then-paint (2026-07-13): a small text model "cooks" the recipe
+// into two sentences about the finished plate, so the image model paints a
+// description instead of inferring cooked forms from raw ingredient names
+// (which risks literalism — a tin can on the plate — or clutter).
+export function buildPlateDescriptionRequest(recipe: {
+  title: string;
+  ingredientGroups?: unknown;
+  workflowSections?: unknown;
+}): string {
   const names = ingredientNames(recipe.ingredientGroups);
+  const steps = stepInstructions(recipe.workflowSections);
+  return [
+    `You write plating notes for a food illustrator who has never seen the dish.`,
+    `Describe how ONE plated serving of the finished dish looks, in at most two sentences.`,
+    `Only what is visible on the plate: cooked forms (ground meat stays crumbled, canned fish stays flaked, sauces read glossy), colors, arrangement, garnish.`,
+    `Never mention cookware, packaging, cans, brands, or cooking instructions.`,
+    `Answer with the description only.`,
+    ``,
+    `Dish: ${recipe.title}`,
+    names.length ? `Ingredients: ${names.join(", ")}` : ``,
+    steps.length ? `Method: ${steps.join(" ")}` : ``,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function buildImagePrompt(
+  recipe: {
+    title: string;
+    ingredientGroups?: unknown;
+    plateDescription?: string | null;
+  },
+): string {
+  const description = recipe.plateDescription?.trim();
+  const names = description ? [] : ingredientNames(recipe.ingredientGroups);
   return [
     `Hand-painted watercolor illustration, editorial cookbook style, of ${recipe.title}.`,
     // Protein-form round (2026-07-13): the title alone let the model
     // glamorize humble ingredients — canned tuna painted as a seared steak,
-    // ground beef as sirloin chunks. Name the actual ingredients and pin
-    // their prepared form.
+    // ground beef as sirloin chunks. Preferred input is a plate description
+    // written by a text model; the raw ingredient list is the fallback when
+    // that call fails.
+    ...(description ? [`The finished dish, as plated: ${description}`] : []),
     ...(names.length ? [`The dish is made of: ${names.join(", ")}.`] : []),
     `Depict each ingredient in its actual prepared form — canned or flaked fish stays flaked, ground meat stays crumbled; never upgrade an ingredient to steaks, fillets, or whole cuts.`,
     // Regen round (2026-07-08): first-round art read as a tiny plate lost on

@@ -1,7 +1,10 @@
 import { requireUser, serviceClient } from "../_shared/supabase.ts";
-import { buildImagePrompt } from "../_shared/prompts/image.ts";
+import {
+  buildImagePrompt,
+  buildPlateDescriptionRequest,
+} from "../_shared/prompts/image.ts";
 import { CANON_IMAGE_DATA_URL } from "../_shared/assets/canon-b64.ts";
-import { MODELS, OR_ENDPOINT, orHeaders } from "../_shared/openrouter.ts";
+import { chat, MODELS, OR_ENDPOINT, orHeaders } from "../_shared/openrouter.ts";
 import { ERRORS, errorResponse } from "../_shared/errors.ts";
 import { lockOutcome } from "./lock.ts";
 
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
   // (distinct from the "already claimed" no-op below).
   const { data: row, error } = await admin
     .from("recipes")
-    .select("id, title, ingredient_groups")
+    .select("id, title, ingredient_groups, workflow_sections")
     .eq("id", recipeId)
     .single();
   if (error || !row) {
@@ -94,9 +97,38 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Describe-then-paint: a cheap text model turns the recipe into two
+    // sentences about the finished plate. Best-effort — on any failure the
+    // prompt falls back to the raw ingredient-name list.
+    let plateDescription: string | null = null;
+    try {
+      plateDescription = (
+        await chat({
+          model: MODELS.textDraft(),
+          temperature: 0.4,
+          timeoutMs: 12_000,
+          maxRetries: 1,
+          costLabel: "plate-desc",
+          messages: [
+            {
+              role: "user",
+              content: buildPlateDescriptionRequest({
+                title: row.title as string,
+                ingredientGroups: row.ingredient_groups,
+                workflowSections: row.workflow_sections,
+              }),
+            },
+          ],
+        })
+      ).trim() || null;
+    } catch (err) {
+      console.error("plate description failed, using ingredient fallback", String(err));
+    }
+
     const prompt = buildImagePrompt({
       title: row.title as string,
       ingredientGroups: row.ingredient_groups,
+      plateDescription,
     });
     const resp = await fetch(OR_ENDPOINT, {
       method: "POST",

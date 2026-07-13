@@ -1,5 +1,5 @@
 import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { buildImagePrompt } from "./image.ts";
+import { buildImagePrompt, buildPlateDescriptionRequest } from "./image.ts";
 
 Deno.test("image prompt carries the v3 composition + style directives", () => {
   const p = buildImagePrompt({ title: "Miso-Butter Salmon" });
@@ -39,4 +39,38 @@ Deno.test("image prompt survives missing or malformed ingredient groups", () => 
     ingredientGroups: [{ items: "not-an-array" }, null, 42],
   });
   assert(!malformed.includes("The dish is made of"));
+});
+
+Deno.test("plate description replaces the raw ingredient list when present", () => {
+  const p = buildImagePrompt({
+    title: "Miso Tuna Edamame Rice Bowl",
+    ingredientGroups: [
+      { title: "main", items: [{ item: "canned tuna" }] },
+    ],
+    plateDescription:
+      "Glazed flaked tuna piled over white rice, scattered with bright green edamame.",
+  });
+  assert(p.includes("The finished dish, as plated: Glazed flaked tuna"));
+  assert(!p.includes("The dish is made of")); // no double ingredient signal
+});
+
+Deno.test("plate description request carries dish, ingredients, and method", () => {
+  const req = buildPlateDescriptionRequest({
+    title: "Gochujang Beef Rice Bowls",
+    ingredientGroups: [
+      { title: "main", items: [{ item: "ground beef" }, { item: "jasmine rice" }] },
+    ],
+    workflowSections: [
+      {
+        title: "cook",
+        objective: "brown the beef",
+        steps: [{ instruction: "Brown the ground beef, breaking it up.", durationMin: 6 }],
+      },
+    ],
+  });
+  assert(req.includes("Dish: Gochujang Beef Rice Bowls"));
+  assert(req.includes("Ingredients: ground beef, jasmine rice"));
+  assert(req.includes("Method: Brown the ground beef"));
+  assert(/two sentences/i.test(req));
+  assert(/never mention cookware, packaging, cans/i.test(req));
 });
