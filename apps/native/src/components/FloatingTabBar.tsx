@@ -11,6 +11,8 @@ import { BlurView } from 'expo-blur';
 import { GlassContainer, GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { CalendarDays, Ellipsis, Moon, ShoppingBasket } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { palette, screen, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
 import { useHaptics } from '../hooks/useHaptics';
@@ -23,6 +25,14 @@ const LABELS: Record<TabName, string> = {
   week: 'Plan',
   shop: 'Shop',
   more: 'More',
+};
+
+// Icons above labels — standard iOS tab anatomy (the Luma/Substack look).
+const ICONS: Record<TabName, LucideIcon> = {
+  tonight: Moon,
+  week: CalendarDays,
+  shop: ShoppingBasket,
+  more: Ellipsis,
 };
 
 const glassAvailable = isLiquidGlassAvailable();
@@ -193,6 +203,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
         const { options } = descriptors[route.key];
         const name = route.name as TabName;
         const label = LABELS[name] ?? (options.title ?? route.name);
+        const Icon = ICONS[name];
 
         const onPressIn = () => {
           hoveredIndexRef.current = idx;
@@ -208,8 +219,15 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
             accessibilityState={focused ? { selected: true } : undefined}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
           >
+            {Icon ? (
+              <Icon
+                size={20}
+                strokeWidth={focused ? 2.2 : 1.8}
+                color={focused ? palette.primary : palette.textSecondary}
+              />
+            ) : null}
             <Mono
-              size={11}
+              size={10}
               bold={focused}
               color={focused ? palette.primary : palette.textSecondary}
               style={styles.tabLabel}
