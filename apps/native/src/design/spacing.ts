@@ -18,11 +18,11 @@ export const radius = {
 export const screen = {
   horizontal: 16,
   top: 64,
-  bottom: 118,
+  bottom: 112,
   // Source of truth for the floating tab bar's height (icon + label rows).
   // Used by the bar itself and by any sticky dock that needs to sit above it
   // (computes `insets.bottom + screen.tabBarHeight + gap`). `bottom` above is
   // the scroll clearance that keeps content from ending under the bar — keep
   // it ~40 over tabBarHeight.
-  tabBarHeight: 78,
+  tabBarHeight: 72,
 } as const;
