@@ -221,7 +221,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
           >
             {Icon ? (
               <Icon
-                size={17}
+                size={15}
                 strokeWidth={focused ? 2.2 : 1.8}
                 color={focused ? palette.primary : palette.textSecondary}
               />
