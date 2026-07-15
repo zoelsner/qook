@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
 import { FloatingTabBar } from '../../src/components/FloatingTabBar';
 import { palette } from '../../src/design';
+import { fontFamily } from '../../src/design/typography';
 
 // iOS gets the real UITabBarController — Liquid Glass, capsule selection,
 // and minimize-on-scroll come from the system (the Luma/Substack bar).
@@ -12,7 +13,13 @@ import { palette } from '../../src/design';
 export default function TabsLayout() {
   if (Platform.OS === 'ios') {
     return (
-      <NativeTabs minimizeBehavior="onScrollDown" tintColor={palette.primary}>
+      <NativeTabs
+        minimizeBehavior="onScrollDown"
+        tintColor={palette.primary}
+        // Brand experiment: JetBrains Mono labels on the system bar —
+        // fontFamily is exposed even though icon size isn't.
+        labelStyle={{ fontFamily: fontFamily.monoRegular, fontSize: 10 }}
+      >
         <NativeTabs.Trigger name="tonight">
           <Icon sf={{ default: 'moon', selected: 'moon.fill' }} />
           <Label>Tonight</Label>
