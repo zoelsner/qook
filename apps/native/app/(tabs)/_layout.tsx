@@ -24,12 +24,15 @@ export default function TabsLayout() {
           <Icon sf={{ default: 'moon', selected: 'moon.fill' }} />
           <Label>Tonight</Label>
         </NativeTabs.Trigger>
+        {/* Quiet-icon pass: calendar/basket were the loudest glyphs on the
+            bar (solid block, stroke soup). list.bullet and bag carry the
+            same meaning at a fraction of the ink. */}
         <NativeTabs.Trigger name="week">
-          <Icon sf="calendar" />
+          <Icon sf="list.bullet" />
           <Label>Plan</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="shop">
-          <Icon sf={{ default: 'basket', selected: 'basket.fill' }} />
+          <Icon sf={{ default: 'bag', selected: 'bag.fill' }} />
           <Label>Shop</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="more">
