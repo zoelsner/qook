@@ -20,8 +20,10 @@ export default function TabsLayout() {
         // fontFamily is exposed even though icon size isn't.
         labelStyle={{ fontFamily: fontFamily.monoRegular, fontSize: 10 }}
       >
+        {/* No .fill on selection — Tonight is the resting tab, so the solid
+            moon was the boldest ink on the bar most of the time. */}
         <NativeTabs.Trigger name="tonight">
-          <Icon sf={{ default: 'moon', selected: 'moon.fill' }} />
+          <Icon sf="moon" />
           <Label>Tonight</Label>
         </NativeTabs.Trigger>
         {/* Quiet-icon pass: calendar/basket were the loudest glyphs on the
