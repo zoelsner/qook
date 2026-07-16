@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -21,16 +21,11 @@ import { palette, spacing, typeScale } from '../../design';
 import { fontFamily } from '../../design/typography';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
+import { todayISO } from '../week/weekDates';
+import { contextShortcuts } from './contextShortcuts';
 
 const HORIZONTAL_PADDING = 24;
 const MAX_CHARS = 240;
-
-const SUGGESTIONS = [
-  'Something easy with chicken',
-  'Lean and high-protein',
-  'Use up leftover rice',
-  'Warm and comforting tonight',
-] as const;
 
 export function ContextStep() {
   const router = useRouter();
@@ -41,6 +36,7 @@ export function ContextStep() {
   const setContext = useGenerationSession((s) => s.setContext);
   const beginGeneration = useGenerationSession((s) => s.beginGeneration);
   const [draft, setDraft] = useState(storedContext);
+  const suggestions = useMemo(() => contextShortcuts(todayISO(), tier), [tier]);
 
   useEffect(() => {
     if (!tier) router.replace('/(eat)/energy');
@@ -153,7 +149,7 @@ export function ContextStep() {
               <View style={{ height: spacing.md }} />
 
               <View style={styles.suggestionRow}>
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <Pressable
                     key={s}
                     onPress={() => applySuggestion(s)}
