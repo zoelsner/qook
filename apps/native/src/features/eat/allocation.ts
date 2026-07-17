@@ -27,6 +27,51 @@ export function tierMismatch(cardMinutes: number, nightTier: EnergyTier): boolea
   return cardMinutes > TIER_MAX_MINUTES[nightTier];
 }
 
+// Compact meal name for a day chip — first characters of the title, lowercased,
+// ellipsized. Chips can't fit full titles.
+export function shortTitle(title: string, max = 12): string {
+  const trimmed = title.trim();
+  if (trimmed.length <= max) return trimmed.toLowerCase();
+  return `${trimmed.slice(0, max).trimEnd().toLowerCase()}…`;
+}
+
+export type DayChipState =
+  | { kind: 'free'; label: string }
+  | { kind: 'planned'; label: string; plannedTitle: string }
+  | { kind: 'claimed'; label: string; claimedIndex: number; claimedTitle: string };
+
+// What a day chip should say for one keep's row. Another keep's in-session
+// claim outranks an existing planned meal (it's the more surprising state);
+// both outrank the tier-budget label, which only fits when the day is free.
+export function dayChipState(args: {
+  dayLabel: string;
+  budget: number | null;
+  over: boolean;
+  plannedTitle: string | null;
+  claim: { index: number; title: string } | null;
+}): DayChipState {
+  const { dayLabel, budget, over, plannedTitle, claim } = args;
+  if (claim) {
+    return {
+      kind: 'claimed',
+      label: `${dayLabel} · ${shortTitle(claim.title)} ↑`,
+      claimedIndex: claim.index,
+      claimedTitle: claim.title,
+    };
+  }
+  if (plannedTitle) {
+    return {
+      kind: 'planned',
+      label: `${dayLabel} · ${shortTitle(plannedTitle)}`,
+      plannedTitle,
+    };
+  }
+  return {
+    kind: 'free',
+    label: budget == null ? dayLabel : over ? `${dayLabel} · over ${budget}m` : `${dayLabel} · ${budget}m`,
+  };
+}
+
 export interface KeepAllocation {
   placed: AllocationWrite[];
   benched: Recipe[];

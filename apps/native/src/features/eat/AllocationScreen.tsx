@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EnergyTier, Recipe } from '@qook/shared';
 
@@ -10,8 +10,8 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
-import { useWeekPlan } from '../../stores/weekPlan';
-import { allocateKeeps, tierMismatch } from './allocation';
+import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { allocateKeeps, tierMismatch, dayChipState, type DayChipState } from './allocation';
 import { TIER_MAX_MINUTES } from './weekReset';
 import { api } from '../../services/api';
 import { addDaysISO, todayISO, type ISODate } from '../week/weekDates';
@@ -45,6 +45,7 @@ export function AllocationScreen() {
   const setBenchNotice = useGenerationSession((s) => s.setBenchNotice);
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
+  const plan = useWeekPlan((s) => s.plan);
 
   const kept = deck?.kept ?? [];
   const cookTonightId = deck?.cookTonightId ?? null;
@@ -87,6 +88,45 @@ export function AllocationScreen() {
   const setDay = (index: number, date: ISODate) => {
     select();
     setChoices((c) => ({ ...c, [index]: c[index] === date ? null : date }));
+  };
+
+  // Chips carry week state now — a tap on a taken night asks before it steals
+  // it, instead of silently bumping another keep or hiding an existing plan
+  // pick as an alternate (Zach device feedback 2026-07-17).
+  const requestDay = (index: number, date: ISODate, dayLabel: string, state: DayChipState) => {
+    if (choices[index] === date) {
+      setDay(index, date);
+      return;
+    }
+    if (state.kind === 'claimed') {
+      Alert.alert(
+        'Already claimed',
+        `${dayLabel} has ${state.claimedTitle} from this hand. Move ${kept[index].title} here instead?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Move it here',
+            onPress: () => {
+              select();
+              setChoices((c) => ({ ...c, [state.claimedIndex]: null, [index]: date }));
+            },
+          },
+        ],
+      );
+      return;
+    }
+    if (state.kind === 'planned') {
+      Alert.alert(
+        `${dayLabel} is taken`,
+        `${dayLabel} already has ${state.plannedTitle}. Put this in the spotlight instead? It stays as an alternate.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Swap it in', onPress: () => setDay(index, date) },
+        ],
+      );
+      return;
+    }
+    setDay(index, date);
   };
 
   const finish = async () => {
@@ -159,15 +199,26 @@ export function AllocationScreen() {
       <View style={{ height: spacing.lg }} />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {kept.map((r, i) => (
-          <AllocationRow
-            key={`${r.id}-${i}`}
-            recipe={r}
-            days={days}
-            selected={choices[i] ?? null}
-            onSelect={(d) => setDay(i, d)}
-          />
-        ))}
+        {kept.map((r, i) => {
+          const dayStates = days.map((d) => {
+            const budget = d.tier ? TIER_MAX_MINUTES[d.tier] : null;
+            const over = d.tier ? tierMismatch(r.timeMinutes, d.tier) : false;
+            const plannedTitle = activePickFor(plan[d.date])?.title ?? null;
+            const claimIndex = kept.findIndex((_, j) => j !== i && choices[j] === d.date);
+            const claim = claimIndex === -1 ? null : { index: claimIndex, title: kept[claimIndex].title };
+            const state = dayChipState({ dayLabel: d.label, budget, over, plannedTitle, claim });
+            return { ...state, date: d.date, over, dayLabel: d.label };
+          });
+          return (
+            <AllocationRow
+              key={`${r.id}-${i}`}
+              recipe={r}
+              dayStates={dayStates}
+              selected={choices[i] ?? null}
+              onSelect={(d, label, state) => requestDay(i, d, label, state)}
+            />
+          );
+        })}
         <View style={{ height: spacing.lg }} />
       </ScrollView>
 
@@ -183,16 +234,18 @@ export function AllocationScreen() {
   );
 }
 
+type RowDayState = DayChipState & { date: ISODate; over: boolean; dayLabel: string };
+
 function AllocationRow({
   recipe,
-  days,
+  dayStates,
   selected,
   onSelect,
 }: {
   recipe: Recipe;
-  days: { date: ISODate; label: string; tier?: EnergyTier }[];
+  dayStates: RowDayState[];
   selected: ISODate | null;
-  onSelect: (date: ISODate) => void;
+  onSelect: (date: ISODate, dayLabel: string, state: DayChipState) => void;
 }) {
   return (
     <View style={styles.row}>
@@ -209,24 +262,36 @@ function AllocationRow({
         </DisplayText>
       </View>
       <View style={styles.chipRow}>
-        {days.map((d) => {
-          const budget = d.tier ? TIER_MAX_MINUTES[d.tier] : null;
+        {dayStates.map((d) => {
           const active = selected === d.date;
-          const over = d.tier ? tierMismatch(recipe.timeMinutes, d.tier) : false;
-          // Tagged nights show their time budget so "over" reads as "over 15m",
-          // not a mystery word (Zach 2026-07-13). Untagged days are just the day.
-          const label =
-            budget == null ? d.label : over ? `${d.label} · over ${budget}m` : `${d.label} · ${budget}m`;
+          const taken = d.kind !== 'free';
           return (
             <Pressable
               key={d.date}
-              onPress={() => onSelect(d.date)}
+              onPress={() => onSelect(d.date, d.dayLabel, d)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              style={[styles.chip, active ? styles.chipActive : null, over && !active ? styles.chipOver : null]}
+              style={[
+                styles.chip,
+                active ? styles.chipActive : null,
+                d.kind === 'free' && d.over && !active ? styles.chipOver : null,
+                taken && !active ? styles.chipTaken : null,
+              ]}
             >
-              <Mono size={10} bold color={active ? palette.surface : over ? palette.utility : palette.textSecondary}>
-                {label}
+              <Mono
+                size={10}
+                bold
+                color={
+                  active
+                    ? palette.surface
+                    : taken
+                      ? palette.textTertiary
+                      : d.over
+                        ? palette.utility
+                        : palette.textSecondary
+                }
+              >
+                {d.label}
               </Mono>
             </Pressable>
           );
@@ -275,6 +340,9 @@ const styles = StyleSheet.create({
   },
   chipOver: {
     borderColor: palette.utility,
+  },
+  chipTaken: {
+    borderStyle: 'dashed',
   },
   skipRow: {
     alignSelf: 'center',
