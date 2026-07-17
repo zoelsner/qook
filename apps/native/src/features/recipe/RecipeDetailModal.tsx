@@ -24,6 +24,7 @@ import type {
 } from '@qook/shared';
 
 import { FoodHeroImage } from '../../components/FoodHeroImage';
+import { recipeShareText } from './shareRecipeText';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
@@ -122,7 +123,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     try {
       await RNShare.share({
         title: recipe.title,
-        message: `${recipe.title} — cooked with Qook`,
+        message: recipeShareText(recipe),
       });
     } catch {
       /* user dismissed the share sheet */
