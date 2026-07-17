@@ -15,3 +15,22 @@ export function artIndicesToRequest(
   }
   return out;
 }
+
+// Which upcoming proposals' hero images should have their BYTES prefetched:
+// anything at or ahead of the current position whose URL exists and hasn't
+// been prefetched yet. Pure — bun-testable.
+export function urlsToPrefetch(
+  position: number,
+  proposals: readonly { heroImageUrl?: string }[],
+  prefetched: ReadonlySet<string>
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (let i = position; i < proposals.length; i++) {
+    const url = proposals[i]?.heroImageUrl;
+    if (!url || prefetched.has(url) || seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
+  }
+  return out;
+}

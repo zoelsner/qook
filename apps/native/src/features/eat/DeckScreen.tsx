@@ -9,6 +9,7 @@ import Animated, {
 import { GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter, type Href } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import type { Recipe } from '@qook/shared';
 
 import { ScreenShell } from '../../components/ScreenShell';
@@ -26,7 +27,7 @@ import { focusedRecipe, isExhausted, swipeSummary, sessionExcludeTitles } from '
 import { shouldPrefetchNextHand } from './handPrefetch';
 import { buildRedealContext } from './redealContext';
 import { unfilledResetNights } from './weekReset';
-import { artIndicesToRequest } from './imagePrefetch';
+import { artIndicesToRequest, urlsToPrefetch } from './imagePrefetch';
 import { CardArt } from './CardArt';
 import { useSwipeGesture } from '../swipe-night/useSwipeGesture';
 import { api } from '../../services/api';
@@ -133,6 +134,28 @@ export function DeckScreen() {
         void api.requestRecipeImage(rec.id);
       }
       requestedRef.current.push(i);
+    }
+  }, [deck, deck?.position]);
+
+  // Cleared alongside requestedRef on a fresh hand deal (handleFreshHand).
+  const prefetchedUrlsRef = useRef<Set<string>>(new Set());
+
+  // Prefetch hero image BYTES for upcoming cards as soon as their URL exists,
+  // so the file is already in expo-image's disk/memory cache before the card
+  // mounts (art generation is requested 2 ahead above; this stays in sync with
+  // whichever URLs have actually landed).
+  useEffect(() => {
+    if (!deck) return;
+    const urls = urlsToPrefetch(deck.position, deck.proposals, prefetchedUrlsRef.current);
+    for (const url of urls) {
+      prefetchedUrlsRef.current.add(url);
+      ExpoImage.prefetch(url, { cachePolicy: 'memory-disk' })
+        .then((ok) => {
+          if (!ok) prefetchedUrlsRef.current.delete(url);
+        })
+        .catch(() => {
+          prefetchedUrlsRef.current.delete(url);
+        });
     }
   }, [deck, deck?.position]);
 
@@ -292,6 +315,7 @@ export function DeckScreen() {
           : context || undefined;
         const recipes = await api.generateProposals(tier, dealContext || undefined);
         requestedRef.current = [];
+        prefetchedUrlsRef.current = new Set();
         dealHand(recipes);
       } catch {
         /* keep the exhausted state; the button can be tapped again */
