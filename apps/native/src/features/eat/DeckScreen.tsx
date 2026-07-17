@@ -513,7 +513,7 @@ function DeckCard({
                       {recipe.cuisine.toLowerCase()}
                     </Mono>
                     <View style={{ height: 4 }} />
-                    <DisplayText size={18} color={palette.ink} numberOfLines={2}>
+                    <DisplayText size={20} color={palette.ink} numberOfLines={2}>
                       {recipe.title}
                     </DisplayText>
                     <View style={{ height: spacing.md }} />
@@ -524,7 +524,7 @@ function DeckCard({
                           ingredients
                         </Mono>
                         <View style={{ height: spacing.xs }} />
-                        <BodyText size={14} color={palette.text}>
+                        <BodyText size={15} color={palette.text}>
                           {cardBack.ingredients.join(', ')}
                         </BodyText>
                         <View style={{ height: spacing.md }} />
@@ -539,10 +539,10 @@ function DeckCard({
                         <View style={{ height: spacing.xs }} />
                         {cardBack.plan.map((line, i) => (
                           <View key={i} style={styles.planRow}>
-                            <Mono size={11} color={palette.textSecondary}>
+                            <Mono size={12} color={palette.textSecondary}>
                               {String(i + 1).padStart(2, '0')}
                             </Mono>
-                            <BodyText size={14} color={palette.text} style={styles.planLineText}>
+                            <BodyText size={15} color={palette.text} style={styles.planLineText}>
                               {line}
                             </BodyText>
                           </View>
@@ -551,7 +551,7 @@ function DeckCard({
                     ) : null}
 
                     <View style={styles.backSpacer} />
-                    <Mono size={9} color={palette.textTertiary} style={styles.backMicrocopy}>
+                    <Mono size={10} color={palette.textTertiary} style={styles.backMicrocopy}>
                       {cardBack.microcopy}
                     </Mono>
                   </View>
