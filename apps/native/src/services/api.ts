@@ -12,6 +12,7 @@ import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
 import { markRecipeArtRequested, unmarkRecipeArtRequested } from '../hooks/recipeArtState';
+import { syncUserPreferences } from './userPreferences';
 
 type ApiMode = 'mock' | 'live';
 
@@ -150,6 +151,7 @@ export async function generateRecipesForEnergy(
     await lag(1500);
     return pickForTier(tier, 3);
   }
+  await syncUserPreferences();
   const { streamRecipes, normalizeFinalRecipes, parseBufferedSse } = await import(
     './generateRecipeStream'
   );
@@ -244,7 +246,7 @@ export async function generateProposals(
     await lag(1200);
     return pickForTier(tier, 5);
   }
-  await ensureSession();
+  await syncUserPreferences();
   const { data, error } = await supabase.functions.invoke('generate-proposals', {
     body: { tier, context: context?.trim() || undefined, energyMix: energyMix?.trim() || undefined },
   });
@@ -279,7 +281,7 @@ export async function fillRecipe(
     await lag(200);
     return { recipeId, status: 'full' };
   }
-  await ensureSession();
+  await syncUserPreferences();
   const { data, error } = await supabase.functions.invoke('fill-recipe', {
     body: { recipeId, context: context?.trim() || undefined },
   });

@@ -80,7 +80,7 @@ export function ContextStep() {
           style={styles.safe}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={styles.content}>
               <View style={styles.masthead}>
                 <DisplayText size={20} color={palette.ink}>qook</DisplayText>
@@ -138,6 +138,7 @@ export function ContextStep() {
                   style={styles.input}
                   returnKeyType="done"
                   blurOnSubmit
+                  accessibilityLabel="Optional dinner preferences or ingredients"
                 />
                 <View style={styles.inputMeta}>
                   <Mono size={9} color={palette.textTertiary}>
@@ -153,6 +154,8 @@ export function ContextStep() {
                   <Pressable
                     key={s}
                     onPress={() => applySuggestion(s)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Use suggestion: ${s}`}
                     style={({ pressed }) => [
                       styles.suggestionChip,
                       pressed ? { opacity: 0.6 } : null,

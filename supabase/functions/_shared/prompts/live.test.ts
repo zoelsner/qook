@@ -13,6 +13,7 @@ Deno.test("user prompt carries tier ceiling and structured-ingredient directive"
     householdSize: 2,
     avoidIngredients: ["cilantro"],
     lovedCuisines: ["Thai", "Italian"],
+    preferredProteins: ["Chicken"],
     recentLikedTitles: ["Miso Salmon"],
     kitchenTools: ["skillet", "pot"],
   });
@@ -20,5 +21,6 @@ Deno.test("user prompt carries tier ceiling and structured-ingredient directive"
   assert(p.includes("parsed.category"));
   assert(p.includes("canonical_key"));
   assert(p.includes("cilantro"));
+  assert(p.includes("Chicken"));
   assert(p.includes('"recipes"'));
 });

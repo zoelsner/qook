@@ -42,6 +42,9 @@ export function buildProposalsUserPrompt(ctx: LiveContext, energyMix?: string): 
     `Serves: ${ctx.householdSize}.`,
     `Avoid ingredients: ${avoid}. This rule also applies to ingredientNames — never list an avoided ingredient there.`,
     `Loved cuisines (priority order): ${ctx.lovedCuisines.join(", ") || "open"}.`,
+    `Preferred proteins (soft preference, vary across the hand): ${
+      ctx.preferredProteins.join(", ") || "open"
+    }.`,
     ``,
     ctx.voiceContext
       ? `USER JUST SAID (voice context, weight heavily): "${ctx.voiceContext}"`

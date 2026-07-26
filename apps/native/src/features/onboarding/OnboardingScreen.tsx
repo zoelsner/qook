@@ -77,8 +77,8 @@ const SEED_DISHES: SeedDish[] = [
   {
     key: 'fattoush-grilled-chicken',
     title: 'Fattoush with Grilled Chicken',
-    name: 'Grilled chicken fattoush',
-    tagLine: 'lebanese · salad',
+    name: 'Fattoush salad',
+    tagLine: 'lebanese · chicken',
     cuisineGroups: ['Mediterranean & Middle Eastern'],
     proteins: ['Chicken'],
   },

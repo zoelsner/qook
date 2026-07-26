@@ -5,6 +5,7 @@ export type LiveContext = {
   householdSize: number;
   avoidIngredients: string[];
   lovedCuisines: string[]; // top by pref score
+  preferredProteins: string[];
   recentLikedTitles: string[]; // last 5 swipe-liked
   voiceContext?: string; // iOS transcript, 10s max
   kitchenTools: string[]; // intersection of user tools + whitelist
@@ -56,6 +57,9 @@ export function buildLiveUserPrompt(ctx: LiveContext): string {
     `Available tools: ${tools}. Do not require anything outside this set.`,
     `Loved cuisines (priority order): ${
       ctx.lovedCuisines.join(", ") || "open"
+    }.`,
+    `Preferred proteins (soft preference, not a hard filter): ${
+      ctx.preferredProteins.join(", ") || "open"
     }.`,
     ctx.recentLikedTitles.length
       ? `Recently liked (match the energy, don't duplicate):\n${

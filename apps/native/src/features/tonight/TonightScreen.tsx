@@ -23,6 +23,8 @@ import {
   recentSelectedDays,
   type DayPlan,
 } from '../../stores/weekPlan';
+import { useGenerationSession } from '../../stores/generationSession';
+import { usePrefs } from '../../stores/prefs';
 import {
   todayISO,
   upcomingDays,
@@ -37,6 +39,8 @@ export function TonightScreen() {
   const plan = useWeekPlan((s) => s.plan);
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
   const setPickIndex = useWeekPlan((s) => s.setPickIndex);
+  const startGeneration = useGenerationSession((s) => s.start);
+  const defaultTier = usePrefs((s) => s.defaultTier);
 
   const today = todayISO();
   const todayPlan = plan[today];
@@ -46,6 +50,11 @@ export function TonightScreen() {
 
   const onFindDinner = () => {
     press();
+    if (defaultTier) {
+      startGeneration(defaultTier);
+      router.push('/(eat)/context');
+      return;
+    }
     router.push('/(eat)/energy');
   };
 

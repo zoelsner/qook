@@ -7,6 +7,7 @@ const ctx = {
   householdSize: 2,
   avoidIngredients: [] as string[],
   lovedCuisines: [] as string[],
+  preferredProteins: [] as string[],
   recentLikedTitles: [] as string[],
   voiceContext: "",
   kitchenTools: [] as string[],

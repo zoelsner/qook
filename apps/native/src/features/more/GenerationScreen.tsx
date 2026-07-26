@@ -10,9 +10,7 @@ import { SettingsHeader } from './SettingsHeader';
 import {
   PillGroup,
   PillToggle,
-  SegmentedControl,
   SettingsGroup,
-  SettingsRow,
 } from './SettingsPrimitives';
 
 const TIER_OPTIONS: { tier: EnergyTier; label: string; minutes: string }[] = [
@@ -24,9 +22,7 @@ const TIER_OPTIONS: { tier: EnergyTier; label: string; minutes: string }[] = [
 
 export function GenerationScreen() {
   const defaultTier = usePrefs((s) => s.defaultTier);
-  const planningStartDay = usePrefs((s) => s.planningStartDay);
   const setDefaultTier = usePrefs((s) => s.setDefaultTier);
-  const setPlanningStartDay = usePrefs((s) => s.setPlanningStartDay);
 
   const tierLabel = defaultTier
     ? TIER_OPTIONS.find((t) => t.tier === defaultTier)?.label ?? defaultTier
@@ -62,32 +58,6 @@ export function GenerationScreen() {
             />
           ))}
         </PillGroup>
-      </SettingsGroup>
-
-      <SettingsGroup kicker="week starts on">
-        <BodyText size={13} color={palette.textSecondary} weight="medium" style={styles.hint}>
-          How your Week tab lays out. Shopping prep usually lines up with the
-          start of your week.
-        </BodyText>
-        <View style={{ height: spacing.sm }} />
-        <SettingsRow
-          label="First day"
-          subtitle={
-            planningStartDay === 'sunday'
-              ? 'Sunday (US default)'
-              : 'Monday (ISO week)'
-          }
-          right={
-            <SegmentedControl
-              value={planningStartDay}
-              onChange={setPlanningStartDay}
-              options={[
-                { label: 'Sun', value: 'sunday' },
-                { label: 'Mon', value: 'monday' },
-              ]}
-            />
-          }
-        />
       </SettingsGroup>
 
       <View style={{ height: 120 }} />

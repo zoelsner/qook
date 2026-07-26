@@ -51,8 +51,6 @@ export function MoreScreen() {
   const proteins = usePrefs((s) => s.proteins);
   const avoidList = usePrefs((s) => s.avoidList);
   const servings = usePrefs((s) => s.servings);
-  const unitSystem = usePrefs((s) => s.unitSystem);
-  const partnerName = usePrefs((s) => s.partnerName);
   const defaultTier = usePrefs((s) => s.defaultTier);
 
   const today = todayISO();
@@ -166,12 +164,7 @@ export function MoreScreen() {
   })();
 
   const householdSummary = (() => {
-    const parts: string[] = [
-      `${servings} ${servings === 1 ? 'person' : 'people'}`,
-      unitSystem === 'us' ? 'US units' : 'Metric',
-    ];
-    if (partnerName) parts.push(`with ${partnerName}`);
-    return parts.join(' · ');
+    return `${servings} ${servings === 1 ? 'person' : 'people'}`;
   })();
 
   const generationSummary = defaultTier

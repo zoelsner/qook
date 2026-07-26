@@ -11,7 +11,7 @@ import { BlurView } from 'expo-blur';
 import { GlassContainer, GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { CalendarDays, Ellipsis, Moon, ShoppingBasket } from 'lucide-react-native';
+import { CalendarDays, Ellipsis, Moon, ShoppingBag } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { palette, screen, spacing } from '../design';
 import { shadowTabBar } from '../design/shadows';
@@ -31,7 +31,7 @@ const LABELS: Record<TabName, string> = {
 const ICONS: Record<TabName, LucideIcon> = {
   tonight: Moon,
   week: CalendarDays,
-  shop: ShoppingBasket,
+  shop: ShoppingBag,
   more: Ellipsis,
 };
 
