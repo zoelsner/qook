@@ -91,31 +91,54 @@ Deno.serve(async (req) => {
   const skeletonIds: string[] = [];
 
   try {
-    const content = await chat({
-      model: MODELS.textDraft(),
-      messages: [
-        { role: "system", content: buildProposalsSystemPrompt() },
-        { role: "user", content: buildProposalsUserPrompt(liveCtx, energyMix) },
-      ],
-      jsonSchema: ProposalsEnvelopeJsonSchema,
-      temperature: 0.85,
-      timeoutMs: 30_000,
-      costLabel: "proposals",
-    });
+    // The schema clamps most model drift; if output is still unusable
+    // (unparseable JSON, too-few items) re-roll once before surfacing an
+    // error — chat() already retries HTTP-level failures internally, so this
+    // covers only the 200-but-bad-content case.
+    let envelope: z.infer<typeof ProposalsEnvelope> | null = null;
+    for (let attempt = 1; attempt <= 2 && !envelope; attempt++) {
+      const content = await chat({
+        model: MODELS.textDraft(),
+        messages: [
+          { role: "system", content: buildProposalsSystemPrompt() },
+          { role: "user", content: buildProposalsUserPrompt(liveCtx, energyMix) },
+        ],
+        jsonSchema: ProposalsEnvelopeJsonSchema,
+        temperature: 0.85,
+        timeoutMs: 30_000,
+        costLabel: "proposals",
+      });
 
-    const raw = JSON.parse(stripCodeFences(content));
-    if (raw && typeof raw === "object" && typeof raw.refusal === "string" && raw.refusal) {
-      await admin.from("generation_sessions").update({ status: "failed" }).eq("id", sessionId);
-      return errorResponse(ERRORS.VALIDATION, raw.refusal, 422);
+      let raw: unknown;
+      try {
+        raw = JSON.parse(stripCodeFences(content));
+      } catch {
+        console.error(
+          `generate-proposals attempt ${attempt} unparseable JSON`,
+          "raw:",
+          content.slice(0, 300),
+        );
+        continue;
+      }
+      // A genuine safety refusal stands — never re-roll past it.
+      const refusal = (raw as { refusal?: unknown } | null)?.refusal;
+      if (typeof refusal === "string" && refusal) {
+        await admin.from("generation_sessions").update({ status: "failed" }).eq("id", sessionId);
+        return errorResponse(ERRORS.VALIDATION, refusal, 422);
+      }
+      const result = ProposalsEnvelope.safeParse(raw);
+      if (!result.success) {
+        console.error(
+          `generate-proposals attempt ${attempt} validation failed`,
+          JSON.stringify(result.error.issues.slice(0, 5)),
+          "raw:",
+          content.slice(0, 300),
+        );
+        continue;
+      }
+      envelope = result.data;
     }
-    const result = ProposalsEnvelope.safeParse(raw);
-    if (!result.success) {
-      console.error(
-        "generate-proposals validation failed",
-        JSON.stringify(result.error.issues.slice(0, 5)),
-        "raw:",
-        content.slice(0, 300),
-      );
+    if (!envelope) {
       await admin.from("generation_sessions").update({ status: "failed" }).eq("id", sessionId);
       return errorResponse(ERRORS.VALIDATION, "The kitchen produced something odd — try again.", 422);
     }
@@ -128,7 +151,7 @@ Deno.serve(async (req) => {
     // — never cache hits — so a mid-loop failure can clean up just those.
     const ids: string[] = [];
     const hookById = new Map<string, string>();
-    for (const p of result.data.proposals) {
+    for (const p of envelope.proposals) {
       const { data: hits } = await admin
         .from("recipes")
         .select("id, hook")
