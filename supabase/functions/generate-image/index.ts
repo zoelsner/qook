@@ -2,7 +2,10 @@ import { requireUser, serviceClient } from "../_shared/supabase.ts";
 import {
   buildImagePrompt,
   buildPlateDescriptionRequest,
+  type PlateSpec,
+  PlateSpecJsonSchema,
 } from "../_shared/prompts/image.ts";
+import { stripCodeFences } from "../_shared/partial-parser.ts";
 import { CANON_IMAGE_DATA_URL } from "../_shared/assets/canon-b64.ts";
 import { chat, MODELS, OR_ENDPOINT, orHeaders } from "../_shared/openrouter.ts";
 import { ERRORS, errorResponse } from "../_shared/errors.ts";
@@ -66,9 +69,16 @@ Deno.serve(async (req) => {
 
   // Fetch prompt inputs first so a genuinely missing recipe is a clean 404
   // (distinct from the "already claimed" no-op below).
+  // proposal_ingredients / proposal_steps are the ONLY ingredient data a
+  // skeleton row has — art fires at deal time, before fill-recipe writes
+  // ingredient_groups/workflow_sections (which default to '[]'). Selecting only
+  // the jsonb columns meant every draft-time image prompt was built from the
+  // title alone.
   const { data: row, error } = await admin
     .from("recipes")
-    .select("id, title, ingredient_groups, workflow_sections")
+    .select(
+      "id, title, ingredient_groups, workflow_sections, proposal_ingredients, proposal_steps",
+    )
     .eq("id", recipeId)
     .single();
   if (error || !row) {
@@ -97,38 +107,51 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Describe-then-paint: a cheap text model turns the recipe into two
-    // sentences about the finished plate. Best-effort — on any failure the
-    // prompt falls back to the raw ingredient-name list.
-    let plateDescription: string | null = null;
+    // Describe-then-paint: a cheap text model turns the recipe into a
+    // structured plate spec — the visible components and how they sit
+    // together. Best-effort — on any failure the prompt falls back to the raw
+    // ingredient-name list.
+    let plateSpec: PlateSpec | null = null;
     try {
-      plateDescription = (
-        await chat({
-          model: MODELS.textDraft(),
-          temperature: 0.4,
-          timeoutMs: 12_000,
-          maxRetries: 1,
-          costLabel: "plate-desc",
-          messages: [
-            {
-              role: "user",
-              content: buildPlateDescriptionRequest({
-                title: row.title as string,
-                ingredientGroups: row.ingredient_groups,
-                workflowSections: row.workflow_sections,
-              }),
-            },
-          ],
-        })
-      ).trim() || null;
+      const raw = await chat({
+        model: MODELS.textDraft(),
+        temperature: 0.4,
+        timeoutMs: 12_000,
+        maxRetries: 1,
+        costLabel: "plate-desc",
+        reasoning: { effort: "low" },
+        jsonSchema: PlateSpecJsonSchema,
+        messages: [
+          {
+            role: "user",
+            content: buildPlateDescriptionRequest({
+              title: row.title as string,
+              ingredientGroups: row.ingredient_groups,
+              workflowSections: row.workflow_sections,
+              proposalIngredients: row.proposal_ingredients,
+              proposalSteps: row.proposal_steps,
+            }),
+          },
+        ],
+      });
+      const parsed = JSON.parse(stripCodeFences(raw)) as Partial<PlateSpec>;
+      const components = Array.isArray(parsed.components)
+        ? parsed.components.map(String).map((s) => s.trim()).filter(Boolean).slice(0, 6)
+        : [];
+      // A spec with no components is worthless — fall through to the raw
+      // ingredient-name path rather than shipping a half-built prompt.
+      if (components.length) {
+        plateSpec = { components, plating: String(parsed.plating ?? "").trim() };
+      }
     } catch (err) {
-      console.error("plate description failed, using ingredient fallback", String(err));
+      console.error("plate spec failed, using ingredient fallback", String(err));
     }
 
     const prompt = buildImagePrompt({
       title: row.title as string,
       ingredientGroups: row.ingredient_groups,
-      plateDescription,
+      proposalIngredients: row.proposal_ingredients,
+      plateSpec,
     });
     const resp = await fetch(OR_ENDPOINT, {
       method: "POST",

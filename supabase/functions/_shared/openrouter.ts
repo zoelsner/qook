@@ -34,6 +34,10 @@ export type ChatOpts = {
   timeoutMs?: number; // default 30_000
   temperature?: number; // default 0.7
   costLabel?: string; // for log line
+  // OpenRouter unified reasoning control. gpt-5.6-* reason by DEFAULT (355-1622
+  // reasoning tokens observed, 8-43s wall clock). "low" caps that budget and
+  // collapses the latency tail without measurable quality loss.
+  reasoning?: { effort: "low" | "medium" | "high" };
 };
 
 // Approx OpenRouter USD pricing per 1M tokens (2026-07-06); used only for
@@ -85,6 +89,7 @@ export async function chat(opts: ChatOpts): Promise<string> {
     ...(opts.jsonSchema && {
       response_format: { type: "json_schema", json_schema: opts.jsonSchema },
     }),
+    ...(opts.reasoning && { reasoning: opts.reasoning }),
   };
 
   let lastErr: unknown;

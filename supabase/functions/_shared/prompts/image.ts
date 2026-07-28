@@ -41,67 +41,116 @@ function stepInstructions(sections: unknown, max = 10): string[] {
   return out;
 }
 
-// Describe-then-paint (2026-07-13): a small text model "cooks" the recipe
-// into two sentences about the finished plate, so the image model paints a
-// description instead of inferring cooked forms from raw ingredient names
-// (which risks literalism — a tin can on the plate — or clutter).
+// Describe-then-paint, v2 (2026-07-28). Two changes over the 2026-07-13 version:
+//  1. Structured output — `components` is the faithfulness contract (the image
+//     model is told each one must be individually visible in that exact form),
+//     `plating` is the arrangement. The old free prose re-specified composition
+//     ("mounded in the center of the plate") and cancelled the image prompt's
+//     crop rules.
+//  2. Skeleton fallback — art fires at deal time on a `content_status:'proposal'`
+//     row whose ingredient_groups/workflow_sections are still '[]'. The names and
+//     steps DO exist, in proposal_ingredients/proposal_steps. Without this the
+//     model was describing a dish it only knew the title of.
+export type PlateSpec = { components: string[]; plating: string };
+
+export const PlateSpecJsonSchema = {
+  name: "PlateSpec",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["components", "plating"],
+    properties: {
+      components: { type: "array", items: { type: "string" } },
+      plating: { type: "string" },
+    },
+  },
+} as const;
+
+function strings(v: unknown, max: number): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((x) => String(x).trim()).filter(Boolean).slice(0, max);
+}
+
 export function buildPlateDescriptionRequest(recipe: {
   title: string;
   ingredientGroups?: unknown;
   workflowSections?: unknown;
+  proposalIngredients?: unknown;
+  proposalSteps?: unknown;
 }): string {
-  const names = ingredientNames(recipe.ingredientGroups);
-  const steps = stepInstructions(recipe.workflowSections);
+  const fromGroups = ingredientNames(recipe.ingredientGroups);
+  const fromSections = stepInstructions(recipe.workflowSections);
+  const names = fromGroups.length ? fromGroups : strings(recipe.proposalIngredients, 12);
+  const steps = fromSections.length ? fromSections : strings(recipe.proposalSteps, 10);
   return [
-    `You write plating notes for a food illustrator who has never seen the dish.`,
-    `Describe how ONE plated serving of the finished dish looks, in at most two sentences.`,
-    `Only what is visible on the plate: cooked forms (ground meat stays crumbled, canned fish stays flaked, sauces read glossy), colors, arrangement, garnish.`,
-    `Never mention cookware, packaging, cans, brands, or cooking instructions.`,
-    `Answer with the description only.`,
+    `You are a food stylist briefing a watercolour illustrator who has never seen this dish.`,
+    `Return JSON only.`,
+    ``,
+    `\`components\`: 3 to 5 strings. One per thing that is actually visible on the plate, most prominent first.`,
+    `Each string names the component AND the exact cooked form and colour, in pigment words — "six round browned turkey meatballs, crusted deep amber", "jade-green beans, blistered at the tips", "a glossy mahogany pan sauce pooling underneath".`,
+    `Honesty: meatballs stay round balls, mince stays crumbled, flaked fish stays flaked, a stew stays saucy. Never upgrade a humble form to a fancier one, never invent a component the recipe does not have, never merge two components into one.`,
+    ``,
+    `\`plating\`: ONE sentence describing how those components sit together — asymmetric and hand-piled, something spilling or tucked or spooned over something else, garnish landing off-centre. Never a tidy grid, ring, or even scatter.`,
+    ``,
+    `Forbidden everywhere: any mention of a plate, bowl, table, surface, wood, linen, board, background, cutlery, cookware, packaging, brands, lighting, camera, portion counts for the eater, or cooking instructions. Food only.`,
     ``,
     `Dish: ${recipe.title}`,
     names.length ? `Ingredients: ${names.join(", ")}` : ``,
     steps.length ? `Method: ${steps.join(" ")}` : ``,
   ]
-    .filter(Boolean)
+    .filter((line, i, all) => line !== "" || (i > 0 && all[i - 1] !== ""))
     .join("\n");
 }
 
+// v5 prompt (2026-07-28 eval). Three structural changes over v3:
+//  - a COMPONENTS contract (faithfulness): named forms the model may not merge,
+//    substitute or omit. Fixes "meatballs painted as crumbles".
+//  - an explicit override line after the free-text plating note, so a stray
+//    "in the center of the plate" cannot cancel the COMPOSITION rules.
+//  - GROUND is now a positive spec (cream paper + corner washes + splatter) plus
+//    a hard negative list. The old prompt never said "no wooden surface", and the
+//    canon reference is a picture of a plate on wooden planks.
 export function buildImagePrompt(
   recipe: {
     title: string;
     ingredientGroups?: unknown;
-    plateDescription?: string | null;
+    proposalIngredients?: unknown;
+    plateSpec?: PlateSpec | null;
   },
 ): string {
-  const description = recipe.plateDescription?.trim();
-  const names = description ? [] : ingredientNames(recipe.ingredientGroups);
+  const plating = recipe.plateSpec?.plating?.trim();
+  const components = (recipe.plateSpec?.components ?? [])
+    .map((c) => String(c).trim())
+    .filter(Boolean);
+  const fromGroups = ingredientNames(recipe.ingredientGroups);
+  const names = components.length
+    ? []
+    : (fromGroups.length ? fromGroups : strings(recipe.proposalIngredients, 12));
   return [
-    `Hand-painted watercolor illustration, editorial cookbook style, of ${recipe.title}.`,
-    // Protein-form round (2026-07-13): the title alone let the model
-    // glamorize humble ingredients — canned tuna painted as a seared steak,
-    // ground beef as sirloin chunks. Preferred input is a plate description
-    // written by a text model; the raw ingredient list is the fallback when
-    // that call fails.
-    ...(description ? [`The finished dish, as plated: ${description}`] : []),
-    ...(names.length ? [`The dish is made of: ${names.join(", ")}.`] : []),
-    `Depict each ingredient in its actual prepared form — canned or flaked fish stays flaked, ground meat stays crumbled; never upgrade an ingredient to steaks, fillets, or whole cuts.`,
-    // Regen round (2026-07-08): first-round art read as a tiny plate lost on
-    // a table — unreadable at thumbnail size and inside circular crops. The
-    // dish must dominate the frame.
-    `Composition: overhead view, one generous serving on a single plate, and the plate nearly fills the square canvas, touching the edges of the frame.`,
-    `The food is the hero: large, identifiable at a glance even at thumbnail size.`,
-    // Bake-off (2026-07-11): flash-lite-image follows instructions better and
-    // is 2x cheaper / 3x faster than flash, but reads muted on the base
-    // prompt. These two lines close the color/detail gap (verified against
-    // the gold-standard turkey-lettuce-wraps hero, artifact bf3e857c).
-    `Deep, saturated, jewel-toned color with strong tonal contrast: glossy highlights, rich wet-on-wet pigment — never muted, never dusty, never washed out.`,
-    `Intricate, finely detailed brushwork: crisp texture on every ingredient, layered washes.`,
-    `No props, no cutlery, no table setting, nothing outside the plate.`,
-    `Soft cream paper visible only at the extreme corners. Restrained sage and rust watercolor accents, prussian blue for shadow only, used sparingly. Visible paper texture; light brush-stroke edges.`,
+    `Hand-painted watercolour-and-ink illustration for an editorial cookbook: ${recipe.title}.`,
+    ...(plating ? [`The finished dish, as plated: ${plating}`] : []),
+    ...(components.length
+      ? [
+        `EVERY ONE of these components must be individually visible and painted in exactly this form — ${
+          components.join("; ")
+        }. Do not substitute, merge or omit any of them, and never upgrade a humble form to a fancier one.`,
+      ]
+      : []),
+    ...(names.length
+      ? [
+        `The dish is made of: ${names.join(", ")}.`,
+        `Depict each ingredient in its actual prepared form — flaked fish stays flaked, ground meat stays crumbled; never upgrade an ingredient to steaks, fillets or whole cuts.`,
+      ]
+      : []),
+    `Ignore any plate, bowl, surface, background or camera angle implied above — the rules below override it.`,
+    `COMPOSITION: straight overhead, 90 degrees. One generous serving in a single shallow cream stoneware bowl. The bowl is huge: it fills about 85% of the square and its rim is cut off by at least one edge of the frame. Food mounds high and spills toward the rim.`,
+    `ARRANGEMENT: loose and hand-piled — never a grid, never evenly spaced, never symmetrical, never a repeating pattern. Pieces overlap, clump and lean at different angles; a few sit proud of the pile; garnish lands scattered and off-centre; sauce pools unevenly and runs into the low spots.`,
+    `COLOUR: deep, saturated, jewel-toned, high contrast. Sauces are lacquered mahogany, burnt amber or deep chilli red with near-black pools in the shadows and hard white gloss highlights on top. Greens are vivid jade and emerald, not olive. Grains and starches are bright warm white. NEVER muted, dusty, grey, beige, khaki or washed out.`,
+    `LINE: fine dark ink outline around every element, layered translucent washes inside, wet-on-wet bleed at the edges, crisp drawn texture on each ingredient (individual rice grains, broccoli florets stippled, meat fibres drawn).`,
+    `GROUND: bare cream watercolour paper with visible tooth. Two or three loose sage-green and rust-orange watercolour washes bleed in from the corners behind the bowl, plus a scatter of ink splatter dots. ABSOLUTELY NO table, no wooden surface, no planks, no wood grain, no cloth, no linen, no board, no placemat, no cutlery, no props, no raw ingredients outside the bowl, no printed border, no white matte frame.`,
     `No text, no signature, no watermark, no people, no hands.`,
-    `Square 1:1 aspect ratio.`,
-    // style-reference directive (spec §3 step 2)
-    `Match this artist's hand, do not copy subject or composition.`,
+    `Square 1:1, full bleed: the paper and its washes run right to all four edges.`,
+    `Match the artist's hand of the reference image — its palette, ink line, wash technique and paper — but do not copy its subject, its dish or its layout.`,
   ].join(" ");
 }

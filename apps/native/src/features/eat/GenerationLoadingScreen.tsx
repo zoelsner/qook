@@ -14,7 +14,9 @@ import { todayISO } from '../week/weekDates';
 import { useHaptics } from '../../hooks/useHaptics';
 import { DealingHandLoader } from './DealingHandLoader';
 
-const FIRST_ART_TIMEOUT_MS = 6000;
+// The measured plate-spec + image chain runs ~5-12s on the lite model, so a 6s
+// gate revealed the deck before any art existed. Owner accepted the extra wait.
+const FIRST_ART_TIMEOUT_MS = 10000;
 const POLL_INTERVAL_MS = 1200;
 const PREFETCH_AT_DEAL = 3;
 

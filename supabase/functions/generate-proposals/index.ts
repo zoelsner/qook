@@ -107,6 +107,10 @@ Deno.serve(async (req) => {
         temperature: 0.85,
         timeoutMs: 30_000,
         costLabel: "proposals",
+        // gpt-5.6-* reason by default and burn 355-1622 reasoning tokens, putting
+        // the p95 of this call at ~43s. "low" caps it at ~13s with no measured
+        // quality loss (2026-07-28 eval, n=6 per arm).
+        reasoning: { effort: "low" },
       });
 
       let raw: unknown;
