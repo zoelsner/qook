@@ -247,9 +247,20 @@ export async function generateProposals(
     return pickForTier(tier, 5);
   }
   await syncUserPreferences();
-  const { data, error } = await supabase.functions.invoke('generate-proposals', {
-    body: { tier, context: context?.trim() || undefined, energyMix: energyMix?.trim() || undefined },
-  });
+  const body = {
+    tier,
+    context: context?.trim() || undefined,
+    energyMix: energyMix?.trim() || undefined,
+  };
+  // One silent re-ask before the "couldn't deal" screen. The edge already
+  // clamps model drift and re-rolls the model once, but a cold start or a
+  // transient hop still lands as a non-2xx — and a plain retry nearly always
+  // deals (2026-07-28 TestFlight 422). Failed hands don't count against quota.
+  let { data, error } = await supabase.functions.invoke('generate-proposals', { body });
+  if (error) {
+    await lag(1000);
+    ({ data, error } = await supabase.functions.invoke('generate-proposals', { body }));
+  }
   if (error) {
     const msg = (error as { message?: string }).message ?? 'Something went wrong.';
     throw new Error(msg);
