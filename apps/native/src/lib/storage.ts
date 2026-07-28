@@ -2,11 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const StorageKeys = {
   onboardingShown: 'qook.onboarding.shown',
-  signedIn: 'qook.auth.signedIn',
   authMode: 'qook.auth.mode',
 } as const;
 
-export type AuthMode = 'apple' | 'guest';
+export type AuthMode = 'apple' | 'email' | 'guest';
 
 export async function readFlag(key: string): Promise<boolean> {
   try {
@@ -42,7 +41,7 @@ export async function writeString(key: string, value: string): Promise<void> {
 
 export async function clearAuthFlags(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([StorageKeys.signedIn, StorageKeys.authMode]);
+    await AsyncStorage.removeItem(StorageKeys.authMode);
   } catch {
     /* non-fatal */
   }

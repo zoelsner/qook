@@ -14,7 +14,7 @@ import { usePrefs } from '../../stores/prefs';
 import { useCookSession } from '../../stores/cookSession';
 import { todayISO } from '../week/weekDates';
 import { supabase, signInWithApple } from '../../services/supabase';
-import { AuthMode, StorageKeys, clearAuthFlags, readString, writeFlag, writeString } from '../../lib/storage';
+import { StorageKeys, clearAuthFlags, writeString } from '../../lib/storage';
 
 interface MoreRow {
   label: string;
@@ -35,11 +35,27 @@ export function MoreScreen() {
   const { tap, press, select } = useHaptics();
   const queryClient = useQueryClient();
 
-  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  // The live session is authoritative for the account rows — the authMode flag
+  // only records which door the user came through, so it can't tell a guest
+  // from a real account.
+  const [account, setAccount] = useState<{ isAnonymous: boolean; email: string | null }>({
+    isAnonymous: true,
+    email: null,
+  });
   const [accountBusy, setAccountBusy] = useState(false);
 
   useEffect(() => {
-    void readString(StorageKeys.authMode).then((mode) => setAuthMode(mode as AuthMode | null));
+    // INITIAL_SESSION fires on subscribe, so this covers the mount read; the
+    // later events keep the row honest when the email screen or the Apple
+    // upgrade swaps the session while this tab stays mounted underneath.
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      setAccount({
+        isAnonymous: !user || user.is_anonymous === true,
+        email: user?.email ?? null,
+      });
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
 
   const plan = useWeekPlan((s) => s.plan);
@@ -86,9 +102,9 @@ export function MoreScreen() {
     try {
       const result = await signInWithApple();
       if (result === 'ok') {
-        await writeFlag(StorageKeys.signedIn, true);
+        // The account row updates itself off onAuthStateChange above.
         await writeString(StorageKeys.authMode, 'apple');
-        setAuthMode('apple');
+        queryClient.clear();
       }
     } catch (e) {
       if (__DEV__) console.warn('[account] apple sign-in', e);
@@ -275,25 +291,38 @@ export function MoreScreen() {
     {
       title: 'account',
       rows: [
-        authMode === 'apple'
-          ? {
-              label: 'Sign out',
-              subtitle: 'Signed in with Apple',
-              kicker: 'id',
-              onPress: () => {
-                tap();
-                handleSignOut();
+        ...(account.isAnonymous
+          ? [
+              {
+                label: 'Sign in with Apple',
+                subtitle: 'Secure your account with your Apple ID',
+                kicker: 'id',
+                onPress: () => {
+                  tap();
+                  void handleAppleUpgrade();
+                },
               },
-            }
-          : {
-              label: 'Sign in with Apple',
-              subtitle: 'Secure your account with your Apple ID',
-              kicker: 'id',
-              onPress: () => {
-                tap();
-                void handleAppleUpgrade();
+              {
+                label: 'Sign in or create account',
+                subtitle: 'Secure your account — Apple or email',
+                kicker: 'mail',
+                onPress: () => {
+                  tap();
+                  router.push('/(auth)/email');
+                },
               },
-            },
+            ]
+          : [
+              {
+                label: 'Sign out',
+                subtitle: account.email ?? 'Signed in with Apple',
+                kicker: 'id',
+                onPress: () => {
+                  tap();
+                  handleSignOut();
+                },
+              },
+            ]),
         {
           label: 'Delete account',
           subtitle: 'Permanently remove your data',
