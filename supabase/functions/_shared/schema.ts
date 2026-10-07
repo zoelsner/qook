@@ -226,7 +226,7 @@ export const RecipeJsonSchema = {
           fatG: { type: ["integer", "null"] },
         },
       },
-      notes: { type: ["string", "null"] },
+      notes: { type: ["string", "null"], maxLength: 300 },
     },
   },
 } as const;
@@ -260,23 +260,51 @@ export const RecipeEnvelopeJsonSchema = {
 // --- Phase-1 "hand of 5" proposals (spec 2026-07-10) ---
 // A proposal is the thin card payload: enough to render Treatment-01 without
 // the full recipe body. Full ingredients/steps arrive later via fill-recipe.
+
+// Upper bounds clamp, they don't reject: the provider-side JSON schema below
+// carries no maxItems/maxLength (provider-portability), so the model
+// occasionally drifts past a max — a 6th stepOutline line must trim to 5,
+// not 422 the whole hand (a TestFlight tester hit exactly that, 2026-07-28).
+// Lower bounds still reject: too little content is unusable, and the caller
+// re-rolls the model once before surfacing an error.
+const clampList = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (Array.isArray(v) ? v.slice(0, max) : v),
+    z.array(z.string()).min(min),
+  );
+const clampInt = (min: number, max: number) =>
+  z.preprocess(
+    (v) =>
+      typeof v === "number" && Number.isFinite(v)
+        ? Math.min(max, Math.max(min, Math.round(v)))
+        : v,
+    z.number().int(),
+  );
+
 export const Proposal = z.object({
   title: z.string().min(4),
-  hook: z.string().min(4).max(140),
-  timeMinutes: z.number().int().positive().max(240),
-  proteinG: z.number().int().nonnegative().max(300),
+  hook: z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, 140) : v),
+    z.string().min(4),
+  ),
+  timeMinutes: clampInt(1, 240),
+  proteinG: clampInt(0, 300),
   cuisine: z.string().min(2),
   // Card-back teaser (feature: flippable info back, 2026-07-12). Main
   // ingredient names only, no amounts — those are written at fill time.
-  ingredientNames: z.array(z.string()).min(4).max(12),
+  ingredientNames: clampList(4, 12),
   // High-level plan lines — 3 to 5 imperative sketch steps, not detailed
   // instructions (those are written at fill time).
-  stepOutline: z.array(z.string()).min(3).max(5),
+  stepOutline: clampList(3, 5),
 });
 export type Proposal = z.infer<typeof Proposal>;
 
 export const ProposalsEnvelope = z.object({
-  proposals: z.array(Proposal).length(5),
+  // More than 5: keep the first five. Fewer: reject — we can't invent cards.
+  proposals: z.preprocess(
+    (v) => (Array.isArray(v) ? v.slice(0, 5) : v),
+    z.array(Proposal).length(5),
+  ),
   // null unless the model refuses on safety grounds; when set, proposals is [].
   refusal: z.string().nullish(),
 });
