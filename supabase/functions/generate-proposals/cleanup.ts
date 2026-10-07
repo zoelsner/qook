@@ -1,8 +1,8 @@
 import { logFailure } from "../_shared/diagnostics.ts";
 
-// Supabase normally reports failures in the result instead of rejecting. Both
-// forms must be inspected, and a failed delete must not prevent the session
-// from being marked failed. IDs are used only in queries, never diagnostics.
+// Only call before attempting the private item association. First confirm this
+// generating session became failed; an unknown/no-match transition must never
+// authorize deletion. IDs are used in queries/checks, never diagnostics.
 export async function failProposalSession(
   // deno-lint-ignore no-explicit-any
   admin: any,
@@ -14,13 +14,25 @@ export async function failProposalSession(
     sessionMarkedFailed: boolean;
   }
 > {
+  try {
+    const { data, error } = await admin.from("generation_sessions").update({
+      status: "failed",
+    }).eq("id", sessionId).eq("status", "generating").select("id");
+    if (error) throw error;
+    if (!Array.isArray(data) || data.length !== 1 || data[0]?.id !== sessionId) {
+      throw new Error("Session failure transition was not confirmed");
+    }
+  } catch (error) {
+    logFailure("generate-proposals", "session_failure", error);
+    return { skeletonCleanup: "skipped", sessionMarkedFailed: false };
+  }
   let skeletonCleanup: "skipped" | "done" | "failed" = "skipped";
   if (skeletonIds.length) {
     try {
       const { error } = await admin.from("recipes").delete().in(
         "id",
         skeletonIds,
-      );
+      ).eq("content_status", "proposal");
       if (error) throw error;
       skeletonCleanup = "done";
     } catch (error) {
@@ -30,15 +42,5 @@ export async function failProposalSession(
       });
     }
   }
-  let sessionMarkedFailed = false;
-  try {
-    const { error } = await admin.from("generation_sessions").update({
-      status: "failed",
-    }).eq("id", sessionId);
-    if (error) throw error;
-    sessionMarkedFailed = true;
-  } catch (error) {
-    logFailure("generate-proposals", "session_failure", error);
-  }
-  return { skeletonCleanup, sessionMarkedFailed };
+  return { skeletonCleanup, sessionMarkedFailed: true };
 }

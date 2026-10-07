@@ -36,6 +36,7 @@ export type FailureStage =
   | "skeleton_cleanup"
   | "session_failure"
   | "session_completion"
+  | "publication_uncertain"
   | "cache_use_count"
   | "cache_lookup"
   | "error_persistence"

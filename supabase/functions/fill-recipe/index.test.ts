@@ -57,6 +57,10 @@ async function scenario(options: { outputs?: unknown[]; alreadyFull?: boolean; b
     if (req.method === "DELETE") { deleted = true; return new Response(null, { status: 204 }); }
     if (req.method === "PATCH") {
       const body = await req.json(); writes.push(body);
+      if (body.generation_error) {
+        assertEquals(url.searchParams.get('content_status'), 'eq.proposal');
+        if (row.content_status !== 'proposal') return new Response(null, { status: 204 });
+      }
       if (body.generation_error && options.errorPersistence === "response") return json({ code: "23514", message: "private-database-detail" }, 400);
       if (body.generation_error && options.errorPersistence === "reject") throw new Error("private-database-detail");
       if (options.race && body.content_status === "full") return json({ code: "23505", message: "synthetic concurrent insert" }, 409);

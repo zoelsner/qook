@@ -83,8 +83,8 @@ and do not measure model quality, nutrition accuracy, food safety or actual cook
 
 Tests explicitly named `KNOWN GAP` characterize current unwanted behavior:
 concurrent fills call the provider twice; two quota checks at nine can both pass;
-a lost ready acknowledgement can lead to cleanup of committed cards; stored
-equipment and feasible overlapping cooking timelines are incompletely enforced.
+stored equipment and feasible overlapping cooking timelines are incompletely
+enforced.
 Their passing status means those gaps were reproduced, not fixed. Update their
 expectations when implementing the desired behavior.
 
@@ -92,3 +92,36 @@ These fixtures use in-memory state and do not verify PostgreSQL transaction
 isolation, unique indexes, RLS, durable replay, or ambiguous-commit reconciliation.
 No local Postgres/Docker is available in this environment, and this increment
 introduces no SQL migration or production-ready database protocol.
+
+## Association and cleanup failure boundaries
+
+Once a proposal attempts to insert its private generation items, all subsequent
+errors preserve recipes, associations, and session state. An association or ready
+write can commit even if its acknowledgement is lost; cleanup must not assume
+failure. The handler returns its existing sanitized 500 and logs metadata-only
+`publication_uncertain` diagnostics. It does not reconcile the outcome, replay
+the response, or mark a retained generating session failed.
+
+Before attempting associations, cleanup first requests a conditional transition
+of the identified session from `generating` to `failed`, returning its ID. Only
+exactly one matching returned ID permits deletion of the tracked skeleton IDs,
+filtered to `content_status = proposal`. Unknown/failed/no-match transitions
+retain recipes; full rows and untracked cache rows are excluded from deletion.
+These global skeletons can already be readable before session association.
+
+A failed fill records its generic retry error only on a still-proposal recipe,
+so a late failed request cannot add an error to a concurrently completed full
+recipe. This does not coalesce provider calls or prevent competing full writes.
+
+The actual handler/SDK fixtures enforce emitted filters against in-memory state
+and cover committed/rejected/unknown associations, ready acknowledgement loss,
+failed/missing final reads, a fill completing during proposal failure, conditional
+cleanup, and late failed fills. PostgreSQL/RLS semantics remain unvalidated.
+No local PostgreSQL or container runtime is installed; no test database was
+created and no migration is included.
+
+Conservative retention can leave orphan recipes and quota-counted `generating`
+sessions, including definite association rejections. Automatic client retries
+can still buy another hand. Durable reconciliation, replay/coalescing, atomic
+quota reservation, retention policy, and mutation deadlines require separate
+design and real database validation before implementation or rollout.

@@ -66,11 +66,11 @@ export async function handleProposals(req: Request, options: PreflightOptions = 
 
   const serves = clampServes(liveCtx.householdSize);
 
-  // Populated as skeleton rows are inserted below; the catch block uses this
-  // to best-effort delete only THIS request's skeletons on a mid-loop
-  // failure (never cache-hit rows) so a broken generation doesn't leave
-  // orphaned 'proposal' rows behind.
+  // Only this request's inserted rows can be cleaned up, before attempting
+  // their private session association. These global recipes may already be
+  // readable; after association begins, another fill may be using them.
   const skeletonIds: string[] = [];
+  let publicationAttempted = false;
 
   try {
     // The schema clamps most model drift; if output is still unusable
@@ -181,10 +181,14 @@ export async function handleProposals(req: Request, options: PreflightOptions = 
 
     // The association and brief stay private to this user's session. A shared
     // cache row never receives their context or allergy/preferences snapshot.
-    const { error: itemError } = await admin.from("generation_items").insert(ids.map((id, index) => ({
+    const associationRows = ids.map((id, index) => ({
       session_id: sessionId, slot_index: index, recipe_id: id, status: "ready",
       prompt_meta: { version: 1, originalRecipeId: id, brief, contract: contractFromRow(toSkeletonInsert(envelope!.proposals[index], tier, serves), brief) },
-    })));
+    }));
+    // Set before dispatch: an error/exception cannot prove the insert failed
+    // to commit. After this boundary preserve cards and session state.
+    publicationAttempted = true;
+    const { error: itemError } = await admin.from("generation_items").insert(associationRows);
     if (itemError) throw itemError;
 
     const { data: rows, error: rowsError } = await admin.from("recipes").select("*").in(
@@ -214,7 +218,11 @@ export async function handleProposals(req: Request, options: PreflightOptions = 
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    await failProposalSession(admin, sessionId, skeletonIds);
+    if (publicationAttempted) {
+      logFailure("generate-proposals", "publication_uncertain", err, { count: skeletonIds.length });
+    } else {
+      await failProposalSession(admin, sessionId, skeletonIds);
+    }
     logFailure("generate-proposals", "generation", err);
     return errorResponse(
       ERRORS.GENERATION_FAILED,

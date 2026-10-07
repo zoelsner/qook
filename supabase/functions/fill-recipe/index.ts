@@ -199,14 +199,15 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
-    // Leave content_status 'proposal'; record the error for the detail view's
-    // retry affordance.
+    // A different fill may already have completed. Only a still-proposal row
+    // receives the retry error; never stain a concurrent winner's full recipe.
     logFailure("fill-recipe", "generation", err);
     try {
       const { error } = await admin
         .from("recipes")
         .update({ generation_error: "Recipe generation failed. Try again." })
-        .eq("id", recipeId);
+        .eq("id", recipeId)
+        .eq("content_status", "proposal");
       if (error) logFailure("fill-recipe", "error_persistence", error);
     } catch (error) {
       logFailure("fill-recipe", "error_persistence", error);

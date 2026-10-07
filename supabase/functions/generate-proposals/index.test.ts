@@ -101,14 +101,14 @@ async function diagnosticScenario(mode: 'invalid-json' | 'invalid-schema' | 'cle
     const response=await handler(new Request('http://qook.test/generate-proposals',{method:'POST',headers:{Authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({tier:contract.tier,context:'PRIVATE dinner context'})}));
     assertEquals(response.status,mode==='cleanup-fail'?500:422);
     assert(!logs.join(' ').includes('PRIVATE'));
-    assertEquals(failureUpdates,1);
+    assertEquals(failureUpdates,mode==='cleanup-fail'?0:1);
     assertEquals(modelCalls,mode==='cleanup-fail'?1:2);
     const events=logs.map(l=>JSON.parse(l));
-    assert(events.some(e=>e.stage==='session_failure'));
     if(mode==='cleanup-fail') {
-      assertEquals(inserted.length,5);assertEquals(deletions,[inserted]);
-      assert(events.some(e=>e.stage==='skeleton_cleanup'&&e.count===5));
+      assertEquals(inserted.length,5);assertEquals(deletions,[]);
+      assert(events.some(e=>e.stage==='publication_uncertain'&&e.count===5));
     } else {
+      assert(events.some(e=>e.stage==='session_failure'));
       assertEquals(inserted.length,0);
       assertEquals(events.filter(e=>e.stage===(mode==='invalid-json'?'invalid_json':'invalid_schema')).length,2);
     }
@@ -116,7 +116,7 @@ async function diagnosticScenario(mode: 'invalid-json' | 'invalid-schema' | 'cle
 }
 Deno.test('HTTP malformed model JSON never leaks raw content or private session-update errors',()=>diagnosticScenario('invalid-json'));
 Deno.test('HTTP invalid model schema never leaks raw model fields or Zod messages',()=>diagnosticScenario('invalid-schema'));
-Deno.test('HTTP returned cleanup and failed-session errors remain visible without replacing the original 500',()=>diagnosticScenario('cleanup-fail'));
+Deno.test('HTTP post-association read errors retain cards and log metadata without a destructive failure transition',()=>diagnosticScenario('cleanup-fail'));
 
 async function qualityScenario(mode: 'ingredient-count' | 'tier-time') {
   for (const [key,value] of Object.entries({SUPABASE_URL:'http://qook.test',SUPABASE_ANON_KEY:'synthetic',SUPABASE_SERVICE_ROLE_KEY:'synthetic',OPENROUTER_API_KEY:'synthetic'})) Deno.env.set(key,value);
