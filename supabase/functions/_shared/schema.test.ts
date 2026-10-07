@@ -115,3 +115,7 @@ Deno.test("Recipe rejects a null nutrition object", () => {
   const res = Recipe.safeParse(nullNutrition);
   assertEquals(res.success, false);
 });
+
+Deno.test("provider schema communicates the same recipe notes bound as Zod", () => {
+  assertEquals(RecipeJsonSchema.schema.properties.notes.maxLength, 300);
+});

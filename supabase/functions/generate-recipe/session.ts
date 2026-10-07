@@ -1,3 +1,5 @@
+import { logFailure } from "../_shared/diagnostics.ts";
+
 // deno-lint-ignore no-explicit-any
 type Admin = any;
 
@@ -17,9 +19,9 @@ export async function finishSession(
       .update({ status })
       .eq("id", sessionId);
     if (error) {
-      console.error("finishSession update failed", String(error));
+      logFailure("generate-recipe", status === "failed" ? "session_failure" : "session_completion", error);
     }
   } catch (err) {
-    console.error("finishSession threw", String(err));
+    logFailure("generate-recipe", status === "failed" ? "session_failure" : "session_completion", err);
   }
 }

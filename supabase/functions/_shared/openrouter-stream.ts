@@ -14,7 +14,9 @@ export async function chatStream(
     model?: string;
     temperature?: number;
     timeoutMs?: number;
+    maxTokens?: number;
     jsonSchema?: { name: string; schema: unknown; strict?: boolean };
+    reasoning?: { effort: "low" | "medium" | "high" };
   } = {},
 ): Promise<string> {
   const controller = new AbortController();
@@ -30,6 +32,10 @@ export async function chatStream(
         model: opts.model ?? MODELS.textDraft(),
         messages,
         temperature: opts.temperature ?? 0.7,
+        // Same cap as chat(): without it OpenRouter reserves the model's full
+        // 65k output window and 402s low-balance keys.
+        max_tokens: opts.maxTokens ?? 8192,
+        ...(opts.reasoning ? { reasoning: opts.reasoning } : {}),
         stream: true,
         ...(opts.jsonSchema
           ? {

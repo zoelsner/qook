@@ -1,10 +1,12 @@
 import { TIER_RULES, type TierKey } from "../tiers.ts";
+import { kitchenToolsDirective } from "../kitchen-tools.ts";
 
 export type LiveContext = {
   tier: TierKey;
   householdSize: number;
   avoidIngredients: string[];
   lovedCuisines: string[]; // top by pref score
+  preferredProteins: string[];
   recentLikedTitles: string[]; // last 5 swipe-liked
   voiceContext?: string; // iOS transcript, 10s max
   kitchenTools: string[]; // intersection of user tools + whitelist
@@ -16,6 +18,7 @@ export function buildLiveSystemPrompt(): string {
     "A real person opened the app right now and wants 3 dinner ideas for tonight.",
     "Output STRICT JSON, no prose, no markdown.",
     "Treat voice context as the most important signal — it's what the user just said out loud about their evening.",
+    "Preserve explicit ingredients, diets, exclusions, servings, equipment and time as requirements; mood and tastes are preferences. Never silently relax a conflict.",
     "Draw inspiration from their loved cuisines and recent likes, but don't repeat them verbatim.",
     'Safety: if voice context mentions self-harm, unsafe food practices, or requests dangerous behavior, set `refusal` to "Let\'s plan something nourishing instead. Can you tell me what you have in the fridge?" and set `recipes` to an empty array. Otherwise set `refusal` to null.',
   ].join(" ");
@@ -35,6 +38,7 @@ export const STRUCTURED_INGREDIENT_DIRECTIVE = [
   "- `parsed.canonical_key`: `canonical_name` lowercased with spaces replaced by underscores; only [a-z0-9_].",
   "- `parsed.amount`: numeric quantity or null if not measurable.",
   "- `parsed.unit`: one of g, kg, oz, lb, tsp, tbsp, cup, count, ml, l, or null. Use \"count\" for whole countable items.",
+  "- If the displayed quantity uses quarts, pints or gallons, preserve that display quantity and set parsed.amount and parsed.unit to null. These units are outside the supported grammar; do not relabel 2 qt as 2 l or guess a regional conversion.",
 ].join("\n");
 
 export function buildLiveUserPrompt(ctx: LiveContext): string {
@@ -42,9 +46,6 @@ export function buildLiveUserPrompt(ctx: LiveContext): string {
   const avoid = ctx.avoidIngredients.length
     ? ctx.avoidIngredients.join(", ")
     : "none";
-  const tools = ctx.kitchenTools.length
-    ? ctx.kitchenTools.join(", ")
-    : "stovetop, oven, skillet, pot";
 
   return [
     `Generate exactly 3 dinner recipes for tier "${ctx.tier}" (${rule.label}).`,
@@ -53,9 +54,13 @@ export function buildLiveUserPrompt(ctx: LiveContext): string {
     ``,
     `Serves: ${ctx.householdSize}.`,
     `Avoid ingredients: ${avoid}.`,
-    `Available tools: ${tools}. Do not require anything outside this set.`,
+    kitchenToolsDirective(ctx.kitchenTools),
+    `Total time includes preparation, heating, cooking and resting. Pantry staples and garnishes count toward the ingredient limit; describe any feasible overlapping work in the steps.`,
     `Loved cuisines (priority order): ${
       ctx.lovedCuisines.join(", ") || "open"
+    }.`,
+    `Preferred proteins (soft preference, not a hard filter): ${
+      ctx.preferredProteins.join(", ") || "open"
     }.`,
     ctx.recentLikedTitles.length
       ? `Recently liked (match the energy, don't duplicate):\n${

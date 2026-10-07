@@ -16,6 +16,7 @@ import {
 } from "../_shared/recipe-map.ts";
 import { ERRORS } from "../_shared/errors.ts";
 import { finishSession } from "./session.ts";
+import { logFailure } from "../_shared/diagnostics.ts";
 
 const RequestBody = z.object({
   tier: z.enum([
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
     .select("id")
     .single();
   if (sessionError) {
-    console.error("generation_sessions insert failed", String(sessionError));
+    logFailure("generate-recipe", "session_insert", sessionError);
     return new Response(
       JSON.stringify({
         code: ERRORS.GENERATION_FAILED,
@@ -182,6 +183,12 @@ Deno.serve(async (req) => {
             temperature: 0.75,
             timeoutMs: 90_000,
             jsonSchema: RecipeEnvelopeJsonSchema,
+            // The 3-recipe envelope alone runs ~10k+ tokens; leave headroom
+            // above the shared 8192 default or the stream truncates mid-JSON.
+            maxTokens: 24576,
+            // Same call as proposals: "low" collapses the latency tail (and
+            // here, time-to-first-streamed-token) at no measured quality loss.
+            reasoning: { effort: "low" },
           },
         );
 
@@ -194,14 +201,7 @@ Deno.serve(async (req) => {
         }
         const result = ResponseEnvelope.safeParse(raw);
         if (!result.success) {
-          // Zod issues carry the diagnostics; keep the raw echo short — model
-          // output can weave the user's voice_context (PII) into recipe text.
-          console.error(
-            "generate-recipe validation failed",
-            JSON.stringify(result.error.issues.slice(0, 5)),
-            "raw:",
-            full.slice(0, 300),
-          );
+          logFailure("generate-recipe", "invalid_schema", undefined, { issues: result.error.issues });
           await finishSession(admin, sessionId, "failed");
           send("error", {
             code: ERRORS.VALIDATION,
@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
           code: ERRORS.GENERATION_FAILED,
           message: "The kitchen is busy — try again in a minute.",
         });
-        console.error("generate-recipe error", String(err));
+        logFailure("generate-recipe", "generation", err);
       } finally {
         controller.close();
       }
