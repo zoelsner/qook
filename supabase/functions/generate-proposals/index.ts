@@ -1,4 +1,4 @@
-import { dinnerBrief, briefContext, briefDirective } from "../_shared/dinner-brief.ts";
+import { briefDirective } from "../_shared/dinner-brief.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { chat } from "../_shared/openrouter.ts";
 import { MODELS } from "../_shared/openrouter.ts";
@@ -10,9 +10,8 @@ import {
   ProposalsEnvelope,
   ProposalsEnvelopeJsonSchema,
 } from "../_shared/schema.ts";
-import { requireUser, serviceClient } from "../_shared/supabase.ts";
-import { buildLiveContext } from "../_shared/context.ts";
-import { checkQuota } from "../_shared/rate-limit.ts";
+import { serviceClient } from "../_shared/supabase.ts";
+import { prepareProposal, type PreflightOptions } from "./preflight.ts";
 import { stripCodeFences } from "../_shared/partial-parser.ts";
 import {
   dbRowToClientRecipe,
@@ -24,54 +23,22 @@ import { failProposalSession } from "./cleanup.ts";
 import { logFailure } from "../_shared/diagnostics.ts";
 import { errorResponse, ERRORS } from "../_shared/errors.ts";
 
-const RequestBody = z.object({
-  tier: z.enum([
-    "brain-is-fried",
-    "after-work",
-    "got-energy",
-    "weekend-project",
-  ]),
-  context: z.string().max(500).optional(),
-  energyMix: z.string().max(120).optional(),
-});
-
 function clampServes(n: number): number {
   if (!Number.isFinite(n)) return 2;
   return Math.min(16, Math.max(1, Math.round(n)));
 }
 
-Deno.serve(async (req) => {
+export async function handleProposals(req: Request, options: PreflightOptions = {}) {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  let userId: string;
-  try {
-    const { user } = await requireUser(req);
-    userId = user.id;
-  } catch (resp) {
-    return resp as Response;
-  }
-
+  const prepared = await prepareProposal(req, options);
+  if (prepared instanceof Response) return prepared;
+  if (req.signal.aborted) return errorResponse(ERRORS.GENERATION_FAILED, "Request cancelled.", 503);
+  const { userId, tier, context, energyMix, brief, liveCtx } = prepared;
+  // Mutations use a separate client: a cancelled write has an unknown outcome.
   const admin = serviceClient();
-
-  // A hand counts as one generation against the 10/day quota — check first.
-  const quota = await checkQuota(admin, userId);
-  if (!quota.ok) {
-    return errorResponse(
-      ERRORS.RATE_LIMITED,
-      quota.scope === "day"
-        ? "You've hit today's recipe limit — back tomorrow."
-        : "You've hit this month's recipe limit.",
-      429,
-    );
-  }
-
-  const parsed = RequestBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) {
-    return errorResponse(ERRORS.BAD_REQUEST, "Bad request body.", 400);
-  }
-  const { tier, context, energyMix } = parsed.data;
 
   // The session row is the quota-counting record — check its insert.
   const { data: session, error: sessionError } = await admin
@@ -97,17 +64,6 @@ Deno.serve(async (req) => {
   }
   const sessionId: string = session.id;
 
-  const { data: prefs } = await admin
-    .from("user_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const brief = dinnerBrief(buildLiveContext(tier, prefs ?? null, context));
-  if (brief.conflicts.length) {
-    await failProposalSession(admin, sessionId);
-    return errorResponse(ERRORS.VALIDATION, brief.conflicts.join(" "), 422);
-  }
-  const liveCtx = briefContext(brief, tier);
   const serves = clampServes(liveCtx.householdSize);
 
   // Populated as skeleton rows are inserted below; the catch block uses this
@@ -266,4 +222,6 @@ Deno.serve(async (req) => {
       500,
     );
   }
-});
+}
+
+Deno.serve((req) => handleProposals(req));

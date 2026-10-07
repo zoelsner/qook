@@ -57,3 +57,38 @@ Concurrent fills and quota checks still lack atomic database coordination.
 Whole-route database/cleanup deadlines and complete stored-equipment enforcement
 remain follow-up work. Synthetic cache timing improvements do not establish
 production latency or provider billing savings.
+
+## Proposal read preflight and evaluation fixtures
+
+Proposal authentication, request parsing, preferences, brief validation and quota
+reads share a 15-second application deadline. Failed preference reads and missing
+quota counts fail closed before reservation or payment. A genuinely absent
+preferences row still uses the existing defaults. Authentication failures retain
+401; infrastructure failures/cancellation return a generic 503, and deadline
+expiry returns 504. The budget needs staging calibration and is not a whole-route
+latency promise or a spend cap.
+
+The read client combines query/request cancellation and stops new underlying
+fetches after expiry. PostgREST reads also receive `.abortSignal(...)` so SDK retry
+sleep can end on cancellation. The complete read phase races the deadline,
+including response-body consumption and transports that ignore cancellation.
+Late read completion cannot resume the handler's write path. A separate mutation
+client receives no preflight deadline; write and cleanup uncertainty is deferred.
+
+`supabase/functions/qa/culinary-cases.json` holds eleven concrete context,
+ingredient and manual-review cases. The associated tests cover serving/time
+language, named onion forms, diet/allergy controls, and a proposal-to-fill-to-reopen
+flow using the real handlers and SDK with intercepted HTTP. Fixtures are handwritten
+and do not measure model quality, nutrition accuracy, food safety or actual cooking.
+
+Tests explicitly named `KNOWN GAP` characterize current unwanted behavior:
+concurrent fills call the provider twice; two quota checks at nine can both pass;
+a lost ready acknowledgement can lead to cleanup of committed cards; stored
+equipment and feasible overlapping cooking timelines are incompletely enforced.
+Their passing status means those gaps were reproduced, not fixed. Update their
+expectations when implementing the desired behavior.
+
+These fixtures use in-memory state and do not verify PostgreSQL transaction
+isolation, unique indexes, RLS, durable replay, or ambiguous-commit reconciliation.
+No local Postgres/Docker is available in this environment, and this increment
+introduces no SQL migration or production-ready database protocol.

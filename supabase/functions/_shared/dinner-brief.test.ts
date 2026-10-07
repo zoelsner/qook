@@ -52,3 +52,20 @@ Deno.test("plant milk is allowed for vegan dinners while its actual allergens re
   assertEquals(ingredientConstraintErrors(['soy milk', 'dairy milk'], brief).length, 2);
   assertEquals(ingredientConstraintErrors(['coconut milk and dairy milk'], brief).length, 1);
 });
+
+Deno.test("time phrases do not invent household counts while explicit serving requests still win", () => {
+  for (const context of ["I only have time for 15 minutes.", "Simmer for 20 mins.", "Marinate for two hours.", "Meal prep for three days.", "Dinner for 4 pm."]) {
+    assertEquals(dinnerBrief(buildLiveContext("after-work", { household_size: 2 }, context)).householdSize, 2);
+  }
+  for (const context of ["I have time for 15 minutes. Dinner for four.", "Serves four in 15 minutes.", "Four servings. Cook for 15 mins.", "Dinner for four: 15 minutes."]) {
+    assertEquals(dinnerBrief(buildLiveContext("after-work", null, context)).householdSize, 4);
+  }
+});
+
+Deno.test("explicit onion exclusion covers singular named forms without banning unrelated words", () => {
+  for (const context of ["No onions.", "Without onion."]) {
+    const brief = dinnerBrief(buildLiveContext("after-work", null, context));
+    assertEquals(ingredientConstraintErrors(["red onion", "onion powder", "green onions"], brief).length, 3);
+    assertEquals(ingredientConstraintErrors(["onionized flavor label", "garlic", "chives"], brief), []);
+  }
+});

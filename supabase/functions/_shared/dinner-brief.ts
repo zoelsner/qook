@@ -64,7 +64,7 @@ export function dinnerBrief(ctx: LiveContext): DinnerBrief {
   const conflicts: string[] = [];
   if (onlyMethods.length && onlyMethods.every(m => ['microwave', 'kettle'].includes(m)) && /\b(?:roast|roasted|bake|baked|crispy)\b/i.test(context)) conflicts.push("Your requested crisp/roasted method conflicts with microwave/kettle-only equipment. Choose a different method or allow another appliance.");
   const time = /\b(\d{1,3})\s*(?:minutes?|mins?)\b/i.exec(context);
-  const count = /\b(?:serves?|for)\s+(\d+|one|two|three|four|five|six)\b|\b(\d+)\s+(?:people|servings?)\b/i.exec(context);
+  const count = /\b(?:serves?|for)\s+(\d+|one|two|three|four|five|six)\b(?!\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|am|pm)\b)|\b(\d+|one|two|three|four|five|six)\s+(?:people|servings?)\b/i.exec(context);
   const counts: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
   const n = count ? counts[(count[1] ?? count[2]).toLowerCase()] ?? Number(count[1] ?? count[2]) : ctx.householdSize;
   return { version: 1, context, avoidIngredients: [...ctx.avoidIngredients], kitchenTools: [...ctx.kitchenTools], householdSize: Math.min(12, Math.max(1, n)), lovedCuisines: [...ctx.lovedCuisines], preferredProteins: [...ctx.preferredProteins], allergies: [...allergies], diets: [...diets], excludedIngredients: [...excluded], onlyMethods, conflicts, ...(time ? { maxMinutes: Number(time[1]) } : {}) };
@@ -82,8 +82,10 @@ export function ingredientConstraintErrors(names: string[], brief: DinnerBrief):
   if (brief.diets.includes("vegan")) forbidden.add("eggs");
   for (const name of names) {
     for (const avoid of forbidden) {
-      const aliases: Record<string, string> = { peanuts: 'peanut', nut: 'nuts', egg: 'eggs' };
-      const pattern = allergens[aliases[avoid.toLowerCase()] ?? avoid.toLowerCase()];
+      const aliases: Record<string, string> = { peanuts: 'peanut', nut: 'nuts', egg: 'eggs', onions: 'onion' };
+      const namePatterns: Record<string, RegExp> = { onion: /\bonions?\b/i };
+      const key = aliases[avoid.toLowerCase()] ?? avoid.toLowerCase();
+      const pattern = allergens[key] ?? namePatterns[key];
       // Named plant substitutes do not imply animal dairy; their own nut/soy
       // names still go through the other allergen checks.
       const checkedName = avoid === "dairy" ? name.replace(/\b(?:coconut|almond|oat|soy|soya|rice|cashew|vegan|plant[- ]based|dairy[- ]free)\s+(?:milk|cream|butter|cheese|yog[uh]urt)\b/gi, "") : name;

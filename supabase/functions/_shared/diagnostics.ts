@@ -28,6 +28,7 @@ const DATABASE_CODES = new Set([
 ]);
 export type Route = "generate-proposals" | "generate-recipe" | "fill-recipe";
 export type FailureStage =
+  | "preflight"
   | "session_insert"
   | "invalid_json"
   | "invalid_schema"
