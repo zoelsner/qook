@@ -71,7 +71,7 @@ export function EnergyPickerScreen() {
       />
       <View style={{ height: spacing.sm + 2 }} />
       <Mono size={9} color={palette.textTertiary} style={styles.caption}>
-        A HAND OF FIVE IN ABOUT 15 SECONDS
+        A HAND OF FIVE DINNER IDEAS
       </Mono>
     </ScreenShell>
   );

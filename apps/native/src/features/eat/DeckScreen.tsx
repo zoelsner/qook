@@ -31,6 +31,7 @@ import { artIndicesToRequest, urlsToPrefetch } from './imagePrefetch';
 import { CardArt } from './CardArt';
 import { useSwipeGesture } from '../swipe-night/useSwipeGesture';
 import { api } from '../../services/api';
+import { recipeCompletion } from '../../services/completeRecipe';
 import type { SeedMealKey } from '../../lib/assets';
 
 const DOT_LEADER = '·'.repeat(80);
@@ -91,7 +92,6 @@ export function DeckScreen() {
   const deckPass = useGenerationSession((s) => s.deckPass);
   const dealHand = useGenerationSession((s) => s.dealHand);
   const setCookTonight = useGenerationSession((s) => s.setCookTonight);
-  const reconcileKept = useGenerationSession((s) => s.reconcileKept);
   const reset = useGenerationSession((s) => s.reset);
   const mode = useGenerationSession((s) => s.mode);
   const resetNights = useGenerationSession((s) => s.resetNights);
@@ -100,7 +100,6 @@ export function DeckScreen() {
   const plan = useWeekPlan((s) => s.plan);
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
-  const remapSavedRecipe = useWeekPlan((s) => s.remapSavedRecipe);
   const [dealing, setDealing] = useState(false);
 
   // Guard: no deck means the user landed here without a hand — bounce to energy.
@@ -222,26 +221,12 @@ export function DeckScreen() {
 
   // Fire phase-2 for a kept/cooked card; adopt the final (possibly redirected)
   // full row so allocation writes real ingredients. Fire-and-forget.
-  const runFill = useCallback(
-    (recipe: Recipe) => {
-      if (recipe.contentStatus === 'full') return; // cache-hit card, already full
-      void (async () => {
-        try {
-          const { recipeId } = await api.fillRecipe(recipe.id, context || undefined);
-          const full = await api.getRecipeById(recipeId);
-          if (full) {
-            reconcileKept(recipe.id, full);
-            // Signature cache-hit: the fill redirected to an existing row, so
-            // move the saved heart from the (now dead) skeleton id with it.
-            if (full.id !== recipe.id) remapSavedRecipe(recipe.id, full.id);
-          }
-        } catch {
-          /* detail view offers retry on next open */
-        }
-      })();
-    },
-    [context, reconcileKept, remapSavedRecipe]
-  );
+  const runFill = useCallback((recipe: Recipe) => {
+    if (recipe.contentStatus === 'full') return;
+    void recipeCompletion.complete(recipe).catch(() => {
+      // Shared completion state is shown with an explicit retry in detail.
+    });
+  }, []);
 
   const saveIfNew = useCallback(
     (id: string) => {

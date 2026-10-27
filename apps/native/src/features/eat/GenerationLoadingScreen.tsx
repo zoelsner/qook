@@ -13,6 +13,7 @@ import { encoreCandidateId } from './encore';
 import { todayISO } from '../week/weekDates';
 import { useHaptics } from '../../hooks/useHaptics';
 import { DealingHandLoader } from './DealingHandLoader';
+import { generationErrorMessage } from './generationError';
 
 // The measured plate-spec + image chain runs ~5-12s on the lite model, so a 6s
 // gate revealed the deck before any art existed. Owner accepted the extra wait.
@@ -125,7 +126,7 @@ export function GenerationLoadingScreen() {
         router.replace(DECK_ROUTE);
       } catch (e) {
         if (cancelled || myRun !== runId.current) return;
-        const msg = e instanceof Error ? e.message : 'The kitchen is busy — try again.';
+        const msg = generationErrorMessage(e);
         fail(msg);
         setErrorMsg(msg);
         errorHaptic();
@@ -166,7 +167,7 @@ export function GenerationLoadingScreen() {
         router.replace(DECK_ROUTE);
       } catch (e) {
         if (!mountedRef.current || myRun !== runId.current) return;
-        const msg = e instanceof Error ? e.message : 'The kitchen is busy — try again.';
+        const msg = generationErrorMessage(e);
         fail(msg);
         setErrorMsg(msg);
         errorHaptic();

@@ -3,8 +3,45 @@ import type { Recipe } from '@qook/shared';
 
 import type { ISODate } from '../week/weekDates';
 import { aggregateIngredients, collectShopMeals, formatQuantity } from './aggregateIngredients';
+import { recipeForServings } from '../../lib/scaleQuantity';
 
 const TODAY = '2026-07-10' as ISODate;
+
+describe('serving selection shopping handoff', () => {
+  test('planned recipe uses staged servings without double-counting', () => {
+    const base = { ...parsedRecipe('salmon', 'salmon', '10 oz', 10, 'oz'), servings: 2 };
+    const staged = recipeForServings(base, 3);
+    const plan = { [TODAY]: { recipes: [base], pickIndex: 0 } };
+    const items = aggregateIngredients(plan, TODAY, [staged]);
+    expect(formatQuantity(items[0])).toBe('15 oz');
+    expect(items[0].recipeCount).toBe(1);
+    expect(collectShopMeals(plan, TODAY, [staged])[0].servings).toBe(3);
+    expect(base.ingredients[0].items[0].quantity).toBe('10 oz');
+  });
+
+  test('selected amounts sum with other recipes using matching units', () => {
+    const base = { ...parsedRecipe('salmon', 'salmon', '10 oz', 10, 'oz'), servings: 2 };
+    const other = parsedRecipe('other', 'salmon', '8 oz', 8, 'oz');
+    expect(formatQuantity(aggregateIngredients({}, TODAY, [recipeForServings(base, 3), other])[0])).toBe('23 oz');
+  });
+
+  test('each planned night uses the override and exclusion drops all occurrences', () => {
+    const base = { ...parsedRecipe('rice', 'rice', '1 cup', 1, 'cup'), servings: 2 };
+    const staged = [recipeForServings(base, 3)];
+    const plan = {
+      [TODAY]: { recipes: [base], pickIndex: 0 },
+      ['2026-07-11' as ISODate]: { recipes: [base], pickIndex: 0 },
+    };
+    expect(formatQuantity(aggregateIngredients(plan, TODAY, staged)[0])).toBe('3 cup');
+    expect(aggregateIngredients(plan, TODAY, staged, new Set(['rice']))).toEqual([]);
+  });
+
+  test('replacement servings scale from the original recipe', () => {
+    const base = { ...parsedRecipe('salmon', 'salmon', '10 oz', 10, 'oz'), servings: 2 };
+    expect(formatQuantity(aggregateIngredients({}, TODAY, [recipeForServings(base, 4)])[0])).toBe('20 oz');
+    expect(formatQuantity(aggregateIngredients({}, TODAY, [recipeForServings(base, 2)])[0])).toBe('10 oz');
+  });
+});
 
 function recipe(id: string, title: string, item: string): Recipe {
   return {
@@ -108,6 +145,15 @@ function parsedRecipe(
 }
 
 describe('quantity summing across recipes', () => {
+  test('sums exact eighths readably without snapping unrelated decimals', () => {
+    const sum = (a: number, b: number) => formatQuantity(aggregateIngredients({}, TODAY, [
+      parsedRecipe('a', 'orzo', `${a} cup`, a, 'cup'),
+      parsedRecipe('b', 'orzo', `${b} cup`, b, 'cup'),
+    ])[0]);
+    expect(sum(0.75, 0.375)).toBe('1 1/8 cup');
+    expect(sum(0.1, 0.1)).toBe('0.2 cup');
+    expect(sum(0.01, 0.01)).toBe('0.02 cup');
+  });
   test('sums matching units: 12 oz + 8 oz → 20 oz', () => {
     const a = parsedRecipe('a', 'ground turkey', '12 oz', 12, 'oz');
     const b = parsedRecipe('b', 'ground turkey', '8 oz', 8, 'oz');

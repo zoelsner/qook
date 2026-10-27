@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -25,6 +25,9 @@ import type {
 
 import { FoodHeroImage } from '../../components/FoodHeroImage';
 import { recipeShareText } from './shareRecipeText';
+import { splitStepInstruction, stepAccessibilityLabel } from './stepPresentation';
+import { currentDetailRecipe } from './currentDetailRecipe';
+import { recipeCompletionAction } from './recipeCompletionAction';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
@@ -40,8 +43,10 @@ import { X, Bookmark, Share, Minus, Plus } from 'lucide-react-native';
 import { fontFamily, palette, spacing, typeScale } from '../../design';
 import { ENERGY_TIER_SUBTITLE } from '../../types/energy';
 import { api } from '../../services/api';
+import { recipeCompletion, adoptCompletedRecipe } from '../../services/completeRecipe';
 import { useHaptics } from '../../hooks/useHaptics';
-import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
+import { useWeekPlan } from '../../stores/weekPlan';
+import { selectedDayServings } from '../../stores/dayPlanSelection';
 import { useCookSession } from '../../stores/cookSession';
 import { scaledIngredientQuantity } from '../../lib/scaleQuantity';
 import { todayISO } from '../week/weekDates';
@@ -59,13 +64,34 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const { tap, press, select } = useHaptics();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { data: recipe, isLoading } = useQuery({
+  const { data: fetchedRecipe, isLoading, isError, refetch } = useQuery({
     queryKey: ['recipe', recipeId],
     queryFn: () => api.getRecipeById(recipeId),
     refetchOnMount: 'always',
     refetchInterval: (query) =>
       shouldPollRecipeArt(query.state.data) ? 2500 : false,
   });
+
+  const completion = useSyncExternalStore(recipeCompletion.subscribe, () => recipeCompletion.get(recipeId));
+  const recipe = useMemo(() => currentDetailRecipe(completion.recipe, fetchedRecipe), [completion.recipe, fetchedRecipe]);
+  const completionAction = recipeCompletionAction(recipe ?? undefined, completion);
+  const findFreshIdea = () => {
+    press();
+    // Open the existing discovery flow. Saved meals and portions stay intact.
+    router.replace('/(eat)/energy');
+  };
+  const finishRecipe = () => {
+    if (!recipe || completionAction === 'fresh-idea') return;
+    void recipeCompletion.complete(recipe).then(full => {
+      queryClient.setQueryData(['recipe', recipeId], full);
+      queryClient.setQueryData(['recipe', full.id], full);
+    }).catch(() => { /* The coordinator publishes the recovery guidance. */ });
+  };
+  useEffect(() => {
+    if (recipe?.contentStatus === 'proposal' && !recipe.generationError && completion.status === 'idle') {
+      void recipeCompletion.complete(recipe).then(full => queryClient.setQueryData(['recipe', recipeId], full)).catch(() => {});
+    }
+  }, [recipe, recipeId, completion.status, queryClient]);
 
   // Ensure art for any recipe the user actually opens (spotlight-first §1C):
   // 'pending' = never-requested proposal reaching detail; 'failed' = retry.
@@ -76,10 +102,10 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   // so the poll loop (gated by markRecipeArtRequested) restarts.
   const artFiredFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!recipe || artFiredFor.current === recipeId) return;
+    if (!recipe || artFiredFor.current === recipe.id) return;
     if (recipe.imageStatus === 'pending' || recipe.imageStatus === 'failed') {
-      artFiredFor.current = recipeId;
-      void api.requestRecipeImage(recipeId);
+      artFiredFor.current = recipe.id;
+      void api.requestRecipeImage(recipe.id);
       const t = setTimeout(
         () => queryClient.invalidateQueries({ queryKey: ['recipe', recipeId] }),
         1500,
@@ -88,22 +114,30 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
     }
   }, [recipe, recipeId, queryClient]);
 
+  useEffect(() => {
+    // Also repair persisted proposals from earlier sessions when their full
+    // recipe is opened; this never changes the chosen day or selected pick.
+    if (recipe?.contentStatus === 'full') adoptCompletedRecipe(recipeId, recipe);
+  }, [recipe, recipeId]);
+
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
-  const saved = savedRecipeIds.includes(recipeId);
+  const effectiveRecipeId = recipe?.id ?? recipeId;
+  const saved = savedRecipeIds.includes(effectiveRecipeId);
 
   // Checklist + serving override live in the persisted cook session so they
   // survive closing the modal mid-cook.
-  const cookState = useCookSession((s) => s.byRecipe[recipeId]);
+  const cookState = useCookSession((s) => s.byRecipe[effectiveRecipeId]);
   const toggleChecked = useCookSession((s) => s.toggleChecked);
   const setServings = useCookSession((s) => s.setServings);
   const checkedIds = cookState?.checked ?? EMPTY_CHECKED;
-  const servings = cookState?.servings ?? recipe?.servings ?? 2;
 
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const stageRecipeForShop = useWeekPlan((s) => s.stageRecipeForShop);
-  const todaysPick = useWeekPlan((s) => activePickFor(s.plan[todayISO()]));
-  const isTodaysPick = todaysPick?.id === recipeId;
+  const todayPlan = useWeekPlan((s) => s.plan[todayISO()]);
+  const isTodaysPick = todayPlan?.recipes?.[todayPlan.pickIndex ?? 0]?.id === effectiveRecipeId;
+  const servings = selectedDayServings(todayPlan, effectiveRecipeId) ?? cookState?.servings ?? recipe?.servings ?? 2;
+  const setDayServings = useWeekPlan((s) => s.setDayServings);
 
   const close = () => {
     tap();
@@ -113,7 +147,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const onCookTonight = () => {
     if (!recipe) return;
     press();
-    appendRecipeAndSelect(todayISO(), recipe);
+    appendRecipeAndSelect(todayISO(), recipe, servings);
     router.replace('/(tabs)/tonight');
   };
 
@@ -133,39 +167,13 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
   const onAddAllToList = () => {
     if (!recipe) return;
     press();
-    stageRecipeForShop(recipe);
-    router.push('/(tabs)/shop');
+    stageRecipeForShop(recipe, servings);
+    router.dismissTo('/(tabs)/shop');
   };
 
   return (
-    <View style={styles.root}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingBottom: 96 + insets.bottom + spacing.lg,
-        }}
-      >
-        {isLoading || !recipe ? (
-          <LoadingState />
-        ) : (
-          <RecipeBody
-            recipe={recipe}
-            checkedIds={checkedIds}
-            servings={servings}
-            onServingsChange={(n) => {
-              select();
-              setServings(recipeId, n);
-            }}
-            onToggleIngredient={(id) => {
-              select();
-              toggleChecked(recipeId, id);
-            }}
-            onAddAll={onAddAllToList}
-          />
-        )}
-      </ScrollView>
-
-      <SafeAreaView edges={['top']} style={styles.heroNav} pointerEvents="box-none">
+    <SafeAreaView edges={['top']} style={styles.root}>
+      <View style={styles.heroNav} pointerEvents="box-none">
         <View style={styles.heroNavInner}>
           <HeroPill onPress={close} accessibilityLabel="Close">
             <X size={16} color={palette.ink} strokeWidth={2.2} />
@@ -174,7 +182,7 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
             <HeroPill
               onPress={() => {
                 press();
-                toggleSavedRecipe(recipeId);
+                toggleSavedRecipe(effectiveRecipeId);
               }}
               accessibilityLabel={saved ? 'Unsave recipe' : 'Save recipe'}
             >
@@ -190,20 +198,69 @@ export function RecipeDetailModal({ recipeId }: RecipeDetailModalProps) {
             </HeroPill>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
+      <ScrollView
+        style={styles.recipeScroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: spacing.lg,
+        }}
+      >
+        {isLoading ? (
+          <LoadingState />
+        ) : isError || !recipe ? (
+          <View style={styles.section}>
+            <BodyText>Couldn’t load this recipe. Check your connection and try again.</BodyText>
+            <PolishedButton label="Try again" onPress={() => { void refetch(); }} />
+          </View>
+        ) : (
+          <RecipeBody
+            completionPanel={recipe.contentStatus === 'proposal' ? (
+              <View style={styles.completionPanel} accessibilityLiveRegion="polite">
+                <BodyText size={16} weight="semi">
+                  {completion.status === 'pending' ? 'Finishing your recipe…' : completionAction === 'fresh-idea' ? 'This dinner idea can’t be finished' : 'This recipe is unfinished'}
+                </BodyText>
+                <BodyText size={14}>
+                  {completion.status === 'pending' ? 'You can close this page and come back when it’s ready.' : completionAction === 'fresh-idea' ? 'Choose a fresh dinner idea to continue. Your saved meals will stay in your plan.' : completion.message ?? (recipe.generationError ? 'We couldn’t finish it. Check your connection and try again.' : 'Finish the recipe to see ingredients and cooking instructions.')}
+                </BodyText>
+                {completionAction === 'fresh-idea' ? (
+                  <PolishedButton label="Find a fresh idea" onPress={findFreshIdea} />
+                ) : completionAction === 'retry' ? (
+                  <PolishedButton label="Retry recipe" onPress={finishRecipe} />
+                ) : null}
+              </View>
+            ) : undefined}
+            recipe={recipe}
+            checkedIds={checkedIds}
+            servings={servings}
+            onServingsChange={(n) => {
+              select();
+              setServings(effectiveRecipeId, n);
+              if (isTodaysPick) setDayServings(todayISO(), n);
+            }}
+            onToggleIngredient={(id) => {
+              select();
+              toggleChecked(effectiveRecipeId, id);
+            }}
+            onAddAll={onAddAllToList}
+          />
+        )}
+      </ScrollView>
 
-      {recipe ? (
+
+      {recipe && recipe.contentStatus !== 'proposal' ? (
         <CookDock
           bottomInset={insets.bottom}
           isTodaysPick={isTodaysPick}
           onCook={onCookTonight}
         />
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
 function RecipeBody({
+  completionPanel,
   recipe,
   checkedIds,
   servings,
@@ -211,6 +268,7 @@ function RecipeBody({
   onToggleIngredient,
   onAddAll,
 }: {
+  completionPanel?: React.ReactNode;
   recipe: Recipe;
   checkedIds: Record<string, boolean>;
   servings: number;
@@ -218,7 +276,7 @@ function RecipeBody({
   onToggleIngredient: (id: string) => void;
   onAddAll: () => void;
 }) {
-  const ingredientCount = recipe.ingredients.reduce(
+  const ingredientCount = recipe.contentStatus === 'proposal' ? recipe.proposalIngredients?.length ?? 0 : recipe.ingredients.reduce(
     (acc, group) => acc + group.items.length,
     0
   );
@@ -271,17 +329,29 @@ function RecipeBody({
       </View>
 
       <View style={styles.statsSection}>
-        <MenuRow label="Active time" value={`${recipe.timeMinutes} min`} />
+        <MenuRow label="Estimated time" value={`${recipe.timeMinutes} min`} />
         <ServesStepperRow servings={servings} onChange={onServingsChange} />
         <MenuRow label="Ingredients" value={String(ingredientCount)} />
+        {recipe.nutritionalEstimate?.proteinG != null ? (
+          <BodyText size={12} color={palette.textSecondary}>
+            Protein is an estimate per serving.
+          </BodyText>
+        ) : null}
       </View>
 
+      {completionPanel}
+      {recipe.contentStatus !== 'proposal' ? (
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <Mono size={10} bold color={palette.accentDeep}>
             ingredients
           </Mono>
-          <Pressable hitSlop={6} onPress={onAddAll} accessibilityRole="button">
+          <Pressable
+            hitSlop={6}
+            onPress={onAddAll}
+            accessibilityRole="button"
+            accessibilityLabel={`Add all to list for ${servings} servings`}
+          >
             <BodyText
               size={12}
               weight="semi"
@@ -311,6 +381,8 @@ function RecipeBody({
         </View>
       </View>
 
+      ) : null}
+
       {recipe.steps.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
@@ -322,6 +394,11 @@ function RecipeBody({
             </Mono>
           </View>
           <View style={{ height: spacing.sm }} />
+          {factor !== 1 ? (
+            <BodyText size={14} color={palette.textSecondary} style={{ marginBottom: spacing.sm }}>
+              Ingredient amounts above serve {servings}. The method and timing below are for the original {recipe.servings} servings; use the amounts above and adjust your pan size as needed.
+            </BodyText>
+          ) : null}
           {recipe.steps.map((section, idx) => (
             <View
               key={`${section.title}-${idx}`}
@@ -331,7 +408,7 @@ function RecipeBody({
                 <DisplayText size={22} color={palette.accent} style={styles.moveNumeral}>
                   {String(idx + 1).padStart(2, '0')}
                 </DisplayText>
-                <DisplayText size={20} style={styles.stepTitle}>
+                <DisplayText size={20} style={styles.stepTitle} accessibilityRole="header">
                   {section.title}
                 </DisplayText>
               </View>
@@ -340,21 +417,23 @@ function RecipeBody({
                 {section.objective}
               </BodyText>
               <View style={{ height: spacing.sm }} />
-              {section.steps.map((step, si) => (
-                <View key={si} style={styles.substepRow}>
-                  <View style={styles.substepDot} />
-                  <View style={styles.substepBody}>
-                    <BodyText size={14} color={palette.ink}>
-                      {step.instruction}
-                    </BodyText>
-                    {step.durationMin ? (
-                      <Mono size={9} color={palette.textSecondary}>
-                        {step.durationMin} min
-                      </Mono>
-                    ) : null}
+              {section.steps.map((step, si) => {
+                const number = recipe.steps.slice(0, idx).reduce((count, part) => count + part.steps.length, 0) + si + 1;
+                const { lead, rest } = splitStepInstruction(step.instruction);
+                return (
+                  <View key={si} style={styles.substepRow} accessible
+                    accessibilityLabel={stepAccessibilityLabel(number, step.instruction, step.durationMin)}>
+                    <View style={styles.substepHeader}>
+                      <Mono size={11} bold color={palette.accentDeep}>Step {number}</Mono>
+                      {step.durationMin ? (
+                        <Mono size={11} color={palette.textSecondary}>~{step.durationMin} min</Mono>
+                      ) : null}
+                    </View>
+                    {lead ? <BodyText size={16} weight="semi" color={palette.ink}>{lead}</BodyText> : null}
+                    {rest ? <BodyText size={16} color={palette.ink}>{rest}</BodyText> : null}
                   </View>
-                </View>
-              ))}
+                );
+              })}
               {idx < recipe.steps.length - 1 ? (
                 <View style={{ marginTop: spacing.sm }}>
                   <PaintedDivider />
@@ -433,17 +512,21 @@ function IngredientRow({
       ]}
     >
       <SquareCheckbox checked={checked} size={22} />
-      <BodyText
-        size={16}
-        weight="semi"
-        color={checked ? palette.textSecondary : palette.ink}
-        style={[
-          styles.ingredientName,
-          checked ? { textDecorationLine: 'line-through' } : null,
-        ]}
-      >
-        {ingredient.item}
-      </BodyText>
+      <View style={styles.ingredientName}>
+        <BodyText
+          size={16}
+          weight="semi"
+          color={checked ? palette.textSecondary : palette.ink}
+          style={checked ? { textDecorationLine: 'line-through' } : undefined}
+        >
+          {ingredient.item}
+        </BodyText>
+        {ingredient.notes?.trim() ? (
+          <BodyText size={13} color={palette.textSecondary}>
+            {ingredient.notes}
+          </BodyText>
+        ) : null}
+      </View>
       {quantity ? (
         <Mono size={12} color={palette.textSecondary} style={styles.ingredientQty}>
           {quantity}
@@ -483,6 +566,7 @@ function ServesStepperRow({
           disabled={servings <= MIN_SERVINGS}
           onPress={() => onChange(servings - 1)}
           accessibilityLabel="Fewer servings"
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.stepperBtn,
             servings <= MIN_SERVINGS ? { opacity: 0.3 } : null,
@@ -499,6 +583,7 @@ function ServesStepperRow({
           disabled={servings >= MAX_SERVINGS}
           onPress={() => onChange(servings + 1)}
           accessibilityLabel="More servings"
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.stepperBtn,
             servings >= MAX_SERVINGS ? { opacity: 0.3 } : null,
@@ -606,7 +691,7 @@ function CookDock({
     <View
       style={[
         styles.cookDock,
-        { bottom: Math.max(bottomInset, spacing.sm) + spacing.sm },
+        { paddingBottom: Math.max(bottomInset, spacing.sm) + spacing.sm },
       ]}
     >
       {glassAvailable ? (
@@ -683,6 +768,8 @@ const EMPTY_CHECKED: Record<string, boolean> = {};
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.background },
+  recipeScroll: { flex: 1 },
+  completionPanel: { margin: spacing.lg, gap: spacing.sm },
   hero: {
     width: '100%',
     height: 340,
@@ -710,12 +797,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: palette.textSecondary,
   },
-  heroNav: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
+  heroNav: { backgroundColor: palette.background, paddingBottom: spacing.sm },
   heroNavInner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -846,18 +928,16 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   substepRow: {
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  substepHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
     gap: spacing.sm,
-    paddingVertical: 6,
   },
-  substepDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: palette.accent,
-    marginTop: 9,
-  },
-  substepBody: { flex: 1 },
   timelineRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -870,9 +950,8 @@ const styles = StyleSheet.create({
   },
   timelineBody: { flex: 1 },
   cookDock: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
+    paddingHorizontal: 12,
+    paddingTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

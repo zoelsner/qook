@@ -1,4 +1,5 @@
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { DishContractJsonSchema, DishContractSchema } from "./dish-contract.ts";
 
 // Grocery categories — must stay identical to the DB `grocery_category` enum
 // and the client GroceryCategory union.
@@ -226,7 +227,7 @@ export const RecipeJsonSchema = {
           fatG: { type: ["integer", "null"] },
         },
       },
-      notes: { type: ["string", "null"] },
+      notes: { type: ["string", "null"], maxLength: 300 },
     },
   },
 } as const;
@@ -296,6 +297,7 @@ export const Proposal = z.object({
   // High-level plan lines — 3 to 5 imperative sketch steps, not detailed
   // instructions (those are written at fill time).
   stepOutline: clampList(3, 5),
+  dishContract: DishContractSchema,
 });
 export type Proposal = z.infer<typeof Proposal>;
 
@@ -333,6 +335,7 @@ export const ProposalsEnvelopeJsonSchema = {
             "cuisine",
             "ingredientNames",
             "stepOutline",
+            "dishContract",
           ],
           properties: {
             title: { type: "string" },
@@ -345,6 +348,7 @@ export const ProposalsEnvelopeJsonSchema = {
             // after the stream.
             ingredientNames: { type: "array", items: { type: "string" } },
             stepOutline: { type: "array", items: { type: "string" } },
+            dishContract: DishContractJsonSchema,
           },
         },
       },

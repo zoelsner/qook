@@ -2,8 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { EnergyTier, Recipe } from '@qook/shared';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { recipeForServings } from '../lib/scaleQuantity';
 
 import { addDaysISO, todayISO, type ISODate } from '../features/week/weekDates';
+
+import { reconcileRecipeSnapshots } from './reconcileRecipeSnapshots';
+import { selectDayRecipe } from './dayPlanSelection';
+export { activePickFor } from './dayPlanSelection';
 
 const STAGING_TTL_DAYS = 7;
 
@@ -11,6 +16,7 @@ export interface DayPlan {
   energy?: EnergyTier;
   recipes?: Recipe[];
   pickIndex?: number;
+  servings?: number;
   selectedAt?: string;
   cookedAt?: string;
 }
@@ -18,6 +24,7 @@ export interface DayPlan {
 export interface StagedShopRecipe {
   recipe: Recipe;
   stagedAt: ISODate;
+  servings?: number;
 }
 
 interface WeekPlanState {
@@ -30,10 +37,12 @@ interface WeekPlanState {
   clearEnergy: (date: ISODate) => void;
   setRecipes: (date: ISODate, recipes: Recipe[]) => void;
   setPickIndex: (date: ISODate, idx: number) => void;
+  setDayServings: (date: ISODate, servings: number) => void;
   swapPick: (date: ISODate) => void;
   commitSelection: (date: ISODate) => void;
-  appendRecipeAndSelect: (date: ISODate, recipe: Recipe) => void;
-  stageRecipeForShop: (recipe: Recipe) => void;
+  appendRecipeAndSelect: (date: ISODate, recipe: Recipe, servings?: number) => void;
+  stageRecipeForShop: (recipe: Recipe, servings?: number) => void;
+  reconcileRecipe: (oldId: string, recipe: Recipe) => void;
   toggleSavedRecipe: (id: string) => void;
   remapSavedRecipe: (oldId: string, newId: string) => void;
   clearDay: (date: ISODate) => void;
@@ -75,7 +84,7 @@ export const useWeekPlan = create<WeekPlanState>()(
         set((state) => ({
           plan: {
             ...state.plan,
-            [date]: { ...state.plan[date], recipes, pickIndex: 0 },
+            [date]: selectDayRecipe(state.plan[date], recipes, 0),
           },
         })),
 
@@ -83,9 +92,16 @@ export const useWeekPlan = create<WeekPlanState>()(
         set((state) => ({
           plan: {
             ...state.plan,
-            [date]: { ...state.plan[date], pickIndex },
+            [date]: selectDayRecipe(state.plan[date], state.plan[date]?.recipes ?? [], pickIndex),
           },
         })),
+
+      setDayServings: (date, servings) =>
+        set((state) => {
+          const day = state.plan[date];
+          if (!day?.recipes?.[day.pickIndex ?? 0]) return state;
+          return { plan: { ...state.plan, [date]: selectDayRecipe(day, day.recipes, day.pickIndex ?? 0, servings) } };
+        }),
 
       swapPick: (date) => {
         const day = get().plan[date];
@@ -94,7 +110,7 @@ export const useWeekPlan = create<WeekPlanState>()(
         set((state) => ({
           plan: {
             ...state.plan,
-            [date]: { ...state.plan[date], pickIndex: next },
+            [date]: selectDayRecipe(state.plan[date], day.recipes!, next),
           },
         }));
       },
@@ -110,7 +126,7 @@ export const useWeekPlan = create<WeekPlanState>()(
           },
         })),
 
-      appendRecipeAndSelect: (date, recipe) => {
+      appendRecipeAndSelect: (date, recipe, servings) => {
         const existing = get().plan[date];
         const selectedAt = new Date().toISOString();
 
@@ -119,9 +135,7 @@ export const useWeekPlan = create<WeekPlanState>()(
             plan: {
               ...state.plan,
               [date]: {
-                ...state.plan[date],
-                recipes: [recipe],
-                pickIndex: 0,
+                ...selectDayRecipe(state.plan[date], [recipe], 0, servings),
                 selectedAt,
               },
             },
@@ -139,11 +153,9 @@ export const useWeekPlan = create<WeekPlanState>()(
             plan: {
               ...state.plan,
               [date]: {
-                ...state.plan[date],
-                recipes: state.plan[date]!.recipes!.map((item, i) =>
+                ...selectDayRecipe(state.plan[date], state.plan[date]!.recipes!.map((item, i) =>
                   i === existingIndex ? recipe : item
-                ),
-                pickIndex: existingIndex,
+                ), existingIndex, servings),
                 selectedAt,
               },
             },
@@ -156,16 +168,17 @@ export const useWeekPlan = create<WeekPlanState>()(
           plan: {
             ...state.plan,
             [date]: {
-              ...state.plan[date],
-              recipes: mergedRecipes,
-              pickIndex: mergedRecipes.length - 1,
+              ...selectDayRecipe(state.plan[date], mergedRecipes, mergedRecipes.length - 1, servings),
               selectedAt,
             },
           },
         }));
       },
 
-      stageRecipeForShop: (recipe) => {
+      reconcileRecipe: (oldId, recipe) =>
+        set((state) => reconcileRecipeSnapshots(state, oldId, recipe)),
+
+      stageRecipeForShop: (recipe, servings = recipe.servings) => {
         const today = todayISO();
         const cutoff = addDaysISO(today, -STAGING_TTL_DAYS);
         set((state) => ({
@@ -173,7 +186,7 @@ export const useWeekPlan = create<WeekPlanState>()(
             ...state.shopStaging.filter(
               (staged) => staged.stagedAt >= cutoff && staged.recipe.id !== recipe.id,
             ),
-            { recipe, stagedAt: today },
+            { recipe, stagedAt: today, servings },
           ],
         }));
       },
@@ -282,15 +295,11 @@ export function recentSelectedDays(
     .slice(0, limit);
 }
 
-export function activePickFor(day: DayPlan | undefined): Recipe | null {
-  if (!day?.recipes?.length) return null;
-  return day.recipes[day.pickIndex ?? 0] ?? null;
-}
-
 export function activeStagedRecipes(
   staging: StagedShopRecipe[],
   todayIso: ISODate,
 ): Recipe[] {
   const cutoff = addDaysISO(todayIso, -STAGING_TTL_DAYS);
-  return staging.filter((item) => item.stagedAt >= cutoff).map((item) => item.recipe);
+  return staging.filter((item) => item.stagedAt >= cutoff)
+    .map((item) => recipeForServings(item.recipe, item.servings ?? item.recipe.servings));
 }

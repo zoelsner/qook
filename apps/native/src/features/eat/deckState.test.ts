@@ -67,6 +67,18 @@ describe('deckState', () => {
     s = reconcileKept(s, 'a', r('full-a'));
     expect(s.kept.map((x) => x.id)).toEqual(['full-a']);
   });
+  test('completion after benching refreshes the visible bench and passed snapshots', () => {
+    const proposal = { ...r('a'), contentStatus: 'proposal' } as Recipe;
+    const full = { ...r('cached-a'), contentStatus: 'full' } as Recipe;
+    let s = addToBench(keepAt(initDeck([proposal])), [proposal]);
+    s = { ...s, passed: [proposal], nextHand: [proposal] };
+    s = reconcileKept(s, proposal.id, full);
+    expect(benchCards(s)).toEqual([full]);
+    expect(s.passed).toEqual([full]);
+    expect(s.nextHand).toEqual([full]);
+    expect(s.proposals).toEqual([full]);
+    expect(s.kept).toEqual([]);
+  });
 });
 
 describe('deckState session tracking', () => {

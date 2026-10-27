@@ -1,5 +1,5 @@
 import { assert } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { buildImagePrompt, buildPlateDescriptionRequest } from "./image.ts";
+import { buildImagePrompt } from "./image.ts";
 
 Deno.test("image prompt carries the v5 composition + style directives", () => {
   const p = buildImagePrompt({ title: "Miso-Butter Salmon" });
@@ -26,7 +26,7 @@ Deno.test("image prompt names the actual ingredients and pins their form", () =>
     ],
   });
   assert(p.includes("The dish is made of: ground beef, jasmine rice."));
-  assert(/ground meat stays crumbled/i.test(p));
+  assert(/cooking method to determine its final form/i.test(p));
 });
 
 Deno.test("image prompt falls back to the skeleton ingredient names", () => {
@@ -52,56 +52,49 @@ Deno.test("image prompt survives missing or malformed ingredient groups", () => 
   assert(!malformed.includes("The dish is made of"));
 });
 
-Deno.test("plate spec replaces the raw ingredient list when present", () => {
+Deno.test("saved dish components pin exact prepared forms and colors", () => {
   const p = buildImagePrompt({
-    title: "Miso Tuna Edamame Rice Bowl",
-    ingredientGroups: [
-      { title: "main", items: [{ item: "canned tuna" }] },
-    ],
-    plateSpec: {
+    title: "Turkey Meatball Black Rice",
+    proposalIngredients: ["ground turkey", "black rice", "feta"],
+    dishContract: {
+      version: 1,
       components: [
-        "glazed flaked tuna, lacquered amber",
-        "bright green edamame beans",
+        { ingredientNames: ["ground turkey"], form: "round turkey meatballs", appearance: "deep amber browned crust" },
+        { ingredientNames: ["black rice"], form: "cooked black rice grains", appearance: "glossy purple-black grains" },
+        { ingredientNames: ["feta"], form: "crumbled feta", appearance: "small white crumbles" },
       ],
-      plating:
-        "Flaked tuna spills off a high mound of white rice, edamame tumbling down one side.",
+      plating: "Meatballs lean over a loose mound of rice with feta scattered off-centre.",
     },
   });
-  assert(p.includes("The finished dish, as plated: Flaked tuna spills"));
-  assert(p.includes("glazed flaked tuna, lacquered amber; bright green edamame beans"));
+  assert(p.includes("round turkey meatballs: deep amber browned crust (made from ground turkey)"));
+  assert(p.includes("glossy purple-black grains"));
+  assert(p.includes("small white crumbles"));
   assert(/individually visible and painted in exactly this form/i.test(p));
-  assert(!p.includes("The dish is made of")); // no double ingredient signal
+  assert(/component identities, forms and colors above are authoritative/i.test(p));
+  assert(!p.includes("Grains and starches are bright warm white"));
+  assert(p.includes("Sauces retain their actual color, including white yogurt"));
+  assert(!p.includes("NEVER muted, dusty, grey, beige"));
+  assert(!p.includes("ground meat stays crumbled"));
+  assert(!p.includes("The dish is made of"));
 });
 
-Deno.test("plate description request carries dish, ingredients, and method", () => {
-  const req = buildPlateDescriptionRequest({
+Deno.test("legacy full recipe image includes actual method with no text-model description", () => {
+  const p = buildImagePrompt({
     title: "Gochujang Beef Rice Bowls",
-    ingredientGroups: [
-      { title: "main", items: [{ item: "ground beef" }, { item: "jasmine rice" }] },
-    ],
-    workflowSections: [
-      {
-        title: "cook",
-        objective: "brown the beef",
-        steps: [{ instruction: "Brown the ground beef, breaking it up.", durationMin: 6 }],
-      },
-    ],
+    ingredientGroups: [{ items: [{ item: "ground beef" }, { item: "jasmine rice" }] }],
+    workflowSections: [{ steps: [{ instruction: "Brown the beef, breaking it into crumbles." }] }],
   });
-  assert(req.includes("Dish: Gochujang Beef Rice Bowls"));
-  assert(req.includes("Ingredients: ground beef, jasmine rice"));
-  assert(req.includes("Method: Brown the ground beef"));
-  assert(/`components`: 3 to 5 strings/i.test(req));
-  assert(/Forbidden everywhere/i.test(req));
+  assert(p.includes("The dish is made of: ground beef, jasmine rice"));
+  assert(p.includes("Cooking method (use this to determine finished forms): Brown the beef"));
 });
 
-Deno.test("plate description request falls back to the skeleton columns", () => {
-  const req = buildPlateDescriptionRequest({
+Deno.test("legacy proposal fallback preserves its cooked transformation", () => {
+  const p = buildImagePrompt({
     title: "Harissa Turkey Meatball Couscous",
-    ingredientGroups: [],
-    workflowSections: [],
+    ingredientGroups: [], workflowSections: [],
     proposalIngredients: ["ground turkey", "harissa", "couscous"],
-    proposalSteps: ["roll and brown the meatballs", "steam the couscous"],
+    proposalSteps: ["Roll turkey into meatballs", "Brown meatballs", "Steam couscous"],
   });
-  assert(req.includes("Ingredients: ground turkey, harissa, couscous"));
-  assert(req.includes("Method: roll and brown the meatballs steam the couscous"));
+  assert(p.includes("Roll turkey into meatballs Brown meatballs Steam couscous"));
+  assert(!p.includes("ground meat stays crumbled"));
 });

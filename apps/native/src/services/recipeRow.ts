@@ -1,6 +1,7 @@
 import type {
   ContentStatus,
   DietaryTag,
+  DishContract,
   EnergyTier,
   GroceryCategory,
   Ingredient,
@@ -123,6 +124,37 @@ function toTimestamp(value: unknown): Timestamp {
   return (Number.isNaN(parsed) ? Date.now() : parsed) as Timestamp;
 }
 
+// Mirrors the edge DishContractSchema without adding a runtime dependency to
+// the app. Malformed/older metadata is omitted; the server remains authoritative.
+function readDishContract(value: unknown): DishContract | undefined {
+  const object = (v: unknown, keys: string[]): Record<string, unknown> | undefined => {
+    if (v === null || typeof v !== 'object' || Array.isArray(v)) return undefined;
+    const fields = Object.keys(v);
+    return fields.length === keys.length && fields.every(key => keys.includes(key))
+      ? v as Record<string, unknown> : undefined;
+  };
+  const text = (v: unknown, max: number): string | undefined =>
+    typeof v === 'string' && v.trim().length > 0 && v.trim().length <= max
+      ? v.trim() : undefined;
+  const root = object(value, ['version', 'components', 'plating']);
+  if (!root || root.version !== 1 || !Array.isArray(root.components) ||
+      root.components.length < 1 || root.components.length > 6) return undefined;
+  const plating = text(root.plating, 240);
+  if (!plating) return undefined;
+  const components: DishContract['components'] = [];
+  for (const component of root.components) {
+    const item = object(component, ['ingredientNames', 'form', 'appearance']);
+    if (!item || !Array.isArray(item.ingredientNames) ||
+        item.ingredientNames.length < 1 || item.ingredientNames.length > 12) return undefined;
+    const ingredientNames = item.ingredientNames.map(name => text(name, 120));
+    const form = text(item.form, 120);
+    const appearance = text(item.appearance, 160);
+    if (ingredientNames.some(name => name === undefined) || !form || !appearance) return undefined;
+    components.push({ ingredientNames: ingredientNames as string[], form, appearance });
+  }
+  return { version: 1, components, plating };
+}
+
 // Maps a raw `public.recipes` DB row (snake_case) to the client Recipe
 // shape. `mealImagesBase` is the fully-qualified public storage URL prefix
 // for the `meal-images` bucket (e.g. `${supabaseUrl}/storage/v1/object/public/meal-images`).
@@ -135,6 +167,7 @@ export function dbRowToRecipe(
   const signature = String(row.signature ?? '');
   const ownerId = row.user_id != null ? String(row.user_id) : undefined;
   const tags = Array.isArray(row.tags) ? row.tags.map(String) : [];
+  const dishContract = readDishContract(row.dish_contract);
   // DB nutrition {calories, proteinG, carbG, fatG} → client
   // NutritionalEstimate (note carbsG spelling + required source).
   const n = row.nutrition as
@@ -189,6 +222,7 @@ export function dbRowToRecipe(
     ownerId,
     imageStatus: String(row.image_status ?? 'pending') as ImageStatus,
     contentStatus: (String(row.content_status ?? 'full')) as ContentStatus,
+    ...(row.generation_error ? { generationError: String(row.generation_error) } : {}),
     ...(row.hook != null ? { hook: String(row.hook) } : {}),
     ...(Array.isArray(row.proposal_ingredients) && row.proposal_ingredients.length
       ? { proposalIngredients: row.proposal_ingredients.map(String) }
@@ -196,6 +230,7 @@ export function dbRowToRecipe(
     ...(Array.isArray(row.proposal_steps) && row.proposal_steps.length
       ? { proposalSteps: row.proposal_steps.map(String) }
       : {}),
+    ...(dishContract ? { dishContract } : {}),
     source: String(row.source ?? 'ai') as RecipeSource,
     createdAt: toTimestamp(row.created_at),
     updatedAt: toTimestamp(row.updated_at),

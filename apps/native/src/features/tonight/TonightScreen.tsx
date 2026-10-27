@@ -1,3 +1,4 @@
+import { useToday } from '../../hooks/useToday';
 import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -26,7 +27,6 @@ import {
 import { useGenerationSession } from '../../stores/generationSession';
 import { usePrefs } from '../../stores/prefs';
 import {
-  todayISO,
   upcomingDays,
   formatDayShort,
   type ISODate,
@@ -42,7 +42,7 @@ export function TonightScreen() {
   const startGeneration = useGenerationSession((s) => s.start);
   const defaultTier = usePrefs((s) => s.defaultTier);
 
-  const today = todayISO();
+  const today = useToday();
   const todayPlan = plan[today];
   const todayPick = activePickFor(todayPlan);
   const upcoming = upcomingDays(4, today).slice(1); // next 3 days after today
@@ -88,6 +88,7 @@ export function TonightScreen() {
   return (
     <ScreenShell horizontalPadding={24}>
       <TonightHeader
+        today={today}
         hasPick={Boolean(todayPick)}
         pickIndex={pickIndex}
         totalPicks={recipes.length}
@@ -123,10 +124,12 @@ export function TonightScreen() {
 }
 
 function TonightHeader({
+  today,
   hasPick,
   pickIndex,
   totalPicks,
 }: {
+  today: ISODate;
   hasPick: boolean;
   pickIndex: number;
   totalPicks: number;
@@ -137,7 +140,7 @@ function TonightHeader({
       : totalPicks === 1
         ? 'READY TO COOK'
         : 'NOTHING YET';
-  const { weekday, month, day } = formatDayShort(todayISO());
+  const { weekday, month, day } = formatDayShort(today);
   return (
     <View style={styles.headerBlock}>
       <View style={styles.masthead}>
@@ -189,7 +192,7 @@ function HeroEmpty({ onFind }: { onFind: () => void }) {
       </DisplayText>
       <View style={{ height: spacing.xs }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
-        Tell us your energy, we&rsquo;ll deal a hand of five dinners in about 15 seconds.
+        Tell us your energy, we&rsquo;ll deal a hand of five dinners.
       </BodyText>
       <View style={{ height: spacing.md }} />
       <PolishedButton
@@ -271,9 +274,14 @@ function HeroPopulated({
       </Pressable>
 
       <View style={{ height: spacing.md }} />
-      <MenuRow label="Active time" value={`${pick.timeMinutes} min`} />
+      <MenuRow label="Estimated time" value={`${pick.timeMinutes} min`} />
       <MenuRow label="Serves" value={String(pick.servings)} />
       <MenuRow label="Cuisine" value={pick.cuisine} />
+      {protein != null ? (
+        <BodyText size={12} color={palette.textSecondary}>
+          Protein is an estimate per serving.
+        </BodyText>
+      ) : null}
 
       <View style={{ height: spacing.md }} />
       <PolishedButton

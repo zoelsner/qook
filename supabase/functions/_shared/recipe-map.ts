@@ -1,4 +1,5 @@
 import type { Recipe } from "./schema.ts";
+import { DishContractSchema, type DishContract } from "./dish-contract.ts";
 
 // The DB `ingredient_groups`/`workflow_sections` jsonb columns store the edge
 // Recipe schema's shapes verbatim (toRecipeInsert does not transform them),
@@ -56,9 +57,11 @@ export type ClientRecipe = {
   ownerId?: string;
   imageStatus: string;
   contentStatus: string;
+  generationError?: string;
   hook?: string;
   proposalIngredients?: string[];
   proposalSteps?: string[];
+  dishContract?: DishContract;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -117,10 +120,8 @@ export function toRecipeInsert(r: Recipe, signature: string) {
   };
 }
 
-// Phase-1 skeleton row: title + hook + protein estimate only. No signature
-// (computed at fill time), empty ingredient/workflow arrays (DB defaults),
-// image_status 'pending' so the client can fire art immediately (the image
-// prompt is title-only). content_status 'proposal' flags it as not-yet-written.
+// Phase-1 stores the dish identity before art starts. Full ingredients and
+// workflow arrive later; the public contract stays fixed across both stages.
 export function toSkeletonInsert(
   p: {
     title: string;
@@ -130,6 +131,7 @@ export function toSkeletonInsert(
     hook: string;
     ingredientNames: string[];
     stepOutline: string[];
+    dishContract?: DishContract;
   },
   tier: string,
   serves: number,
@@ -147,6 +149,7 @@ export function toSkeletonInsert(
     hook: p.hook,
     proposal_ingredients: p.ingredientNames,
     proposal_steps: p.stepOutline,
+    dish_contract: p.dishContract == null ? null : DishContractSchema.parse(p.dishContract),
     nutrition: { calories: null, proteinG: p.proteinG, carbG: null, fatG: null },
     source: "ai" as const,
     image_status: "pending" as const,
@@ -155,7 +158,8 @@ export function toSkeletonInsert(
 
 // Phase-2 fill: promote a skeleton row to a full recipe IN PLACE. Deliberately
 // omits user_id (stays null / global cache) and image_status (art was fired
-// independently at deal time — must not be reset). Sets content_status 'full'
+// independently at deal time — must not be reset) and dish_contract (the
+// immutable identity already used to paint it). Sets content_status 'full'
 // and clears any prior generation_error.
 export function toFillUpdate(r: Recipe, signature: string) {
   return {
@@ -253,6 +257,7 @@ export function dbRowToClientRecipe(
   const ownerId = row.user_id != null ? String(row.user_id) : undefined;
   const rowTags = Array.isArray(row.tags) ? row.tags.map(String) : [];
   const tags = rowTags.length ? rowTags : modelTags;
+  const dish = DishContractSchema.safeParse(row.dish_contract);
   // DB nutrition {calories, proteinG, carbG, fatG} → client
   // NutritionalEstimate (note carbsG spelling + required source).
   const n = row.nutrition as
@@ -299,6 +304,7 @@ export function dbRowToClientRecipe(
     ownerId,
     imageStatus: String(row.image_status ?? "pending"),
     contentStatus: String(row.content_status ?? "full"),
+    ...(row.generation_error ? { generationError: String(row.generation_error) } : {}),
     ...(row.hook != null ? { hook: String(row.hook) } : {}),
     ...(Array.isArray(row.proposal_ingredients) && row.proposal_ingredients.length
       ? { proposalIngredients: row.proposal_ingredients.map(String) }
@@ -306,6 +312,7 @@ export function dbRowToClientRecipe(
     ...(Array.isArray(row.proposal_steps) && row.proposal_steps.length
       ? { proposalSteps: row.proposal_steps.map(String) }
       : {}),
+    ...(dish.success ? { dishContract: dish.data } : {}),
     source: String(row.source ?? "ai"),
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),

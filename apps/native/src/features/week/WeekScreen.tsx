@@ -1,3 +1,4 @@
+import { useToday } from '../../hooks/useToday';
 import { ArrowRight, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -16,7 +17,7 @@ import { taggedFutureOrTodayDays, useWeekPlan } from '../../stores/weekPlan';
 import type { ResetNight } from '../eat/weekReset';
 import { DaySheet } from './DaySheet';
 import { DayRow } from './DayRow';
-import { formatDayShort, upcomingDays, todayISO, type ISODate } from './weekDates';
+import { formatDayShort, upcomingDays, type ISODate } from './weekDates';
 
 const BENCH_NOTICE_TIMEOUT_MS = 8000;
 
@@ -38,7 +39,7 @@ export function WeekScreen() {
     return () => clearTimeout(id);
   }, [benchNotice, setBenchNotice]);
 
-  const today = todayISO();
+  const today = useToday();
   const days = upcomingDays(7, today);
   const tagged = taggedFutureOrTodayDays(plan, today);
 

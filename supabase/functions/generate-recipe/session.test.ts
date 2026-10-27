@@ -57,3 +57,14 @@ Deno.test("finishSession swallows a thrown error without throwing", async () => 
   } as any;
   await finishSession(admin, "session-4", "failed");
 });
+
+Deno.test("finishSession diagnostics omit private database messages and transport errors", async () => {
+  const original = console.error; const logs: string[] = [];
+  console.error = (...args) => logs.push(args.join(" "));
+  try {
+    await finishSession(fakeAdmin({ code: "42501", message: "PRIVATE identity", details: "PRIVATE recipe" }), "PRIVATE-session", "failed");
+    await finishSession({ from() { throw new Error("PRIVATE URL"); } }, "PRIVATE-session", "ready");
+    assertEquals(logs.some(l => l.includes("PRIVATE")), false);
+    assertEquals(logs.map(l => JSON.parse(l).stage), ["session_failure", "session_completion"]);
+  } finally { console.error = original; }
+});

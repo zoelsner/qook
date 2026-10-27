@@ -30,3 +30,15 @@ Deno.test("buildLiveContext tolerates null prefs", () => {
   assertEquals(ctx.preferredProteins, []);
   assertEquals(ctx.voiceContext, undefined);
 });
+
+Deno.test("microwave and low-effort appliances survive preference filtering", () => {
+  const ctx = buildLiveContext("brain-is-fried", {
+    cooking_tools: ["microwave", "toaster", "kettle", "air fryer"],
+  }, undefined);
+  assertEquals(ctx.kitchenTools, [
+    "microwave",
+    "toaster",
+    "kettle",
+    "air fryer",
+  ]);
+});

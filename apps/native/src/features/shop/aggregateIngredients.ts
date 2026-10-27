@@ -6,6 +6,7 @@ import {
 
 import type { ISODate } from '../week/weekDates';
 import type { DayPlan } from '../../stores/weekPlan';
+import { activePickFor } from '../../stores/dayPlanSelection';
 
 export interface ShopItem {
   key: string;
@@ -28,13 +29,11 @@ export interface ShopItem {
  * - When `parsed` is missing, we fall back to lowercased `item` as the key and
  *   `'Other'` as the category.
  *
- * We do NOT attempt unit arithmetic (2 lb + 1 lb → 3 lb) in v1. We concat
- * distinct quantity strings and surface `recipeCount` so the user can infer
- * total demand.
+ * Sum parsed amounts only when units agree; otherwise preserve quantity text.
  *
  * Recipes staged by "Add all to list" are included without changing the
  * user's selected Tonight/Week meals. A staged recipe already present as an
- * active pick is deduplicated by recipe id.
+ * active pick overrides its shopping quantities without adding an occurrence.
  */
 /**
  * The distinct meals feeding the shopping list — the source list for the
@@ -49,17 +48,18 @@ export function collectShopMeals(
 ): Recipe[] {
   const meals: Recipe[] = [];
   const seen = new Set<string>();
+  const stagedById = new Map(staged.map((recipe) => [recipe.id, recipe]));
   const dates = Object.keys(plan).sort() as ISODate[];
   for (const date of dates) {
     if (date < todayIso) continue;
     const day = plan[date];
-    const pick = day.recipes?.[day.pickIndex ?? 0];
+    const pick = activePickFor(day);
     if (pick && !seen.has(pick.id)) {
       seen.add(pick.id);
-      meals.push(pick);
+      meals.push(stagedById.get(pick.id) ?? pick);
     }
   }
-  for (const recipe of staged) {
+  for (const recipe of stagedById.values()) {
     if (!seen.has(recipe.id)) {
       seen.add(recipe.id);
       meals.push(recipe);
@@ -80,14 +80,15 @@ export function aggregateIngredients(
   const sums = new Map<string, { amount: number; unit: string | null }[] | null>();
 
   const picks: Recipe[] = [];
+  const stagedById = new Map(staged.map((recipe) => [recipe.id, recipe]));
   for (const [date, day] of Object.entries(plan)) {
     if (date < todayIso) continue;
-    const pick = day.recipes?.[day.pickIndex ?? 0];
-    if (pick) picks.push(pick);
+    const pick = activePickFor(day);
+    if (pick) picks.push(stagedById.get(pick.id) ?? pick);
   }
 
   const pickedIds = new Set(picks.map((pick) => pick.id));
-  for (const recipe of staged) {
+  for (const recipe of stagedById.values()) {
     if (!pickedIds.has(recipe.id)) picks.push(recipe);
   }
 
@@ -165,19 +166,23 @@ export function aggregateIngredients(
 // 0.5 → "1/2", 1.5 → "1 1/2"; anything not near a kitchen fraction keeps
 // two decimals at most.
 const KITCHEN_FRACTIONS: [number, string][] = [
+  [1 / 8, '1/8'],
   [1 / 4, '1/4'],
   [1 / 3, '1/3'],
+  [3 / 8, '3/8'],
   [1 / 2, '1/2'],
+  [5 / 8, '5/8'],
   [2 / 3, '2/3'],
   [3 / 4, '3/4'],
+  [7 / 8, '7/8'],
 ];
 
 function formatAmount(value: number): string {
   const whole = Math.floor(value);
   const frac = value - whole;
-  if (frac < 0.02) return String(whole);
+  if (frac < 0.000001) return String(whole);
   for (const [target, label] of KITCHEN_FRACTIONS) {
-    if (Math.abs(frac - target) < 0.02) {
+    if (Math.abs(frac - target) <= 0.005) {
       return whole > 0 ? `${whole} ${label}` : label;
     }
   }

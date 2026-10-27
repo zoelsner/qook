@@ -96,10 +96,16 @@ export function setCookTonight(state: DeckState, id: string): DeckState {
 // redirect) and now carries the full body — swap it in so allocation writes the
 // full recipe and points at the surviving row. Also repoints cookTonightId.
 export function reconcileKept(state: DeckState, oldId: string, recipe: Recipe): DeckState {
+  const replace = (r: Recipe) => r.id === oldId || r.id === recipe.id ? recipe : r;
   return {
     ...state,
-    kept: state.kept.map((r) => (r.id === oldId ? recipe : r)),
+    proposals: state.proposals.map(replace),
+    kept: state.kept.map(replace),
+    passed: state.passed.map(replace),
+    bench: state.bench.map(replace),
+    nextHand: state.nextHand?.map(replace) ?? null,
     cookTonightId: state.cookTonightId === oldId ? recipe.id : state.cookTonightId,
+    encoreId: state.encoreId === oldId ? recipe.id : state.encoreId,
   };
 }
 

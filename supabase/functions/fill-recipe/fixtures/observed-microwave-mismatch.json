@@ -1,0 +1,142 @@
+{
+  "contract": {
+    "title": "Microwave Shakshuka Eggs",
+    "tier": "brain-is-fried",
+    "servings": 2,
+    "maxMinutes": 12,
+    "ingredients": [
+      "eggs",
+      "tomato sauce",
+      "feta",
+      "smoked paprika",
+      "flatbread"
+    ],
+    "steps": [
+      "Season tomato sauce with smoked paprika",
+      "Microwave sauce until bubbling",
+      "Crack eggs over the sauce",
+      "Microwave until whites set",
+      "Serve with feta and flatbread"
+    ]
+  },
+  "recipe": {
+    "title": "Microwave Shakshuka Eggs",
+    "cuisine": "Middle Eastern-inspired",
+    "tier": "brain-is-fried",
+    "tags": [
+      "quick",
+      "one-pan",
+      "eggs-for-dinner",
+      "vegetarian"
+    ],
+    "timeMinutes": 15,
+    "servings": 2,
+    "ingredientGroups": [
+      {
+        "title": "Shakshuka",
+        "role": "main",
+        "items": [
+          {
+            "item": "tomato sauce",
+            "quantity": "1 1/2 cups",
+            "notes": "plain or lightly seasoned",
+            "parsed": {
+              "canonical_name": "tomato sauce",
+              "canonical_key": "tomato_sauce",
+              "category": "Pantry",
+              "amount": 1.5,
+              "unit": "cup"
+            }
+          },
+          {
+            "item": "smoked paprika",
+            "quantity": "1/2 tsp",
+            "parsed": {
+              "canonical_name": "smoked paprika",
+              "canonical_key": "smoked_paprika",
+              "category": "Pantry",
+              "amount": 0.5,
+              "unit": "tsp"
+            }
+          },
+          {
+            "item": "eggs",
+            "quantity": "4",
+            "notes": "large",
+            "parsed": {
+              "canonical_name": "eggs",
+              "canonical_key": "eggs",
+              "category": "Protein",
+              "amount": 4,
+              "unit": "count"
+            }
+          },
+          {
+            "item": "feta",
+            "quantity": "1/2 cup",
+            "notes": "crumbled",
+            "parsed": {
+              "canonical_name": "feta",
+              "canonical_key": "feta",
+              "category": "Dairy",
+              "amount": 0.5,
+              "unit": "cup"
+            }
+          },
+          {
+            "item": "flatbread",
+            "quantity": "2",
+            "notes": "for serving",
+            "parsed": {
+              "canonical_name": "flatbread",
+              "canonical_key": "flatbread",
+              "category": "Bakery",
+              "amount": 2,
+              "unit": "count"
+            }
+          }
+        ]
+      }
+    ],
+    "workflowSections": [
+      {
+        "title": "Warm the smoky sauce",
+        "objective": "Season and bubble the tomato base in one skillet.",
+        "steps": [
+          {
+            "instruction": "Pour the tomato sauce into a covered skillet and stir in the smoked paprika. Set over medium heat and warm until the sauce is visibly bubbling across the surface, 4 minutes.",
+            "durationMin": 4
+          }
+        ]
+      },
+      {
+        "title": "Cook the eggs",
+        "objective": "Set the whites while keeping the yolks jammy.",
+        "steps": [
+          {
+            "instruction": "Make 4 shallow wells in the bubbling sauce and crack 1 egg into each well. Cover the skillet and cook over medium-low heat until the whites are opaque and set at the edges while the yolks still jiggle when the skillet is gently nudged, 5 minutes.",
+            "durationMin": 5
+          },
+          {
+            "instruction": "Scatter the feta around the eggs, cover again, and cook until the feta edges are hot and lightly bubbling and the egg whites are fully set, 2 minutes. Remove from the heat and rest until the yolks thicken slightly but remain jammy, 1 minute.",
+            "durationMin": 3
+          }
+        ]
+      },
+      {
+        "title": "Serve",
+        "objective": "Finish with warm flatbread for scooping.",
+        "steps": [
+          {
+            "instruction": "Warm the flatbread in a dry skillet over medium heat until flexible and lightly toasted in spots, 1 minute per side. Serve immediately with the eggs and smoky sauce, keeping the yolks intact for dipping.",
+            "durationMin": 2
+          }
+        ]
+      }
+    ],
+    "nutrition": {
+      "proteinG": 23
+    },
+    "notes": "For the best jammy yolks, stop cooking as soon as the whites are opaque and gently set; carryover heat will finish them. Total stovetop time is 14 minutes."
+  }
+}

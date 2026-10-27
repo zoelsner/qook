@@ -54,11 +54,9 @@ async function makeNonce(): Promise<{ raw: string; hashed: string }> {
  * backfills auth.users.email from the Apple identity and flips is_anonymous to
  * false — so the quota ledger and profile row carry over.
  *
- * Every failure falls through to signInWithIdToken(), which signs into (or
- * creates) the Apple-owned user. That is safe: all recipe rows are global-cache
- * rows (recipes.user_id IS NULL), meal art is a public bucket, and every piece
- * of user-visible state is device-local AsyncStorage. Nothing the user can see
- * is tied to the Supabase user id.
+ * Existing-identity conflicts fall back to the Apple-owned account. Other
+ * errors keep the guest session intact and let the caller offer a retry.
+ * Local saved meals and preferences remain on this device in either case.
  */
 export async function signInWithApple(): Promise<AppleSignInResult> {
   const { raw, hashed } = await makeNonce();
@@ -78,7 +76,8 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   }
   if (!credential.identityToken) throw new Error('apple_no_identity_token');
 
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
   if (sessionData.session?.user.is_anonymous) {
     const { error: linkError } = await supabase.auth.linkIdentity({
       provider: 'apple',
@@ -86,6 +85,9 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
       nonce: raw,
     });
     if (!linkError) return 'ok';
+    if (linkError.code !== 'identity_already_exists' && linkError.code !== 'email_exists') {
+      throw linkError;
+    }
     // Expected: 'identity_already_exists' (this Apple ID already owns an
     // account — returning user on a fresh install) or 'email_exists'.
     if (__DEV__) console.warn('[auth] link failed → sign in', linkError.code, linkError.message);
@@ -100,20 +102,23 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   return 'ok';
 }
 
-export type EmailAuthResult = 'ok';
+export type EmailAuthResult = 'ok' | 'confirmation_required';
 
 /** Create an account. Upgrades the anonymous session in place when there is
- *  one, so the user id (and its quota ledger) survives. Requires the project's
- *  "Confirm email" setting to be OFF — see the Phase 5 auth spec §3.1. */
+ *  one, so the user id (and its quota ledger) survives. A pending email
+ *  confirmation must not be presented as a completed sign-in. */
 export async function signUpWithEmail(email: string, password: string): Promise<EmailAuthResult> {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
   if (sessionData.session?.user.is_anonymous) {
-    const { error } = await supabase.auth.updateUser({ email, password });
+    const { data, error } = await supabase.auth.updateUser({ email, password });
     if (error) throw error; // email_exists → caller tells them to sign in
+    if (!data.user || data.user.is_anonymous) return 'confirmation_required';
     return 'ok';
   }
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) throw error;
+  if (!data.session || data.session.user.is_anonymous) return 'confirmation_required';
   return 'ok';
 }
 

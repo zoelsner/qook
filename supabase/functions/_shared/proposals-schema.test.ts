@@ -1,5 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { ProposalsEnvelope } from "./schema.ts";
+import { validateDishContract } from "./dish-contract.ts";
 
 const five = Array.from({ length: 5 }, (_, i) => ({
   title: `Test Dish Number ${i}`,
@@ -9,6 +10,11 @@ const five = Array.from({ length: 5 }, (_, i) => ({
   cuisine: "Thai",
   ingredientNames: ["shrimp", "yogurt", "garlic", "lime", "cilantro"],
   stepOutline: ["marinate shrimp in yogurt and spices", "grill until charred", "serve with lime"],
+  dishContract: {
+    version: 1,
+    components: [{ ingredientNames: ["shrimp"], form: "whole grilled shrimp", appearance: "coral shrimp with charred edges" }],
+    plating: "Shrimp loosely piled with lime and herbs.",
+  },
 }));
 
 Deno.test("ProposalsEnvelope parses exactly five well-formed proposals", () => {
@@ -38,6 +44,21 @@ Deno.test("ProposalsEnvelope rejects a proposal missing stepOutline", () => {
   const bad = [{ ...five[0], stepOutline: undefined }, ...five.slice(1)];
   const res = ProposalsEnvelope.safeParse({ proposals: bad, refusal: null });
   assertEquals(res.success, false);
+});
+
+Deno.test("new proposals require a valid versioned dish contract", () => {
+  for (const dishContract of [undefined, null, { ...five[0].dishContract, version: 2 }, { ...five[0].dishContract, components: [] }]) {
+    const res = ProposalsEnvelope.safeParse({ proposals: [{ ...five[0], dishContract }, ...five.slice(1)], refusal: null });
+    assertEquals(res.success, false);
+  }
+});
+
+Deno.test("dish references are checked against ingredient names after their upper-bound clamp", () => {
+  const ingredientNames = Array.from({ length: 13 }, (_, i) => `ingredient ${i}`);
+  const dishContract = { version: 1, components: [{ ingredientNames: [ingredientNames[12]], form: "cooked morsels", appearance: "golden" }], plating: "Loosely piled." };
+  const parsed = ProposalsEnvelope.parse({ proposals: [{ ...five[0], ingredientNames, dishContract }, ...five.slice(1)], refusal: null });
+  assertEquals(parsed.proposals[0].ingredientNames.length, 12);
+  assertEquals(validateDishContract(parsed.proposals[0].dishContract, parsed.proposals[0].ingredientNames).length, 1);
 });
 
 // Upper-bound drift clamps instead of rejecting — regression for the

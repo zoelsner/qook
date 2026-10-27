@@ -9,9 +9,9 @@ import { PolishedButton } from '../../components/PolishedButton';
 import { Vignette } from '../../components/Vignette';
 import { palette, radius, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
-import { api } from '../../services/api';
+import { recipeCompletion } from '../../services/completeRecipe';
 import { useGenerationSession } from '../../stores/generationSession';
-import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
+import { useWeekPlan } from '../../stores/weekPlan';
 import { benchCards } from '../eat/deckState';
 import { formatDayShort, type ISODate } from './weekDates';
 import type { ResetNight } from '../eat/weekReset';
@@ -31,15 +31,12 @@ export function DaySheet({
   const router = useRouter();
   const { press, tap } = useHaptics();
   const deck = useGenerationSession((s) => s.deck);
-  const context = useGenerationSession((s) => s.context);
   const placeFromBench = useGenerationSession((s) => s.placeFromBench);
-  const reconcileKept = useGenerationSession((s) => s.reconcileKept);
   const startWeekReset = useGenerationSession((s) => s.startWeekReset);
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
-  const remapSavedRecipe = useWeekPlan((s) => s.remapSavedRecipe);
 
   const cards = useMemo(() => (deck ? benchCards(deck) : []), [deck]);
   const { weekday } = formatDayShort(date);
@@ -56,26 +53,9 @@ export function DaySheet({
     // object just placed is an ingredient-less skeleton. Fill in the
     // background and swap the full (possibly cache-hit-redirected) row into
     // the day, mirroring DeckScreen.runFill at the plan-write boundary.
-    void (async () => {
-      try {
-        const finalId =
-          card.contentStatus === 'full'
-            ? card.id
-            : (await api.fillRecipe(card.id, context || undefined)).recipeId;
-        const full = await api.getRecipeById(finalId);
-        if (!full) return;
-        // Don't resurrect the day if the user cleared or re-picked it while
-        // the fill ran — a background write landing then reads as auto-fill.
-        const active = activePickFor(useWeekPlan.getState().plan[date]);
-        if (active?.id !== card.id) return;
-        reconcileKept(card.id, full);
-        appendRecipeAndSelect(date, full);
-        commitSelection(date);
-        if (full.id !== card.id) remapSavedRecipe(card.id, full.id);
-      } catch {
-        /* the skeleton stays placed; detail view offers retry on next open */
-      }
-    })();
+    void recipeCompletion.complete(card).catch(() => {
+      // The placed card remains; detail shows the shared error and Retry.
+    });
   };
 
   const dealFresh = () => {

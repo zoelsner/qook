@@ -60,7 +60,13 @@ export function EmailAuthScreen() {
     setBusy(true);
     try {
       if (mode === 'signup') {
-        await signUpWithEmail(trimmed, password);
+        const result = await signUpWithEmail(trimmed, password);
+        if (result === 'confirmation_required') {
+          setError('Check your email to confirm your account, then sign in.');
+          setMode('signin');
+          setBusy(false);
+          return;
+        }
       } else {
         await signInWithEmail(trimmed, password);
       }

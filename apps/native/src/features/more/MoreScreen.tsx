@@ -12,6 +12,7 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { usePrefs } from '../../stores/prefs';
 import { useCookSession } from '../../stores/cookSession';
+import { useGenerationSession } from '../../stores/generationSession';
 import { todayISO } from '../week/weekDates';
 import { supabase, signInWithApple } from '../../services/supabase';
 import { StorageKeys, clearAuthFlags, writeString } from '../../lib/storage';
@@ -119,9 +120,19 @@ export function MoreScreen() {
       'Sign out?',
       "You'll be signed out on this device.",
       async () => {
-        await supabase.auth.signOut();
-        await clearAuthFlags();
-        router.replace('/(auth)/sign-in');
+        if (accountBusy) return;
+        setAccountBusy(true);
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
+          await clearAuthFlags();
+          router.replace('/(auth)/sign-in');
+        } catch (e) {
+          if (__DEV__) console.warn('[account] sign out failed', e);
+          Alert.alert('Could not sign out', 'Please try again. Your saved data on this device has been kept.');
+        } finally {
+          setAccountBusy(false);
+        }
       },
       'Sign out',
     );
@@ -130,7 +141,7 @@ export function MoreScreen() {
   const deleteAccount = () => {
     Alert.alert(
       'Delete account?',
-      'This permanently deletes your account and all recipes generated on it. This cannot be undone.',
+      'This permanently deletes your account and clears your saved plans and preferences on this device. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -139,30 +150,49 @@ export function MoreScreen() {
           onPress: async () => {
             if (accountBusy) return;
             setAccountBusy(true);
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData.session) {
-              try {
-                const { error } = await supabase.functions.invoke('delete-account');
-                if (error) throw error;
-              } catch (e) {
-                setAccountBusy(false);
-                if (__DEV__) console.warn('[account] delete failed', e);
-                Alert.alert(
-                  'Could not delete',
-                  'Something went wrong deleting your account. Your data was not changed. Please try again.',
-                );
-                return; // STOP — do not clear local state if the server call failed
-              }
+            try {
+              const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+              if (sessionError) throw sessionError;
+              if (!sessionData.session) throw new Error('no_session');
+              const { error } = await supabase.functions.invoke('delete-account');
+              if (error) throw error;
+            } catch (e) {
+              setAccountBusy(false);
+              if (__DEV__) console.warn('[account] delete failed', e);
+              Alert.alert(
+                'Could not delete',
+                'We couldn’t confirm that your account was deleted. Please try again. Your saved data on this device has been kept.',
+              );
+              return; // Keep local state when the session read or server call fails.
             }
-            // Server row gone — tear down the local session and all local state.
-            await supabase.auth.signOut();
+            // Deletion succeeded — clear app data even if logout needs a retry.
             clearAll();
+            useGenerationSession.getState().reset();
             usePrefs.getState().resetPrefs();
             useCookSession.setState({ byRecipe: {} });
             queryClient.clear();
-            await clearAuthFlags();
-            setAccountBusy(false);
-            router.replace('/(auth)/sign-in');
+            const finishSignOut = async () => {
+              setAccountBusy(true);
+              try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                await clearAuthFlags();
+                router.replace('/(auth)/sign-in');
+              } catch (e) {
+                if (__DEV__) console.warn('[account] post-delete sign out failed', e);
+                Alert.alert(
+                  'Account deleted',
+                  'Your saved data on this device has been cleared, but we couldn’t finish signing out. Retry to finish signing out.',
+                  [
+                    { text: 'Later', style: 'cancel' },
+                    { text: 'Retry', onPress: finishSignOut },
+                  ],
+                );
+              } finally {
+                setAccountBusy(false);
+              }
+            };
+            await finishSignOut();
           },
         },
       ],

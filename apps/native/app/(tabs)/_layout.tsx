@@ -5,20 +5,29 @@ import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
 import { FloatingTabBar } from '../../src/components/FloatingTabBar';
 import { palette } from '../../src/design';
 import { fontFamily } from '../../src/design/typography';
+import { useAccessibilityPreferences } from '../../src/hooks/useAccessibilityPreferences';
 
 // iOS gets the real UITabBarController — Liquid Glass, capsule selection,
 // and minimize-on-scroll come from the system (the Luma/Substack bar).
 // Android keeps the custom glass FloatingTabBar; NativeTabs renders
 // Material tabs there and had icon bugs at SDK 54.
 export default function TabsLayout() {
+  const { reduceMotion, reduceTransparency } = useAccessibilityPreferences();
   if (Platform.OS === 'ios') {
     return (
       <NativeTabs
-        minimizeBehavior="onScrollDown"
+        minimizeBehavior={reduceMotion ? 'never' : 'onScrollDown'}
         tintColor={palette.primary}
-        // Brand experiment: JetBrains Mono labels on the system bar —
-        // fontFamily is exposed even though icon size isn't.
-        labelStyle={{ fontFamily: fontFamily.monoRegular, fontSize: 10 }}
+        backgroundColor={reduceTransparency ? palette.surface : 'rgba(251, 247, 238, 0.08)'}
+        // Keep UIKit's native material rather than substituting a custom blur.
+        blurEffect={reduceTransparency ? 'none' : 'systemDefault'}
+        shadowColor="rgba(42, 58, 38, 0.12)"
+        disableTransparentOnScrollEdge
+        iconColor={{ default: palette.textSecondary, selected: palette.primary }}
+        labelStyle={{
+          default: { fontFamily: fontFamily.bodyMedium, fontSize: 11, color: palette.textSecondary },
+          selected: { fontFamily: fontFamily.bodySemi, fontSize: 11, color: palette.primary },
+        }}
       >
         {/* No .fill on selection — Tonight is the resting tab, so the solid
             moon was the boldest ink on the bar most of the time. */}
@@ -34,7 +43,7 @@ export default function TabsLayout() {
           <Label>Plan</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="shop">
-          <Icon sf={{ default: 'bag', selected: 'bag.fill' }} />
+          <Icon sf="bag" />
           <Label>Shop</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="more">

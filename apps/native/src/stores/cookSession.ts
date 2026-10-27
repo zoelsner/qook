@@ -18,6 +18,7 @@ export interface CookSessionState {
   toggleChecked: (recipeId: string, rowId: string) => void;
   setServings: (recipeId: string, servings: number) => void;
   resetRecipe: (recipeId: string) => void;
+  remapRecipe: (oldId: string, newId: string) => void;
 }
 
 export const useCookSession = create<CookSessionState>()(
@@ -44,6 +45,15 @@ export const useCookSession = create<CookSessionState>()(
             byRecipe: { ...s.byRecipe, [recipeId]: { ...cur, servings } },
           };
         }),
+      remapRecipe: (oldId, newId) => set(s => {
+        const original = s.byRecipe[oldId];
+        if (oldId === newId || !original) return s;
+        const target = s.byRecipe[newId];
+        const byRecipe = { ...s.byRecipe };
+        delete byRecipe[oldId];
+        byRecipe[newId] = { ...target, ...original, checked: { ...target?.checked, ...original.checked } };
+        return { byRecipe };
+      }),
       resetRecipe: (recipeId) =>
         set((s) => {
           const next = { ...s.byRecipe };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EnergyTier, Recipe } from '@qook/shared';
@@ -46,6 +46,8 @@ export function AllocationScreen() {
   const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const commitSelection = useWeekPlan((s) => s.commitSelection);
   const plan = useWeekPlan((s) => s.plan);
+  const leaving = useRef(false);
+  const [finishing, setFinishing] = useState(false);
 
   const kept = deck?.kept ?? [];
   const cookTonightId = deck?.cookTonightId ?? null;
@@ -79,7 +81,9 @@ export function AllocationScreen() {
   // Side effect lives in an effect, never in render.
   const nothingToPlace = !deck || kept.length === 0;
   useEffect(() => {
-    if (nothingToPlace) {
+    // finish() clears tonight's transient deck before opening the recipe.
+    // That intentional clear must not let this fallback redirect win the race.
+    if (nothingToPlace && !leaving.current) {
       if (mode !== 'week') reset();
       router.replace(mode === 'week' ? '/(tabs)/week' : '/(tabs)/tonight');
     }
@@ -130,6 +134,9 @@ export function AllocationScreen() {
   };
 
   const finish = async () => {
+    if (leaving.current) return;
+    leaving.current = true;
+    setFinishing(true);
     press();
     // Read the store directly rather than the render-closure `kept`: a phase-2
     // fill can reconcile (id swap) in the same tick Done is tapped, and we want
@@ -144,11 +151,18 @@ export function AllocationScreen() {
       // Re-fetch the freshest row so a completed phase-2 fill's ingredients land
       // in the plan (Shop aggregation reads plan recipes' ingredients).
       const fresh = (await api.getRecipeById(w.recipe.id).catch(() => null)) ?? w.recipe;
-      appendRecipeAndSelect(w.date, fresh);
+      // A fill may settle while the fetch above is in flight. Prefer its
+      // reconciled full row, including signature-cache ID redirects.
+      const settled = useGenerationSession.getState().deck?.kept[liveKept.indexOf(w.recipe)];
+      appendRecipeAndSelect(w.date, settled?.contentStatus === 'full' ? settled : fresh);
       commitSelection(w.date);
     }
     if (mode === 'week' && outcome.benched.length) {
-      addToBench(outcome.benched);
+      const currentKept = useGenerationSession.getState().deck?.kept ?? liveKept;
+      // Completion may have redirected an extra while placed rows were fetched.
+      // Indexes are stable across reconciliation, just as for the placed choices.
+      const benched = outcome.benched.map((recipe) => currentKept[liveKept.indexOf(recipe)] ?? recipe);
+      addToBench(benched);
       setBenchNotice(benchNoticeCopy(outcome.benched.length));
     }
 
@@ -166,6 +180,8 @@ export function AllocationScreen() {
   };
 
   const skipAll = () => {
+    if (leaving.current) return;
+    leaving.current = true;
     press();
     if (mode === 'week') {
       // In week mode keeps were already saved (savedRecipeIds) and passes/
@@ -222,7 +238,7 @@ export function AllocationScreen() {
         <View style={{ height: spacing.lg }} />
       </ScrollView>
 
-      <PolishedButton label="Done" tone="forest" onPress={() => void finish()} />
+      <PolishedButton label="Done" tone="forest" disabled={finishing} onPress={() => void finish()} />
       <View style={{ height: spacing.sm }} />
       <Pressable onPress={skipAll} accessibilityRole="button" hitSlop={12} style={styles.skipRow}>
         <BodyText size={13} weight="medium" color={palette.textTertiary}>

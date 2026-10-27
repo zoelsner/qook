@@ -3,8 +3,11 @@ import {
   buildSlug,
   computeSignature,
   dbRowToClientRecipe,
+  toFillUpdate,
   toRecipeInsert,
+  toSkeletonInsert,
 } from "./recipe-map.ts";
+import type { DishContract } from "./dish-contract.ts";
 
 const R = {
   title: "Pan-Fried Gnocchi",
@@ -139,4 +142,47 @@ Deno.test("buildSlug is deterministic and collision-resistant", () => {
 
   // Missing signature → plain slugified title, no trailing dash.
   assertEquals(buildSlug("Pan-Fried Gnocchi!!", ""), "pan-fried-gnocchi");
+});
+
+const dish: DishContract = {
+  version: 1,
+  components: [{ ingredientNames: ["gnocchi"], form: "pan-fried gnocchi", appearance: "golden crisp edges" }],
+  plating: "Gnocchi loosely piled with the browned edges visible.",
+};
+
+Deno.test("skeleton persists public dish identity before painting and fill preserves its identity/art", () => {
+  const proposal = { title: R.title, cuisine: R.cuisine, timeMinutes: R.timeMinutes,
+    proteinG: 12, hook: "Golden edges", ingredientNames: ["gnocchi"],
+    stepOutline: ["Pan-fry the gnocchi"], dishContract: dish };
+  const row = toSkeletonInsert(proposal, R.tier, R.servings);
+  assertEquals(row.dish_contract, dish);
+  assertEquals(row.image_status, "pending");
+  assertEquals(toSkeletonInsert({ ...proposal, dishContract: undefined }, R.tier, R.servings).dish_contract, null);
+  const update = toFillUpdate(R, "filled-signature");
+  assertEquals("dish_contract" in update, false);
+  assertEquals("image_status" in update, false);
+  assertEquals("image_storage_path" in update, false);
+  assertEquals({ ...row, ...update }.dish_contract, dish);
+});
+
+Deno.test("edge mapper retains the same trimmed public dish metadata as the client mapper", () => {
+  const row = { id: "abc", title: R.title, cuisine: R.cuisine, energy_tier: R.tier,
+    ingredient_groups: [], workflow_sections: [], dish_contract: {
+      ...dish, plating: ` ${dish.plating} `,
+      components: [{ ingredientNames: [" gnocchi "], form: " pan-fried gnocchi ", appearance: " golden crisp edges " }],
+    } };
+  assertEquals(dbRowToClientRecipe(row).dishContract, dish);
+  assertEquals(JSON.parse(JSON.stringify(dbRowToClientRecipe(row))).dishContract, dish);
+});
+
+Deno.test("edge mapper keeps old recipes readable but omits invalid or private dish metadata", () => {
+  for (const value of [undefined, null, [], {}, { ...dish, version: 2 },
+    { ...dish, components: [] }, { ...dish, plating: " " },
+    { ...dish, context: "private data does not belong here" },
+    { ...dish, components: [{ ...dish.components[0], form: "x".repeat(121) }] },
+    { ...dish, components: [{ ...dish.components[0], ingredientNames: ["x".repeat(121)] }] }]) {
+    const client = dbRowToClientRecipe({ id: "abc", title: R.title, dish_contract: value });
+    assertEquals(client.dishContract, undefined);
+    assertEquals(client.title, R.title);
+  }
 });

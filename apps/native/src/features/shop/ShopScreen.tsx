@@ -1,3 +1,4 @@
+import { useToday } from '../../hooks/useToday';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -12,7 +13,6 @@ import { ArrowRight, Check, Copy, Share as ShareIcon } from 'lucide-react-native
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { activeStagedRecipes, useWeekPlan } from '../../stores/weekPlan';
-import { todayISO } from '../week/weekDates';
 import {
   copyList,
   createInstacartShoppingList,
@@ -64,7 +64,7 @@ export function ShopScreen() {
   const plan = useWeekPlan((s) => s.plan);
   const shopStaging = useWeekPlan((s) => s.shopStaging);
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
-  const today = todayISO();
+  const today = useToday();
 
   const staged = useMemo(
     () => (hasHydrated ? activeStagedRecipes(shopStaging, today) : []),

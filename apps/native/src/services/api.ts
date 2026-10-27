@@ -65,7 +65,19 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return data ? dbRowToRecipe(data, mealImagesBase) : null;
+  // RLS protects the private association. It also recovers an interrupted
+  // cache redirect when the original proposal row has already been removed.
+  const { data: association } = await supabase.from('generation_items')
+    .select('session_id,recipe_id').or(`recipe_id.eq.${id},prompt_meta->>originalRecipeId.eq.${id}`)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  let row = data;
+  if ((!row || row.content_status === 'proposal') && association?.recipe_id && association.recipe_id !== id) {
+    const result = await supabase.from('recipes').select('*').eq('id', association.recipe_id).maybeSingle();
+    if (result.error) throw result.error;
+    row = result.data;
+  }
+  if (!row) return null;
+  return { ...dbRowToRecipe(row, mealImagesBase), ...(association?.session_id ? { generationSessionId: String(association.session_id) } : {}) };
 }
 
 export async function getCurrentDeck(): Promise<CohortDeck | null> {
@@ -286,18 +298,23 @@ export async function generateProposals(
 // returned recipeId. Called but the deck does not block on it.
 export async function fillRecipe(
   recipeId: string,
-  context?: string
+  context?: string,
+  generationSessionId?: string
 ): Promise<{ recipeId: string; status: string }> {
   if (mode === 'mock') {
     await lag(200);
     return { recipeId, status: 'full' };
   }
-  await syncUserPreferences();
   const { data, error } = await supabase.functions.invoke('fill-recipe', {
-    body: { recipeId, context: context?.trim() || undefined },
+    body: { recipeId, generationSessionId, context: context?.trim() || undefined },
   });
   if (error) {
-    const msg = (error as { message?: string }).message ?? 'Something went wrong.';
+    let msg = 'Couldn’t finish this recipe. Check your connection and try again.';
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === 'function') {
+      const details = await response.clone().json().catch(() => null);
+      if (typeof details?.message === 'string') msg = details.message;
+    }
     throw new Error(msg);
   }
   const out = data as { recipeId?: string; status?: string };

@@ -13,6 +13,13 @@ const TOOL_WHITELIST = [
   "wok",
   "blender",
   "food processor",
+  "microwave",
+  "toaster",
+  "kettle",
+  "air fryer",
+  "grill",
+  "slow cooker",
+  "pressure cooker",
 ];
 
 export function buildLiveContext(
@@ -45,7 +52,9 @@ export function buildLiveContext(
     lovedCuisines: cuisines.slice(0, 3),
     preferredProteins: proteins.slice(0, 4),
     recentLikedTitles: [], // swipe history not wired this phase
-    voiceContext: trimmedVoice && trimmedVoice.length ? trimmedVoice : undefined,
+    voiceContext: trimmedVoice && trimmedVoice.length
+      ? trimmedVoice
+      : undefined,
     kitchenTools: tools,
   };
 }

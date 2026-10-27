@@ -5,7 +5,7 @@ Deno.test("lockOutcome claims when the conditional update matched a pending row"
   assertEquals(lockOutcome([{ id: "r1" }]), "claimed");
 });
 
-Deno.test("lockOutcome skips when no row matched (already generating/ready/failed)", () => {
+Deno.test("lockOutcome skips when no row matched (already claimed or no longer eligible)", () => {
   assertEquals(lockOutcome([]), "skip");
 });
 
