@@ -57,6 +57,16 @@ async function flow(options: FlowOptions, verify: (s: {
       return json({ choices: [{ message: { content: JSON.stringify(output) } }] });
     }
     assertEquals(url.hostname, "qook.test");
+    if (url.pathname === "/rest/v1/rpc/claim_fill_attempt") {
+      // Mirrors public.claim_fill_attempt: serialize concurrent fills, cap attempts.
+      const row = recipes.get((await req.json()).p_recipe_id);
+      if (!row) return json("not_found");
+      if (row.content_status !== "proposal") return json("done");
+      if (row.fill_claimed_at) return json("busy");
+      if (Number(row.fill_attempt_count ?? 0) >= 3) return json("exhausted");
+      row.fill_claimed_at = "now"; row.fill_attempt_count = Number(row.fill_attempt_count ?? 0) + 1;
+      return json("claimed");
+    }
     if (url.pathname === "/rest/v1/rpc/claim_image_attempt") {
       const body = await req.json();
       const row = recipes.get(body.p_recipe_id);

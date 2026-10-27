@@ -10,6 +10,9 @@ describe('generation error guidance', () => {
       );
     }
   });
+  test('maps sign_in_required to sign-in guidance', () => {
+    expect(generationErrorMessage(new Error('sign_in_required'))).toBe('Sign in to generate dinners.');
+  });
   test('preserves server quota guidance and provides a fallback for raw codes', () => {
     const guidance = 'You’ve reached today’s limit. Try again tomorrow.';
     expect(generationErrorMessage(new Error(guidance))).toBe(guidance);

@@ -21,7 +21,7 @@ export async function loadStartupGate(
       }),
     ]);
     if (!snapshot.onboardingShown) return 'onboarding';
-    if (snapshot.permanentSession || snapshot.authMode === 'guest') return 'signed-in';
+    if (snapshot.permanentSession) return 'signed-in';
     return 'signed-out';
   } catch {
     return 'unavailable';

@@ -23,7 +23,7 @@ const request = () => new Request("http://qook.test/fill-recipe", {
 });
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
-async function scenario(options: { outputs?: unknown[]; alreadyFull?: boolean; badExisting?: boolean; race?: "good" | "bad"; missingBrief?: boolean; forbidden?: boolean; wrongOwner?: boolean; errorPersistence?: "response" | "reject"; cacheCandidates?: Record<string, unknown>[]; cacheFailure?: boolean; associationFailure?: boolean; dishContract?: unknown; publicDishContract?: unknown }, check: (result: { response: Response; writes: Record<string, unknown>[]; associations: Record<string, unknown>[]; events: string[]; deleted: boolean; calls: number; repeat: () => Promise<Response> }) => void | Promise<void>) {
+async function scenario(options: { claim?: string; outputs?: unknown[]; alreadyFull?: boolean; badExisting?: boolean; race?: "good" | "bad"; missingBrief?: boolean; forbidden?: boolean; wrongOwner?: boolean; errorPersistence?: "response" | "reject"; cacheCandidates?: Record<string, unknown>[]; cacheFailure?: boolean; associationFailure?: boolean; dishContract?: unknown; publicDishContract?: unknown }, check: (result: { response: Response; writes: Record<string, unknown>[]; associations: Record<string, unknown>[]; events: string[]; deleted: boolean; calls: number; repeat: () => Promise<Response> }) => void | Promise<void>) {
   for (const [key, value] of Object.entries({ SUPABASE_URL: "http://qook.test", SUPABASE_ANON_KEY: "synthetic-anon", SUPABASE_SERVICE_ROLE_KEY: "synthetic-service", OPENROUTER_API_KEY: "synthetic-provider" })) Deno.env.set(key, value);
   const oldFetch = globalThis.fetch;
   const brief = dinnerBrief(buildLiveContext(contract.tier, { avoid_ingredients: ['peanut'] }, 'Peanut allergy. Microwave only, 12 minutes.'));
@@ -64,13 +64,20 @@ async function scenario(options: { outputs?: unknown[]; alreadyFull?: boolean; b
       return json(options.missingBrief ? [] : [item]);
     }
     if (url.pathname === "/rest/v1/user_preferences") throw new Error('Mutable preferences must not be fetched during fill');
+    if (url.pathname === "/rest/v1/rpc/claim_fill_attempt") {
+      events.push("claim");
+      assertEquals(await req.json(), { p_recipe_id: id });
+      if (options.claim === "done") row = full;
+      return json(options.claim ?? "claimed");
+    }
     if (url.pathname.startsWith("/rest/v1/rpc/")) return json(null);
     assertEquals(url.pathname, "/rest/v1/recipes");
-    if (req.method === "DELETE") { deleted = true; return new Response(null, { status: 204 }); }
+    if (req.method === "DELETE") { assertEquals(url.searchParams.get('content_status'), 'eq.proposal'); deleted = true; return new Response(null, { status: 204 }); }
     if (req.method === "PATCH") {
       const body = await req.json(); writes.push(body);
       if (body.generation_error) {
         assertEquals(url.searchParams.get('content_status'), 'eq.proposal');
+        assertEquals(body.fill_claimed_at, null, "a failed fill releases its claim so a retry can proceed");
         if (row.content_status !== 'proposal') return new Response(null, { status: 204 });
       }
       if (body.generation_error && options.errorPersistence === "response") return json({ code: "23514", message: "private-database-detail" }, 400);
@@ -139,7 +146,7 @@ Deno.test("HTTP pre-model cache rejects changed proposal identity, method, servi
   await scenario({ cacheCandidates: candidates }, async ({ response, associations, events, calls, deleted }) => {
     assertEquals(await response.json(), { recipeId: id, status: "full" });
     assertEquals(calls, 1);
-    assertEquals(events, ["cache", "model"]);
+    assertEquals(events, ["cache", "claim", "model"]);
     assertEquals(associations, []);
     assertEquals(deleted, false);
   });
@@ -282,4 +289,53 @@ Deno.test("HTTP exact dish cache avoids generation and full fill never rewrites 
     assertEquals(associations, []);
     assert(writes.every(write => !("dish_contract" in write) && !("image_status" in write) && !("image_storage_path" in write)));
   });
+});
+
+Deno.test("HTTP fill claims once, after the free cache path and immediately before the paid call", async () => {
+  await scenario({}, ({ response, events, calls }) => {
+    assertEquals(response.status, 200); assertEquals(calls, 1);
+    assertEquals(events, ["cache", "claim", "model"]);
+  });
+});
+
+Deno.test("HTTP fill: a concurrent fill in progress returns 202 filling with no paid call", async () => {
+  await scenario({ claim: "busy" }, async ({ response, writes, calls }) => {
+    assertEquals(response.status, 202);
+    assertEquals(await response.json(), { recipeId: id, status: "filling" });
+    assertEquals(calls, 0); assertEquals(writes, []);
+  });
+});
+
+Deno.test("HTTP fill: a recipe that finished meanwhile returns full without a paid call", async () => {
+  await scenario({ claim: "done" }, async ({ response, writes, calls }) => {
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), { recipeId: id, status: "full" });
+    assertEquals(calls, 0); assertEquals(writes, []);
+  });
+});
+
+Deno.test("HTTP fill: an exhausted recipe returns 429 with no paid call or error write", async () => {
+  await scenario({ claim: "exhausted" }, async ({ response, writes, calls }) => {
+    assertEquals(response.status, 429);
+    assertEquals((await response.json()).code, "generation_failed");
+    assertEquals(calls, 0); assertEquals(writes, []);
+  });
+});
+
+Deno.test("HTTP fill: a claim for a vanished recipe is 404 with no paid call", async () => {
+  await scenario({ claim: "not_found" }, async ({ response, calls }) => {
+    assertEquals(response.status, 404); assertEquals(calls, 0);
+  });
+});
+
+Deno.test("HTTP fill rejects anonymous sessions before any database or paid work", async () => {
+  for (const [key, value] of Object.entries({ SUPABASE_URL: "http://qook.test", SUPABASE_ANON_KEY: "synthetic-anon", SUPABASE_SERVICE_ROLE_KEY: "synthetic-service" })) Deno.env.set(key, value);
+  const oldFetch = globalThis.fetch; const paths: string[] = [];
+  globalThis.fetch = (input, init) => { const url = new URL(new Request(input, init).url); paths.push(url.pathname); return Promise.resolve(json({ id: "33333333-3333-4333-8333-333333333333", aud: "authenticated", is_anonymous: true })); };
+  try {
+    const response = await handler(request());
+    assertEquals(response.status, 403);
+    assertEquals(await response.json(), { code: "sign_in_required", message: "Sign in to generate dinners." });
+    assertEquals(paths, ["/auth/v1/user"]);
+  } finally { globalThis.fetch = oldFetch; }
 });

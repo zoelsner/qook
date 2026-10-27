@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   // Use the verified identity, never a user ID supplied in the request body.
   let userId: string;
   try {
-    const { user } = await requireUser(req);
+    const { user } = await requireUser(req, { permanent: true });
     userId = user.id;
   } catch (resp) {
     return resp as Response;

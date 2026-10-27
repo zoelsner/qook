@@ -7,6 +7,7 @@ import type {
   Timestamp,
 } from '@qook/shared';
 import { supabase, ensureSession } from './supabase';
+import { fillUntilSettled } from './fillPolling';
 import { dbRowToRecipe } from './recipeRow';
 import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
@@ -245,6 +246,14 @@ export async function requestRecipeImage(recipeId: string): Promise<void> {
   }
 }
 
+// The server rejects anonymous sessions on paid routes with code sign_in_required.
+async function isSignInRequired(error: unknown): Promise<boolean> {
+  const response = (error as { context?: Response }).context;
+  if (!response || typeof response.clone !== 'function') return false;
+  const details = await response.clone().json().catch(() => null);
+  return details?.code === 'sign_in_required';
+}
+
 // Phase-1 (spec 2026-07-10): deal a hand of 5 proposals — one cheap Luna call.
 // The edge already maps rows to client shape; we only normalize the ISO
 // createdAt/updatedAt strings to the branded Timestamp number. Mock mode returns
@@ -269,6 +278,7 @@ export async function generateProposals(
   // transient hop still lands as a non-2xx — and a plain retry nearly always
   // deals (2026-07-28 TestFlight 422). Failed hands don't count against quota.
   let { data, error } = await supabase.functions.invoke('generate-proposals', { body });
+  if (error && (await isSignInRequired(error))) throw new Error('sign_in_required');
   if (error) {
     await lag(1000);
     ({ data, error } = await supabase.functions.invoke('generate-proposals', { body }));
@@ -305,20 +315,22 @@ export async function fillRecipe(
     await lag(200);
     return { recipeId, status: 'full' };
   }
-  const { data, error } = await supabase.functions.invoke('fill-recipe', {
-    body: { recipeId, generationSessionId, context: context?.trim() || undefined },
-  });
-  if (error) {
-    let msg = 'Couldn’t finish this recipe. Check your connection and try again.';
-    const response = (error as { context?: Response }).context;
-    if (response && typeof response.json === 'function') {
-      const details = await response.clone().json().catch(() => null);
-      if (typeof details?.message === 'string') msg = details.message;
+  return fillUntilSettled(async () => {
+    const { data, error } = await supabase.functions.invoke('fill-recipe', {
+      body: { recipeId, generationSessionId, context: context?.trim() || undefined },
+    });
+    if (error) {
+      let msg = 'Couldn’t finish this recipe. Check your connection and try again.';
+      const response = (error as { context?: Response }).context;
+      if (response && typeof response.json === 'function') {
+        const details = await response.clone().json().catch(() => null);
+        if (typeof details?.message === 'string') msg = details.message;
+      }
+      throw new Error(msg);
     }
-    throw new Error(msg);
-  }
-  const out = data as { recipeId?: string; status?: string };
-  return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };
+    const out = data as { recipeId?: string; status?: string };
+    return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };
+  });
 }
 
 export const api = {

@@ -3,7 +3,7 @@ import { dinnerBrief, briefContext } from "../_shared/dinner-brief.ts";
 import { buildLiveContext } from "../_shared/context.ts";
 import { checkQuota } from "../_shared/rate-limit.ts";
 import { readPhase, type PhaseTimers } from "../_shared/read-phase.ts";
-import { serviceClient, userClient } from "../_shared/supabase.ts";
+import { serviceClient, signInRequiredResponse, userClient } from "../_shared/supabase.ts";
 import { logFailure } from "../_shared/diagnostics.ts";
 import { errorResponse, ERRORS } from "../_shared/errors.ts";
 
@@ -30,6 +30,7 @@ export async function prepareProposal(req: Request, options: PreflightOptions = 
         throw error;
       }
       if (!data.user) return new Response("Unauthorized", { status: 401 });
+      if (data.user.is_anonymous === true) return signInRequiredResponse();
       const parsed = RequestBody.safeParse(await req.json().catch(() => null));
       if (!parsed.success) return errorResponse(ERRORS.BAD_REQUEST, "Bad request body.", 400);
       const { tier, context, energyMix } = parsed.data;
