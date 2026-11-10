@@ -377,7 +377,7 @@ export function MoreScreen() {
             tap();
             showPending(
               'Privacy policy',
-              "Drafting the policy alongside the first backend cut. It'll live at qook.app/privacy once the domain is provisioned.",
+              "Drafting the policy alongside the first backend cut. It'll live at zachoelsner.com/qook/privacy.",
             );
           },
         },
@@ -390,7 +390,7 @@ export function MoreScreen() {
             tap();
             showPending(
               'Terms of service',
-              "Drafting alongside the privacy policy. Will live at qook.app/terms.",
+              "Drafting alongside the privacy policy. Will live at zachoelsner.com/qook/terms.",
             );
           },
         },
