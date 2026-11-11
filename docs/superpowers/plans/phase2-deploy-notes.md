@@ -6,7 +6,7 @@ Date: 2026-07-07. Executed by Claude (SDD Task 11, adapted cloud-first — no Do
 
 - Supabase account: Zach's NEW dedicated account (old account hit the 2-active-free-project limit; FTP untouched per Zach).
 - Org: "Zach's Qook" (`mmidcvwztglgjlgrynpx`), free plan.
-- Project: `eehjclffugngogbvctib` ("zooelsner@gmail.com's Project", us-west-2, Postgres 17) — auto-created at signup; adopted rather than creating a second.
+- Project: `eehjclffugngogbvctib` ("<account email>'s Project", us-west-2, Postgres 17) — auto-created at signup; adopted rather than creating a second.
 - Auth: CLI via `SUPABASE_ACCESS_TOKEN` in `~/Projects/qook/.env.local` (also `SUPABASE_DB_PASSWORD` there). **TODO Zach: rotate both later** — they transited chat once.
 - Worktree `~/Projects/qook-phase2` linked: `supabase link --project-ref eehjclffugngogbvctib`.
 
