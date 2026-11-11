@@ -3,28 +3,22 @@ import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette, spacing, typeScale } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
-import { StorageKeys, writeFlag, writeString } from '../../lib/storage';
+import { StorageKeys, writeString } from '../../lib/storage';
 import { signInWithApple } from '../../services/supabase';
 
 const HORIZONTAL_PADDING = 32;
 
 export function SignInScreen() {
   const router = useRouter();
-  const { press, tap } = useHaptics();
+  const queryClient = useQueryClient();
+  const { press } = useHaptics();
   const [busy, setBusy] = useState(false);
-
-  const finish = async (mode: 'apple' | 'guest') => {
-    if (busy) return;
-    setBusy(true);
-    await writeFlag(StorageKeys.signedIn, true);
-    await writeString(StorageKeys.authMode, mode);
-    router.replace('/(tabs)/tonight');
-  };
 
   const handleApple = async () => {
     if (busy) return;
@@ -36,8 +30,8 @@ export function SignInScreen() {
         setBusy(false);
         return;
       }
-      await writeFlag(StorageKeys.signedIn, true);
       await writeString(StorageKeys.authMode, 'apple');
+      queryClient.clear();
       router.replace('/(tabs)/tonight');
     } catch (e) {
       setBusy(false);
@@ -46,9 +40,10 @@ export function SignInScreen() {
     }
   };
 
-  const handleGuest = () => {
-    tap();
-    void finish('guest');
+  const handleEmail = () => {
+    if (busy) return;
+    press();
+    router.push('/(auth)/email');
   };
 
   return (
@@ -79,10 +74,10 @@ export function SignInScreen() {
               color={palette.primary}
               style={styles.headline}
             >
-              Welcome back.
+              Save your account.
             </DisplayText>
             <BrushstrokeUnderline
-              width={220}
+              width={190}
               strokeWidth={2.2}
               color={palette.accent}
               style={styles.underline}
@@ -113,10 +108,10 @@ export function SignInScreen() {
           <View style={{ height: spacing.md }} />
 
           <Pressable
-            onPress={handleGuest}
+            onPress={handleEmail}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Continue as guest"
+            accessibilityLabel="Use email instead"
             hitSlop={12}
             style={({ pressed }) => [
               styles.ghost,
@@ -128,7 +123,7 @@ export function SignInScreen() {
               size={typeScale.bodyMD}
               color={palette.primary}
             >
-              Continue as guest
+              Use email instead
             </BodyText>
           </Pressable>
 
@@ -198,9 +193,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1.4,
     lineHeight: 50,
   },
+  // "Save your account." wraps to two lines — the accent sits under "account."
   underline: {
     position: 'absolute',
-    left: 96,
+    left: -4,
     bottom: -8,
   },
   subtitle: {

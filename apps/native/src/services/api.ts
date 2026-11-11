@@ -4,13 +4,16 @@ import type {
   EnergyTier,
   GroceryItem,
   Recipe,
+  Timestamp,
 } from '@qook/shared';
 import { supabase, ensureSession } from './supabase';
+import { fillUntilSettled } from './fillPolling';
 import { dbRowToRecipe } from './recipeRow';
 import { mockRecipes } from './fixtures/recipes';
 import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
 import { markRecipeArtRequested, unmarkRecipeArtRequested } from '../hooks/recipeArtState';
+import { syncUserPreferences } from './userPreferences';
 
 type ApiMode = 'mock' | 'live';
 
@@ -63,7 +66,19 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
-  return data ? dbRowToRecipe(data, mealImagesBase) : null;
+  // RLS protects the private association. It also recovers an interrupted
+  // cache redirect when the original proposal row has already been removed.
+  const { data: association } = await supabase.from('generation_items')
+    .select('session_id,recipe_id').or(`recipe_id.eq.${id},prompt_meta->>originalRecipeId.eq.${id}`)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  let row = data;
+  if ((!row || row.content_status === 'proposal') && association?.recipe_id && association.recipe_id !== id) {
+    const result = await supabase.from('recipes').select('*').eq('id', association.recipe_id).maybeSingle();
+    if (result.error) throw result.error;
+    row = result.data;
+  }
+  if (!row) return null;
+  return { ...dbRowToRecipe(row, mealImagesBase), ...(association?.session_id ? { generationSessionId: String(association.session_id) } : {}) };
 }
 
 export async function getCurrentDeck(): Promise<CohortDeck | null> {
@@ -149,6 +164,7 @@ export async function generateRecipesForEnergy(
     await lag(1500);
     return pickForTier(tier, 3);
   }
+  await syncUserPreferences();
   const { streamRecipes, normalizeFinalRecipes, parseBufferedSse } = await import(
     './generateRecipeStream'
   );
@@ -230,6 +246,93 @@ export async function requestRecipeImage(recipeId: string): Promise<void> {
   }
 }
 
+// The server rejects anonymous sessions on paid routes with code sign_in_required.
+async function isSignInRequired(error: unknown): Promise<boolean> {
+  const response = (error as { context?: Response }).context;
+  if (!response || typeof response.clone !== 'function') return false;
+  const details = await response.clone().json().catch(() => null);
+  return details?.code === 'sign_in_required';
+}
+
+// Phase-1 (spec 2026-07-10): deal a hand of 5 proposals — one cheap Luna call.
+// The edge already maps rows to client shape; we only normalize the ISO
+// createdAt/updatedAt strings to the branded Timestamp number. Mock mode returns
+// 5 tier-matched fixtures (already full, with local art).
+export async function generateProposals(
+  tier: EnergyTier,
+  context?: string,
+  energyMix?: string
+): Promise<Recipe[]> {
+  if (mode === 'mock') {
+    await lag(1200);
+    return pickForTier(tier, 5);
+  }
+  await syncUserPreferences();
+  const body = {
+    tier,
+    context: context?.trim() || undefined,
+    energyMix: energyMix?.trim() || undefined,
+  };
+  // One silent re-ask before the "couldn't deal" screen. The edge already
+  // clamps model drift and re-rolls the model once, but a cold start or a
+  // transient hop still lands as a non-2xx — and a plain retry nearly always
+  // deals (2026-07-28 TestFlight 422). Failed hands don't count against quota.
+  let { data, error } = await supabase.functions.invoke('generate-proposals', { body });
+  if (error && (await isSignInRequired(error))) throw new Error('sign_in_required');
+  if (error) {
+    await lag(1000);
+    ({ data, error } = await supabase.functions.invoke('generate-proposals', { body }));
+  }
+  if (error) {
+    const msg = (error as { message?: string }).message ?? 'Something went wrong.';
+    throw new Error(msg);
+  }
+  const proposals = ((data as { proposals?: unknown[] })?.proposals ?? []) as Record<
+    string,
+    unknown
+  >[];
+  return proposals.map((r) => ({
+    ...r,
+    createdAt: (typeof r.createdAt === 'string'
+      ? Date.parse(r.createdAt)
+      : r.createdAt) as Timestamp,
+    updatedAt: (typeof r.updatedAt === 'string'
+      ? Date.parse(r.updatedAt)
+      : r.updatedAt) as Timestamp,
+  })) as unknown as Recipe[];
+}
+
+// Phase-2 (spec 2026-07-10): write ONE full recipe for a kept/cooked proposal.
+// Quota-free. Returns the FINAL row id — a cache hit redirects to a pre-existing
+// full row and the skeleton is deleted server-side, so callers must adopt the
+// returned recipeId. Called but the deck does not block on it.
+export async function fillRecipe(
+  recipeId: string,
+  context?: string,
+  generationSessionId?: string
+): Promise<{ recipeId: string; status: string }> {
+  if (mode === 'mock') {
+    await lag(200);
+    return { recipeId, status: 'full' };
+  }
+  return fillUntilSettled(async () => {
+    const { data, error } = await supabase.functions.invoke('fill-recipe', {
+      body: { recipeId, generationSessionId, context: context?.trim() || undefined },
+    });
+    if (error) {
+      let msg = 'Couldn’t finish this recipe. Check your connection and try again.';
+      const response = (error as { context?: Response }).context;
+      if (response && typeof response.json === 'function') {
+        const details = await response.clone().json().catch(() => null);
+        if (typeof details?.message === 'string') msg = details.message;
+      }
+      throw new Error(msg);
+    }
+    const out = data as { recipeId?: string; status?: string };
+    return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };
+  });
+}
+
 export const api = {
   getTonightPlan,
   getRecipeById,
@@ -239,5 +342,7 @@ export const api = {
   getGroceries,
   toggleGrocery,
   generateRecipesForEnergy,
+  generateProposals,
+  fillRecipe,
   requestRecipeImage,
 };

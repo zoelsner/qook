@@ -11,8 +11,8 @@ function formatLocal(date: Date): ISODate {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-export function todayISO(): ISODate {
-  return formatLocal(new Date());
+export function todayISO(date = new Date()): ISODate {
+  return formatLocal(date);
 }
 
 export function addDaysISO(iso: ISODate, days: number): ISODate {

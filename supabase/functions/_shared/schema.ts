@@ -1,4 +1,5 @@
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { DishContractJsonSchema, DishContractSchema } from "./dish-contract.ts";
 
 // Grocery categories — must stay identical to the DB `grocery_category` enum
 // and the client GroceryCategory union.
@@ -62,14 +63,15 @@ export const Recipe = z.object({
   servings: z.number().int().positive().max(12),
   ingredientGroups: z.array(RecipeIngredientGroup).min(1),
   workflowSections: z.array(RecipeWorkflowSection).min(1),
-  nutrition: z
-    .object({
-      calories: z.number().int().nullish(),
-      proteinG: z.number().int().nullish(),
-      carbG: z.number().int().nullish(),
-      fatG: z.number().int().nullish(),
-    })
-    .nullish(),
+  // Protein estimate is always present — the model can always produce a
+  // realistic per-serving estimate, even for quick/simple dishes. Other
+  // macros stay optional; nothing else forces the object itself to exist.
+  nutrition: z.object({
+    calories: z.number().int().nullish(),
+    proteinG: z.number().int().nonnegative().max(300),
+    carbG: z.number().int().nullish(),
+    fatG: z.number().int().nullish(),
+  }),
   notes: z.string().max(300).nullish(),
 });
 
@@ -214,17 +216,18 @@ export const RecipeJsonSchema = {
         },
       },
       nutrition: {
-        type: ["object", "null"],
+        type: "object",
         additionalProperties: false,
         required: ["calories", "proteinG", "carbG", "fatG"],
         properties: {
           calories: { type: ["integer", "null"] },
-          proteinG: { type: ["integer", "null"] },
+          // Always present — no null branch, unlike the other macros.
+          proteinG: { type: "integer" },
           carbG: { type: ["integer", "null"] },
           fatG: { type: ["integer", "null"] },
         },
       },
-      notes: { type: ["string", "null"] },
+      notes: { type: ["string", "null"], maxLength: 300 },
     },
   },
 } as const;
@@ -250,6 +253,105 @@ export const RecipeEnvelopeJsonSchema = {
       // an alternate top-level shape for the safety-refusal path — so the
       // refusal rides inside the envelope instead. null unless the model is
       // refusing; when set, recipes is [].
+      refusal: { type: ["string", "null"] },
+    },
+  },
+} as const;
+
+// --- Phase-1 "hand of 5" proposals (spec 2026-07-10) ---
+// A proposal is the thin card payload: enough to render Treatment-01 without
+// the full recipe body. Full ingredients/steps arrive later via fill-recipe.
+
+// Upper bounds clamp, they don't reject: the provider-side JSON schema below
+// carries no maxItems/maxLength (provider-portability), so the model
+// occasionally drifts past a max — a 6th stepOutline line must trim to 5,
+// not 422 the whole hand (a TestFlight tester hit exactly that, 2026-07-28).
+// Lower bounds still reject: too little content is unusable, and the caller
+// re-rolls the model once before surfacing an error.
+const clampList = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (Array.isArray(v) ? v.slice(0, max) : v),
+    z.array(z.string()).min(min),
+  );
+const clampInt = (min: number, max: number) =>
+  z.preprocess(
+    (v) =>
+      typeof v === "number" && Number.isFinite(v)
+        ? Math.min(max, Math.max(min, Math.round(v)))
+        : v,
+    z.number().int(),
+  );
+
+export const Proposal = z.object({
+  title: z.string().min(4),
+  hook: z.preprocess(
+    (v) => (typeof v === "string" ? v.slice(0, 140) : v),
+    z.string().min(4),
+  ),
+  timeMinutes: clampInt(1, 240),
+  proteinG: clampInt(0, 300),
+  cuisine: z.string().min(2),
+  // Card-back teaser (feature: flippable info back, 2026-07-12). Main
+  // ingredient names only, no amounts — those are written at fill time.
+  ingredientNames: clampList(4, 12),
+  // High-level plan lines — 3 to 5 imperative sketch steps, not detailed
+  // instructions (those are written at fill time).
+  stepOutline: clampList(3, 5),
+  dishContract: DishContractSchema,
+});
+export type Proposal = z.infer<typeof Proposal>;
+
+export const ProposalsEnvelope = z.object({
+  // More than 5: keep the first five. Fewer: reject — we can't invent cards.
+  proposals: z.preprocess(
+    (v) => (Array.isArray(v) ? v.slice(0, 5) : v),
+    z.array(Proposal).length(5),
+  ),
+  // null unless the model refuses on safety grounds; when set, proposals is [].
+  refusal: z.string().nullish(),
+});
+
+// OpenRouter response_format for the phase-1 call. Luna (OpenAI) honours strict
+// mode. No array minItems/maxItems (kept out for provider-portability); the
+// prompt asks for exactly 5 and the Zod envelope enforces .length(5) after.
+export const ProposalsEnvelopeJsonSchema = {
+  name: "ProposalsEnvelope",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["proposals", "refusal"],
+    properties: {
+      proposals: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "title",
+            "hook",
+            "timeMinutes",
+            "proteinG",
+            "cuisine",
+            "ingredientNames",
+            "stepOutline",
+            "dishContract",
+          ],
+          properties: {
+            title: { type: "string" },
+            hook: { type: "string" },
+            timeMinutes: { type: "integer" },
+            proteinG: { type: "integer" },
+            cuisine: { type: "string" },
+            // No minItems/maxItems — kept out for provider-portability, same
+            // as the other arrays above; the Zod schema enforces 4-12/3-5
+            // after the stream.
+            ingredientNames: { type: "array", items: { type: "string" } },
+            stepOutline: { type: "array", items: { type: "string" } },
+            dishContract: DishContractJsonSchema,
+          },
+        },
+      },
       refusal: { type: ["string", "null"] },
     },
   },

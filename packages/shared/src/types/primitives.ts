@@ -23,6 +23,7 @@ export type GroceryCategory =
   | 'Other';
 export type RecipeSource = 'cohort' | 'live' | 'user' | 'fallback' | 'ai';
 export type ImageStatus = 'pending' | 'generating' | 'ready' | 'failed';
+export type ContentStatus = 'full' | 'proposal';
 export type UnitSystem = 'imperial' | 'metric';
 export type DietaryTag =
   | 'vegan'

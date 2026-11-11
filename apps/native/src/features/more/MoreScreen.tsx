@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Constants from 'expo-constants';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react-native';
@@ -12,9 +12,10 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { useWeekPlan } from '../../stores/weekPlan';
 import { usePrefs } from '../../stores/prefs';
 import { useCookSession } from '../../stores/cookSession';
+import { useGenerationSession } from '../../stores/generationSession';
 import { todayISO } from '../week/weekDates';
 import { supabase, signInWithApple } from '../../services/supabase';
-import { AuthMode, StorageKeys, clearAuthFlags, readString, writeFlag, writeString } from '../../lib/storage';
+import { StorageKeys, clearAuthFlags, writeString } from '../../lib/storage';
 
 interface MoreRow {
   label: string;
@@ -35,11 +36,27 @@ export function MoreScreen() {
   const { tap, press, select } = useHaptics();
   const queryClient = useQueryClient();
 
-  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  // The live session is authoritative for the account rows — the authMode flag
+  // only records which door the user came through, so it can't tell a guest
+  // from a real account.
+  const [account, setAccount] = useState<{ isAnonymous: boolean; email: string | null }>({
+    isAnonymous: true,
+    email: null,
+  });
   const [accountBusy, setAccountBusy] = useState(false);
 
   useEffect(() => {
-    void readString(StorageKeys.authMode).then((mode) => setAuthMode(mode as AuthMode | null));
+    // INITIAL_SESSION fires on subscribe, so this covers the mount read; the
+    // later events keep the row honest when the email screen or the Apple
+    // upgrade swaps the session while this tab stays mounted underneath.
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      setAccount({
+        isAnonymous: !user || user.is_anonymous === true,
+        email: user?.email ?? null,
+      });
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
 
   const plan = useWeekPlan((s) => s.plan);
@@ -51,8 +68,6 @@ export function MoreScreen() {
   const proteins = usePrefs((s) => s.proteins);
   const avoidList = usePrefs((s) => s.avoidList);
   const servings = usePrefs((s) => s.servings);
-  const unitSystem = usePrefs((s) => s.unitSystem);
-  const partnerName = usePrefs((s) => s.partnerName);
   const defaultTier = usePrefs((s) => s.defaultTier);
 
   const today = todayISO();
@@ -79,8 +94,12 @@ export function MoreScreen() {
     ]);
   };
 
-  const showPending = (what: string, detail: string) =>
-    Alert.alert(what, detail, [{ text: 'OK' }]);
+  const openLink = (url: string) => {
+    tap();
+    void Linking.openURL(url).catch(() => {
+      Alert.alert('Cannot open link', `Visit ${url.replace('https://', '')} in your browser.`);
+    });
+  };
 
   const handleAppleUpgrade = async () => {
     if (accountBusy) return;
@@ -88,9 +107,9 @@ export function MoreScreen() {
     try {
       const result = await signInWithApple();
       if (result === 'ok') {
-        await writeFlag(StorageKeys.signedIn, true);
+        // The account row updates itself off onAuthStateChange above.
         await writeString(StorageKeys.authMode, 'apple');
-        setAuthMode('apple');
+        queryClient.clear();
       }
     } catch (e) {
       if (__DEV__) console.warn('[account] apple sign-in', e);
@@ -105,9 +124,19 @@ export function MoreScreen() {
       'Sign out?',
       "You'll be signed out on this device.",
       async () => {
-        await supabase.auth.signOut();
-        await clearAuthFlags();
-        router.replace('/(auth)/sign-in');
+        if (accountBusy) return;
+        setAccountBusy(true);
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
+          await clearAuthFlags();
+          router.replace('/(auth)/sign-in');
+        } catch (e) {
+          if (__DEV__) console.warn('[account] sign out failed', e);
+          Alert.alert('Could not sign out', 'Please try again. Your saved data on this device has been kept.');
+        } finally {
+          setAccountBusy(false);
+        }
       },
       'Sign out',
     );
@@ -116,7 +145,7 @@ export function MoreScreen() {
   const deleteAccount = () => {
     Alert.alert(
       'Delete account?',
-      'This permanently deletes your account and all recipes generated on it. This cannot be undone.',
+      'This permanently deletes your account and clears your saved plans and preferences on this device. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -125,30 +154,49 @@ export function MoreScreen() {
           onPress: async () => {
             if (accountBusy) return;
             setAccountBusy(true);
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData.session) {
-              try {
-                const { error } = await supabase.functions.invoke('delete-account');
-                if (error) throw error;
-              } catch (e) {
-                setAccountBusy(false);
-                if (__DEV__) console.warn('[account] delete failed', e);
-                Alert.alert(
-                  'Could not delete',
-                  'Something went wrong deleting your account. Your data was not changed. Please try again.',
-                );
-                return; // STOP — do not clear local state if the server call failed
-              }
+            try {
+              const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+              if (sessionError) throw sessionError;
+              if (!sessionData.session) throw new Error('no_session');
+              const { error } = await supabase.functions.invoke('delete-account');
+              if (error) throw error;
+            } catch (e) {
+              setAccountBusy(false);
+              if (__DEV__) console.warn('[account] delete failed', e);
+              Alert.alert(
+                'Could not delete',
+                'We couldn’t confirm that your account was deleted. Please try again. Your saved data on this device has been kept.',
+              );
+              return; // Keep local state when the session read or server call fails.
             }
-            // Server row gone — tear down the local session and all local state.
-            await supabase.auth.signOut();
+            // Deletion succeeded — clear app data even if logout needs a retry.
             clearAll();
+            useGenerationSession.getState().reset();
             usePrefs.getState().resetPrefs();
             useCookSession.setState({ byRecipe: {} });
             queryClient.clear();
-            await clearAuthFlags();
-            setAccountBusy(false);
-            router.replace('/(auth)/sign-in');
+            const finishSignOut = async () => {
+              setAccountBusy(true);
+              try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                await clearAuthFlags();
+                router.replace('/(auth)/sign-in');
+              } catch (e) {
+                if (__DEV__) console.warn('[account] post-delete sign out failed', e);
+                Alert.alert(
+                  'Account deleted',
+                  'Your saved data on this device has been cleared, but we couldn’t finish signing out. Retry to finish signing out.',
+                  [
+                    { text: 'Later', style: 'cancel' },
+                    { text: 'Retry', onPress: finishSignOut },
+                  ],
+                );
+              } finally {
+                setAccountBusy(false);
+              }
+            };
+            await finishSignOut();
           },
         },
       ],
@@ -166,12 +214,7 @@ export function MoreScreen() {
   })();
 
   const householdSummary = (() => {
-    const parts: string[] = [
-      `${servings} ${servings === 1 ? 'person' : 'people'}`,
-      unitSystem === 'us' ? 'US units' : 'Metric',
-    ];
-    if (partnerName) parts.push(`with ${partnerName}`);
-    return parts.join(' · ');
+    return `${servings} ${servings === 1 ? 'person' : 'people'}`;
   })();
 
   const generationSummary = defaultTier
@@ -207,6 +250,15 @@ export function MoreScreen() {
           onPress: () => {
             press();
             router.push('/generation');
+          },
+        },
+        {
+          label: 'Saved recipes',
+          subtitle: "Recipes you've hearted",
+          kicker: 'saved',
+          onPress: () => {
+            press();
+            router.push('/saved');
           },
         },
       ],
@@ -273,25 +325,38 @@ export function MoreScreen() {
     {
       title: 'account',
       rows: [
-        authMode === 'apple'
-          ? {
-              label: 'Sign out',
-              subtitle: 'Signed in with Apple',
-              kicker: 'id',
-              onPress: () => {
-                tap();
-                handleSignOut();
+        ...(account.isAnonymous
+          ? [
+              {
+                label: 'Sign in with Apple',
+                subtitle: 'Secure your account with your Apple ID',
+                kicker: 'id',
+                onPress: () => {
+                  tap();
+                  void handleAppleUpgrade();
+                },
               },
-            }
-          : {
-              label: 'Sign in with Apple',
-              subtitle: 'Secure your account with your Apple ID',
-              kicker: 'id',
-              onPress: () => {
-                tap();
-                void handleAppleUpgrade();
+              {
+                label: 'Sign in or create account',
+                subtitle: 'Secure your account — Apple or email',
+                kicker: 'mail',
+                onPress: () => {
+                  tap();
+                  router.push('/(auth)/email');
+                },
               },
-            },
+            ]
+          : [
+              {
+                label: 'Sign out',
+                subtitle: account.email ?? 'Signed in with Apple',
+                kicker: 'id',
+                onPress: () => {
+                  tap();
+                  handleSignOut();
+                },
+              },
+            ]),
         {
           label: 'Delete account',
           subtitle: 'Permanently remove your data',
@@ -309,42 +374,21 @@ export function MoreScreen() {
       rows: [
         {
           label: 'Privacy policy',
-          subtitle: 'Coming before TestFlight launch',
+          subtitle: 'How Qook handles your data',
           kicker: 'read',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Privacy policy',
-              "Drafting the policy alongside the first backend cut. It'll live at qook.app/privacy once the domain is provisioned.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/privacy'),
         },
         {
           label: 'Terms of service',
-          subtitle: 'Coming before TestFlight launch',
+          subtitle: 'The rules for using Qook',
           kicker: 'read',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Terms of service',
-              "Drafting alongside the privacy policy. Will live at qook.app/terms.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/terms'),
         },
         {
-          label: 'Send feedback',
-          subtitle: 'In-app feedback coming soon',
+          label: 'Support & feedback',
+          subtitle: 'Get help or tell us what to fix',
           kicker: 'talk',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Send feedback',
-              "We're wiring this to an in-app form so you can tap-and-type. For now, any feedback goes straight to the tester TestFlight note.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/support'),
         },
       ],
     },

@@ -13,6 +13,13 @@ const TOOL_WHITELIST = [
   "wok",
   "blender",
   "food processor",
+  "microwave",
+  "toaster",
+  "kettle",
+  "air fryer",
+  "grill",
+  "slow cooker",
+  "pressure cooker",
 ];
 
 export function buildLiveContext(
@@ -25,6 +32,9 @@ export function buildLiveContext(
     : [];
   const avoid = Array.isArray(prefs?.avoid_ingredients)
     ? (prefs!.avoid_ingredients as unknown[]).map(String)
+    : [];
+  const proteins = Array.isArray(prefs?.protein_preferences)
+    ? (prefs!.protein_preferences as unknown[]).map(String)
     : [];
   const tools = Array.isArray(prefs?.cooking_tools)
     ? (prefs!.cooking_tools as unknown[])
@@ -40,8 +50,11 @@ export function buildLiveContext(
       : 2,
     avoidIngredients: avoid,
     lovedCuisines: cuisines.slice(0, 3),
+    preferredProteins: proteins.slice(0, 4),
     recentLikedTitles: [], // swipe history not wired this phase
-    voiceContext: trimmedVoice && trimmedVoice.length ? trimmedVoice : undefined,
+    voiceContext: trimmedVoice && trimmedVoice.length
+      ? trimmedVoice
+      : undefined,
     kitchenTools: tools,
   };
 }

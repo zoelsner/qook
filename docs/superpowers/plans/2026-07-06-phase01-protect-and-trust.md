@@ -23,7 +23,7 @@
 
 ### Task 1: Install bun and configure git identity
 
-Phase 0 ops prerequisite. Without bun, no gate command runs; without git identity, commits are attributed to `zachoelsner@Mac-85.lan`.
+Phase 0 ops prerequisite. Without bun, no gate command runs; without git identity, commits are attributed to `<user>@<hostname>`.
 
 **Files:** none (machine + git config only).
 
@@ -46,7 +46,7 @@ Expected: a version string (e.g. `1.x.x`). If `bun` is still not found, open a f
 
 ```bash
 git config --global user.name "Zach Oelsner"
-git config --global user.email "zachoelsner@gmail.com"
+git config --global user.email "<your-email>"
 ```
 
 - [ ] **Step 5: Verify git identity**
@@ -55,7 +55,7 @@ Run: `git config --global user.name && git config --global user.email`
 Expected:
 ```
 Zach Oelsner
-zachoelsner@gmail.com
+<your-email>
 ```
 
 - [ ] **Step 6: Install workspace dependencies**

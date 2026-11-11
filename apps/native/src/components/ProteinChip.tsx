@@ -59,7 +59,7 @@ export function ProteinChip({ proteinG, size = 'md', style }: ProteinChipProps) 
         badgeShadow,
         style,
       ]}
-      accessibilityLabel={`${proteinG} grams protein per serving`}
+      accessibilityLabel={`Estimated ${proteinG} grams protein per serving`}
     >
       <Svg
         width={preset.box}

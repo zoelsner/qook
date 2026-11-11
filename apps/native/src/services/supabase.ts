@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 
 const url = (Constants.expoConfig?.extra?.supabaseUrl ??
   'https://placeholder.supabase.co') as string;
@@ -18,31 +19,44 @@ export const supabase = createClient(url, anonKey, {
   },
 });
 
-// Pre-Phase-5 auth: the app has no sign-in UI yet, so live API calls ride an
-// anonymous session. Phase 5 account linking upgrades it to a real account.
+// Paid generation needs a real account (the server enforces it). Never mint an
+// anonymous session here; without a session the caller must send the user to sign in.
 export async function ensureSession(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   if (data.session?.access_token) return data.session.access_token;
-  const { data: anon, error } = await supabase.auth.signInAnonymously();
-  if (error || !anon.session?.access_token) {
-    throw new Error('no_session');
-  }
-  return anon.session.access_token;
+  throw new Error('sign_in_required');
 }
 
 export type AppleSignInResult = 'ok' | 'canceled';
 
+// Apple gets the SHA-256 hex digest of the raw nonce; Supabase gets the raw
+// nonce and hashes it the same way to compare against the id token's claim.
+async function makeNonce(): Promise<{ raw: string; hashed: string }> {
+  const raw = `${Crypto.randomUUID()}${Crypto.randomUUID()}`;
+  const hashed = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    raw,
+    { encoding: Crypto.CryptoEncoding.HEX }
+  );
+  return { raw, hashed };
+}
+
 /**
- * Native Sign in with Apple. Link-first: if an anon session exists, tries
- * linkIdentity() so the anon user id (and its server rows — generation
- * history, etc.) is preserved and gains an Apple identity. If linking fails
- * (typically a returning user whose Apple identity already belongs to a
- * different account) or there was no session to link from, falls back to
- * signInWithIdToken(), which replaces the session outright — safe because
- * recipes are global-cache rows and all plan/prefs/cook state is client-local,
- * so nothing the user can see is lost. See design-apple-auth.md §0/§2.
+ * Native Sign in with Apple.
+ *
+ * Link-first: when the current session is ANONYMOUS we call linkIdentity(),
+ * which hits POST /token?grant_type=id_token with link_identity:true. GoTrue's
+ * linkIdentityToUser() attaches the Apple identity to the existing user id,
+ * backfills auth.users.email from the Apple identity and flips is_anonymous to
+ * false — so the quota ledger and profile row carry over.
+ *
+ * Existing-identity conflicts fall back to the Apple-owned account. Other
+ * errors keep the guest session intact and let the caller offer a retry.
+ * Local saved meals and preferences remain on this device in either case.
  */
 export async function signInWithApple(): Promise<AppleSignInResult> {
+  const { raw, hashed } = await makeNonce();
+
   let credential: AppleAuthentication.AppleAuthenticationCredential;
   try {
     credential = await AppleAuthentication.signInAsync({
@@ -50,6 +64,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
+      nonce: hashed,
     });
   } catch (e) {
     if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') return 'canceled';
@@ -57,20 +72,54 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   }
   if (!credential.identityToken) throw new Error('apple_no_identity_token');
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (sessionData.session) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (sessionData.session?.user.is_anonymous) {
     const { error: linkError } = await supabase.auth.linkIdentity({
       provider: 'apple',
       token: credential.identityToken,
+      nonce: raw,
     });
     if (!linkError) return 'ok';
-    if (__DEV__) console.warn('linkIdentity failed, falling back to signInWithIdToken', linkError);
+    if (linkError.code !== 'identity_already_exists' && linkError.code !== 'email_exists') {
+      throw linkError;
+    }
+    // Expected: 'identity_already_exists' (this Apple ID already owns an
+    // account — returning user on a fresh install) or 'email_exists'.
+    if (__DEV__) console.warn('[auth] link failed → sign in', linkError.code, linkError.message);
   }
 
   const { error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: credential.identityToken,
+    nonce: raw,
   });
   if (error) throw error;
+  return 'ok';
+}
+
+export type EmailAuthResult = 'ok' | 'confirmation_required';
+
+/** Create an account. Upgrades the anonymous session in place when there is
+ *  one, so the user id (and its quota ledger) survives. A pending email
+ *  confirmation must not be presented as a completed sign-in. */
+export async function signUpWithEmail(email: string, password: string): Promise<EmailAuthResult> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (sessionData.session?.user.is_anonymous) {
+    const { data, error } = await supabase.auth.updateUser({ email, password });
+    if (error) throw error; // email_exists → caller tells them to sign in
+    if (!data.user || data.user.is_anonymous) return 'confirmation_required';
+    return 'ok';
+  }
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  if (!data.session || data.session.user.is_anonymous) return 'confirmation_required';
+  return 'ok';
+}
+
+export async function signInWithEmail(email: string, password: string): Promise<EmailAuthResult> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error; // replaces any anon session; safe — nothing user-visible is server-owned
   return 'ok';
 }

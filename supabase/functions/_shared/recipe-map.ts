@@ -1,4 +1,5 @@
 import type { Recipe } from "./schema.ts";
+import { DishContractSchema, type DishContract } from "./dish-contract.ts";
 
 // The DB `ingredient_groups`/`workflow_sections` jsonb columns store the edge
 // Recipe schema's shapes verbatim (toRecipeInsert does not transform them),
@@ -55,6 +56,12 @@ export type ClientRecipe = {
   heroImageUrl?: string;
   ownerId?: string;
   imageStatus: string;
+  contentStatus: string;
+  generationError?: string;
+  hook?: string;
+  proposalIngredients?: string[];
+  proposalSteps?: string[];
+  dishContract?: DishContract;
   source: string;
   createdAt: string;
   updatedAt: string;
@@ -110,6 +117,66 @@ export function toRecipeInsert(r: Recipe, signature: string) {
     nutrition: r.nutrition ?? null,
     source: "ai" as const,
     image_status: "pending" as const,
+  };
+}
+
+// Phase-1 stores the dish identity before art starts. Full ingredients and
+// workflow arrive later; the public contract stays fixed across both stages.
+export function toSkeletonInsert(
+  p: {
+    title: string;
+    cuisine: string;
+    timeMinutes: number;
+    proteinG: number;
+    hook: string;
+    ingredientNames: string[];
+    stepOutline: string[];
+    dishContract?: DishContract;
+  },
+  tier: string,
+  serves: number,
+) {
+  return {
+    user_id: null as string | null,
+    signature: null as string | null,
+    title: p.title,
+    cuisine: p.cuisine,
+    serves,
+    total_time_min: p.timeMinutes,
+    difficulty: difficultyForTier(tier),
+    energy_tier: tier,
+    content_status: "proposal" as const,
+    hook: p.hook,
+    proposal_ingredients: p.ingredientNames,
+    proposal_steps: p.stepOutline,
+    dish_contract: p.dishContract == null ? null : DishContractSchema.parse(p.dishContract),
+    nutrition: { calories: null, proteinG: p.proteinG, carbG: null, fatG: null },
+    source: "ai" as const,
+    image_status: "pending" as const,
+  };
+}
+
+// Phase-2 fill: promote a skeleton row to a full recipe IN PLACE. Deliberately
+// omits user_id (stays null / global cache) and image_status (art was fired
+// independently at deal time — must not be reset) and dish_contract (the
+// immutable identity already used to paint it). Sets content_status 'full'
+// and clears any prior generation_error.
+export function toFillUpdate(r: Recipe, signature: string) {
+  return {
+    signature,
+    cuisine: r.cuisine,
+    serves: r.servings,
+    total_time_min: r.timeMinutes,
+    difficulty: difficultyForTier(r.tier),
+    energy_tier: r.tier,
+    ingredient_groups: r.ingredientGroups,
+    workflow_sections: r.workflowSections,
+    timeline: [] as unknown[],
+    notes: r.notes ?? null,
+    tags: r.tags ?? [],
+    nutrition: r.nutrition ?? null,
+    content_status: "full" as const,
+    generation_error: null as string | null,
   };
 }
 
@@ -190,6 +257,7 @@ export function dbRowToClientRecipe(
   const ownerId = row.user_id != null ? String(row.user_id) : undefined;
   const rowTags = Array.isArray(row.tags) ? row.tags.map(String) : [];
   const tags = rowTags.length ? rowTags : modelTags;
+  const dish = DishContractSchema.safeParse(row.dish_contract);
   // DB nutrition {calories, proteinG, carbG, fatG} → client
   // NutritionalEstimate (note carbsG spelling + required source).
   const n = row.nutrition as
@@ -235,6 +303,16 @@ export function dbRowToClientRecipe(
       : undefined,
     ownerId,
     imageStatus: String(row.image_status ?? "pending"),
+    contentStatus: String(row.content_status ?? "full"),
+    ...(row.generation_error ? { generationError: String(row.generation_error) } : {}),
+    ...(row.hook != null ? { hook: String(row.hook) } : {}),
+    ...(Array.isArray(row.proposal_ingredients) && row.proposal_ingredients.length
+      ? { proposalIngredients: row.proposal_ingredients.map(String) }
+      : {}),
+    ...(Array.isArray(row.proposal_steps) && row.proposal_steps.length
+      ? { proposalSteps: row.proposal_steps.map(String) }
+      : {}),
+    ...(dish.success ? { dishContract: dish.data } : {}),
     source: String(row.source ?? "ai"),
     createdAt: String(row.created_at ?? new Date().toISOString()),
     updatedAt: String(row.updated_at ?? new Date().toISOString()),

@@ -164,7 +164,7 @@ Write to `~/Projects/qook/eas.json`:
   "submit": {
     "production": {
       "ios": {
-        "appleId": "zachoelsner@gmail.com",
+        "appleId": "<your-apple-id>",
         "ascAppId": "TBD_AFTER_APP_STORE_CONNECT_RECORD",
         "appleTeamId": "TBD_FROM_MEMBERSHIP_PAGE"
       }
@@ -629,7 +629,7 @@ Account deletion at Settings -> Account -> Delete Account.
 App does not collect health data, location, payment info, or advertising identifiers.
 Free app, no in-app purchases.
 
-Questions: zachoelsner@gmail.com
+Questions: https://zachoelsner.com/qook/support
 ```
 
 ### 8.2 Potential review flags

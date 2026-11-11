@@ -1,4 +1,5 @@
-import React from 'react';
+import { useToday } from '../../hooks/useToday';
+import React, { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Recipe } from '@qook/shared';
@@ -11,17 +12,21 @@ import { ProteinChip } from '../../components/ProteinChip';
 import { BodyText, DisplayText, Mono, ItalicText } from '../../components/Text';
 import { PolishedButton } from '../../components/PolishedButton';
 import { ArrowRight, ChevronRight } from 'lucide-react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useRecipeArt } from '../../hooks/useRecipeArt';
+import { hasRequestedRecipeArt, isRecipeArtMissing } from '../../hooks/recipeArtState';
+import { api } from '../../services/api';
 import {
   useWeekPlan,
   activePickFor,
   recentSelectedDays,
   type DayPlan,
 } from '../../stores/weekPlan';
+import { useGenerationSession } from '../../stores/generationSession';
+import { usePrefs } from '../../stores/prefs';
 import {
-  todayISO,
   upcomingDays,
   formatDayShort,
   type ISODate,
@@ -34,8 +39,10 @@ export function TonightScreen() {
   const plan = useWeekPlan((s) => s.plan);
   const hasHydrated = useWeekPlan((s) => s.hasHydrated);
   const setPickIndex = useWeekPlan((s) => s.setPickIndex);
+  const startGeneration = useGenerationSession((s) => s.start);
+  const defaultTier = usePrefs((s) => s.defaultTier);
 
-  const today = todayISO();
+  const today = useToday();
   const todayPlan = plan[today];
   const todayPick = activePickFor(todayPlan);
   const upcoming = upcomingDays(4, today).slice(1); // next 3 days after today
@@ -43,6 +50,11 @@ export function TonightScreen() {
 
   const onFindDinner = () => {
     press();
+    if (defaultTier) {
+      startGeneration(defaultTier);
+      router.push('/(eat)/context');
+      return;
+    }
     router.push('/(eat)/energy');
   };
 
@@ -76,6 +88,7 @@ export function TonightScreen() {
   return (
     <ScreenShell horizontalPadding={24}>
       <TonightHeader
+        today={today}
         hasPick={Boolean(todayPick)}
         pickIndex={pickIndex}
         totalPicks={recipes.length}
@@ -94,6 +107,7 @@ export function TonightScreen() {
         <MorePicks
           picks={morePicks}
           onSpotlight={onSpotlight}
+          onOpenRecipe={onOpenRecipe}
         />
       ) : null}
 
@@ -110,10 +124,12 @@ export function TonightScreen() {
 }
 
 function TonightHeader({
+  today,
   hasPick,
   pickIndex,
   totalPicks,
 }: {
+  today: ISODate;
   hasPick: boolean;
   pickIndex: number;
   totalPicks: number;
@@ -124,7 +140,7 @@ function TonightHeader({
       : totalPicks === 1
         ? 'READY TO COOK'
         : 'NOTHING YET';
-  const { weekday, month, day } = formatDayShort(todayISO());
+  const { weekday, month, day } = formatDayShort(today);
   return (
     <View style={styles.headerBlock}>
       <View style={styles.masthead}>
@@ -176,7 +192,7 @@ function HeroEmpty({ onFind }: { onFind: () => void }) {
       </DisplayText>
       <View style={{ height: spacing.xs }} />
       <BodyText size={15} color={palette.textSecondary} weight="medium">
-        Tell us your energy, we&rsquo;ll draft three dinners in about 10 seconds.
+        Tell us your energy, we&rsquo;ll deal a hand of five dinners.
       </BodyText>
       <View style={{ height: spacing.md }} />
       <PolishedButton
@@ -236,7 +252,13 @@ function HeroPopulated({
             />
           </View>
         </View>
-        <View style={styles.heroArtWrap}>
+        {/* Keyed on the pick's id so a swap remounts the art with a fade-in
+            instead of a hard cut. */}
+        <Animated.View
+          key={pick.id}
+          entering={FadeIn.duration(250)}
+          style={styles.heroArtWrap}
+        >
           <Vignette
             size={190}
             localKey={art?.localImageKey as SeedMealKey | undefined}
@@ -248,13 +270,18 @@ function HeroPopulated({
           {protein != null ? (
             <ProteinChip proteinG={protein} size="sm" style={styles.heroProtein} />
           ) : null}
-        </View>
+        </Animated.View>
       </Pressable>
 
       <View style={{ height: spacing.md }} />
-      <MenuRow label="Active time" value={`${pick.timeMinutes} min`} />
+      <MenuRow label="Estimated time" value={`${pick.timeMinutes} min`} />
       <MenuRow label="Serves" value={String(pick.servings)} />
       <MenuRow label="Cuisine" value={pick.cuisine} />
+      {protein != null ? (
+        <BodyText size={12} color={palette.textSecondary}>
+          Protein is an estimate per serving.
+        </BodyText>
+      ) : null}
 
       <View style={{ height: spacing.md }} />
       <PolishedButton
@@ -274,9 +301,11 @@ function HeroPopulated({
 function MorePicks({
   picks,
   onSpotlight,
+  onOpenRecipe,
 }: {
   picks: { recipe: Recipe; idx: number }[];
   onSpotlight: (idx: number) => void;
+  onOpenRecipe: (id: string) => void;
 }) {
   return (
     <View>
@@ -284,16 +313,21 @@ function MorePicks({
       <View style={styles.sectionDivider}>
         <View style={styles.sectionRule} />
         <Mono size={10} bold color={palette.accentDeep}>
-          ALSO ON THE MENU
+          SWAP TONIGHT&rsquo;S PICK
         </Mono>
         <View style={styles.sectionRule} />
       </View>
+      <View style={{ height: spacing.sm }} />
+      <ItalicText size={14} style={styles.heroAside}>
+        Not feeling it? Tap a dish to trade.
+      </ItalicText>
       <View style={{ height: spacing.sm }} />
       {picks.map(({ recipe, idx }) => (
         <MorePickRow
           key={recipe.id}
           recipe={recipe}
           onSpotlight={() => onSpotlight(idx)}
+          onPeek={() => onOpenRecipe(recipe.id)}
         />
       ))}
     </View>
@@ -303,26 +337,47 @@ function MorePicks({
 function MorePickRow({
   recipe,
   onSpotlight,
+  onPeek,
 }: {
   recipe: Recipe;
   onSpotlight: () => void;
+  onPeek: () => void;
 }) {
   const art = useRecipeArt(recipe);
+
+  // Warm this alternate's art as soon as its row is visible — spotlight-first
+  // otherwise only fires on detail-open, leaving a visible blank vignette.
+  // Guarded client-side (hasRequestedRecipeArt) so re-renders don't spam; the
+  // server also holds an atomic pending|failed→generating lock.
+  useEffect(() => {
+    if (recipe.id && isRecipeArtMissing(art) && !hasRequestedRecipeArt(recipe.id)) {
+      void api.requestRecipeImage(recipe.id);
+    }
+  }, [recipe.id, art]);
+
   return (
     <Pressable
       onPress={onSpotlight}
       style={styles.menuRowPress}
       accessibilityRole="button"
-      accessibilityLabel={`Spotlight ${recipe.title}`}
+      accessibilityLabel={`Swap ${recipe.title} in tonight`}
     >
-      <Vignette
-        size={80}
-        localKey={art?.localImageKey as SeedMealKey | undefined}
-        remoteUrl={art?.heroImageUrl}
-        blurhash={art?.blurhash}
-        imageStatus={art?.imageStatus}
-        title={recipe.title}
-      />
+      {/* Nested Pressable wins the tap over the row's — lets you peek at the
+          recipe without committing to the swap. */}
+      <Pressable
+        onPress={onPeek}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${recipe.title} recipe`}
+      >
+        <Vignette
+          size={80}
+          localKey={art?.localImageKey as SeedMealKey | undefined}
+          remoteUrl={art?.heroImageUrl}
+          blurhash={art?.blurhash}
+          imageStatus={art?.imageStatus}
+          title={recipe.title}
+        />
+      </Pressable>
       <View style={styles.menuRowLeader}>
         <MenuRow label={recipe.title} value={`${recipe.timeMinutes} min`} />
       </View>
@@ -385,6 +440,15 @@ function UpcomingCard({
 }) {
   const pick = activePickFor(day);
   const art = useRecipeArt(pick ?? undefined);
+
+  // Same warm-on-visibility as MorePickRow (§5) — guarded so re-renders
+  // don't spam; server holds an atomic pending|failed→generating lock.
+  useEffect(() => {
+    if (pick?.id && isRecipeArtMissing(art) && !hasRequestedRecipeArt(pick.id)) {
+      void api.requestRecipeImage(pick.id);
+    }
+  }, [pick?.id, art]);
+
   const { weekday, month, day: d } = formatDayShort(date);
   const accessibilityLabel = pick
     ? `${weekday}: ${pick.title}`

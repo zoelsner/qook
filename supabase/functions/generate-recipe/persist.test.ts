@@ -33,6 +33,7 @@ const R = {
       steps: [{ instruction: "Boil until tender", durationMin: 6 }],
     },
   ],
+  nutrition: { calories: 380, proteinG: 16, carbG: 60, fatG: 10 },
 };
 
 // Fake admin: no existing signature → insert returns a new id.

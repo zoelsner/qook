@@ -1,4 +1,5 @@
 import type {
+  ContentStatus,
   DietaryTag,
   EnergyTier,
   GroceryCategory,
@@ -60,6 +61,18 @@ export interface NutritionalEstimate {
   source: 'ai-estimate' | 'computed' | 'missing';
 }
 
+// Public culinary identity shared by the proposal, recipe fill and artwork.
+// Household preferences and the private dinner brief never belong here.
+export interface DishContract {
+  version: 1;
+  components: {
+    ingredientNames: string[];
+    form: string;
+    appearance: string;
+  }[];
+  plating: string;
+}
+
 export interface Recipe {
   id: string;
   slug: string;
@@ -81,6 +94,23 @@ export interface Recipe {
 
   notes?: string;
   nutritionalEstimate?: NutritionalEstimate;
+
+  // Two-phase generation (spec 2026-07-10). 'proposal' = skeleton card
+  // (title + hook + protein estimate, no ingredients/steps yet); 'full' =
+  // written recipe. Undefined on legacy/mock recipes is treated as 'full'.
+  contentStatus?: ContentStatus;
+  generationError?: string;
+  // Private association retained with persisted plan/deck snapshots.
+  generationSessionId?: string;
+  hook?: string;
+
+  // Card-back teaser (feature: flippable info back, 2026-07-12). Written
+  // alongside the skeleton at proposal time; superseded (not overwritten) by
+  // `ingredients`/`steps` at fill time.
+  proposalIngredients?: string[];
+  proposalSteps?: string[];
+  // Missing on legacy rows. Once accepted, recipe fill preserves this identity.
+  dishContract?: DishContract;
 
   heroImageUrl?: string;
   localImageKey?: string;

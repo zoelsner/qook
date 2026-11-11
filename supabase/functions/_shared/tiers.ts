@@ -5,7 +5,7 @@ export const TIER_RULES = {
     sectionsMax: 2,
     stepsPerSectionMax: 3,
     directive:
-      "15 minutes OR LESS. One pan or zero pans. Max 6 ingredients. No prep that needs a knife for more than 30 seconds. Think: microwave, toaster, kettle. This is for a human who just got off a bad shift.",
+      "15 minutes total OR LESS, including preparation, heating, cooking and resting. One pan or zero pans. Max 6 ingredients including pantry staples. No prep that needs a knife for more than 30 seconds. Use the available tools; microwave, toaster and kettle are options only when available. This is for a human who just got off a bad shift.",
   },
   "after-work": {
     label: "After work",
@@ -13,7 +13,7 @@ export const TIER_RULES = {
     sectionsMax: 3,
     stepsPerSectionMax: 4,
     directive:
-      "30 minutes total, active hands-on time only. 2 vessels max. Allows a skillet plus a pot of rice, sheet pan plus salad, stir-fry plus quick grain. Satisfying but not a project.",
+      "30 minutes total, including preparation, cooking and resting. 2 vessels max. Allows a skillet plus a pot of rice, sheet pan plus salad, stir-fry plus quick grain. Satisfying but not a project.",
   },
   "got-energy": {
     label: "Got energy",
@@ -21,7 +21,7 @@ export const TIER_RULES = {
     sectionsMax: 4,
     stepsPerSectionMax: 5,
     directive:
-      "45 minutes active time. Up to 3 components (main + side + vegetable). Can include one technique that needs attention (braising, searing with pan sauce, roasting with a glaze). Cook is engaged but not sprinting.",
+      "45 minutes total, including preparation, cooking and resting. Up to 3 components (main + side + vegetable). Can include one technique that needs attention (braising, searing with pan sauce, roasting with a glaze). Cook is engaged but not sprinting.",
   },
   "weekend-project": {
     label: "Weekend project",

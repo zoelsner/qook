@@ -99,7 +99,8 @@ export function PreferencesScreen() {
         kicker={`avoid · ${avoidList.length} item${avoidList.length === 1 ? '' : 's'}`}
       >
         <BodyText size={13} color={palette.textSecondary} weight="medium" style={styles.hint}>
-          Allergens, dislikes, ingredients we should never suggest. Hard filter.
+          Steers every generated hand away from these ingredients. Qook cannot
+          guarantee allergen safety — always check the full recipe.
         </BodyText>
         <View style={{ height: spacing.sm }} />
 

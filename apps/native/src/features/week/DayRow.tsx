@@ -9,7 +9,6 @@ import { ProteinChip } from '../../components/ProteinChip';
 import { palette } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useRecipeArt } from '../../hooks/useRecipeArt';
-import { useBatchSession } from '../../stores/batchSession';
 import { activePickFor, useWeekPlan } from '../../stores/weekPlan';
 import { energyTierColors } from '../../types/energy';
 import { formatDayShort, isToday, type ISODate } from './weekDates';
@@ -24,9 +23,11 @@ const WEEK_TIERS: { tier: EnergyTier; minutes: number }[] = [
 export function DayRow({
   date,
   onOpenRecipe,
+  onOpenDay,
 }: {
   date: ISODate;
   onOpenRecipe: (recipeId: string) => void;
+  onOpenDay?: (date: ISODate, tier: EnergyTier) => void;
 }) {
   const { tap, select } = useHaptics();
   const setEnergy = useWeekPlan((state) => state.setEnergy);
@@ -34,10 +35,6 @@ export function DayRow({
   const swapPick = useWeekPlan((state) => state.swapPick);
   const clearDay = useWeekPlan((state) => state.clearDay);
   const day = useWeekPlan((state) => state.plan[date]);
-  // Guard: while a batch draft is in flight, ignore chip mutations — otherwise
-  // an in-flight response can repopulate a day the user just cleared or
-  // retarget a tier the user just changed (Codex adversarial finding #2).
-  const drafting = useBatchSession((s) => s.status === 'drafting');
 
   const { weekday } = formatDayShort(date);
   const activeTier = day?.energy;
@@ -60,7 +57,6 @@ export function DayRow({
   };
 
   const onChipPress = (tier: EnergyTier) => {
-    if (drafting) return;
     if (activeTier === tier) {
       tap();
       clearEnergy(date);
@@ -84,7 +80,7 @@ export function DayRow({
         <View style={styles.dayLabel}>
           {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}
           <Mono size={12} bold color={palette.ink}>
-            {weekday}
+            {isToday(date) ? 'TONIGHT' : weekday}
           </Mono>
         </View>
         {isToday(date) ? (
@@ -132,7 +128,14 @@ export function DayRow({
   }
 
   return (
-    <View style={styles.row}>
+    <Pressable
+      style={styles.row}
+      onPress={() => {
+        if (activeTier && onOpenDay) onOpenDay(date, activeTier);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${weekday} — pick from your bench or deal fresh ideas`}
+    >
       <View style={styles.dayLabel}>
         {isToday(date) ? <View style={styles.todayDot} /> : <View style={styles.todayDotSpacer} />}
         <Mono size={12} bold color={palette.ink}>
@@ -147,17 +150,15 @@ export function DayRow({
             <Pressable
               key={tier}
               onPress={() => onChipPress(tier)}
-              disabled={drafting}
               style={[
                 styles.chip,
                 active
                   ? { backgroundColor: colors.text, borderColor: colors.text }
                   : styles.chipInactive,
-                drafting ? styles.chipDrafting : null,
               ]}
               accessibilityRole="button"
               accessibilityLabel={`${minutes} minutes`}
-              accessibilityState={{ selected: active, disabled: drafting }}
+              accessibilityState={{ selected: active }}
             >
               <DisplayText
                 size={19}
@@ -170,7 +171,7 @@ export function DayRow({
           );
         })}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -224,9 +225,6 @@ const styles = StyleSheet.create({
   chipInactive: {
     backgroundColor: palette.surface,
     borderColor: palette.glassBorder,
-  },
-  chipDrafting: {
-    opacity: 0.55,
   },
   chipNumber: {
     letterSpacing: -0.4,

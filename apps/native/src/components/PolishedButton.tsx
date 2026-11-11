@@ -33,6 +33,8 @@ export function PolishedButton({
   trailingIcon,
   style,
   disabled,
+  accessibilityRole = 'button',
+  accessibilityLabel = label,
   ...pressable
 }: PolishedButtonProps) {
   const { fill, textColor, borderColor, withShadow } = resolveTone(tone);
@@ -48,6 +50,8 @@ export function PolishedButton({
     >
       <Pressable
         disabled={disabled}
+        accessibilityRole={accessibilityRole}
+        accessibilityLabel={accessibilityLabel}
         {...pressable}
         style={({ pressed }) => [
           styles.pressable,
