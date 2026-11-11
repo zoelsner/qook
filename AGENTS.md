@@ -4,6 +4,8 @@
 
 Qook — iOS meal-planning app. Fresh rewrite on Expo + Supabase.
 
+**Scope:** Instacart and grocery ordering are out of scope: Qook is a meal-planning app.
+
 **Target:** TestFlight via the 2026-07 revival. The original 2026-05-24 date lapsed.
 
 ## Start every session by reading

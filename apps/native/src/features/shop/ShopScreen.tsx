@@ -13,12 +13,7 @@ import { ArrowRight, Check, Copy, Share as ShareIcon } from 'lucide-react-native
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { activeStagedRecipes, useWeekPlan } from '../../stores/weekPlan';
-import {
-  copyList,
-  createInstacartShoppingList,
-  openAmazonFresh,
-  shareList,
-} from '../../lib/shoppingShare';
+import { copyList, shareList } from '../../lib/shoppingShare';
 import {
   aggregateIngredients,
   collectShopMeals,
@@ -38,7 +33,7 @@ const CATEGORY_ORDER: GroceryCategory[] = [
 ];
 
 // shoppingShare helpers take the legacy GroceryItem shape. Map ShopItem onto
-// that shape with local-only ids so Instacart/copy/share continue to work
+// that shape with local-only ids so copy/share continue to work
 // without forking those helpers.
 function toGroceryItem(item: ShopItem): GroceryItem {
   const ts = Date.now() as Timestamp;
@@ -146,16 +141,6 @@ export function ShopScreen() {
     await shareList(uncheckedGrocery);
   };
 
-  const handleInstacart = () => {
-    press();
-    void createInstacartShoppingList(uncheckedGrocery);
-  };
-
-  const handleAmazonFresh = () => {
-    press();
-    openAmazonFresh(uncheckedGrocery);
-  };
-
   return (
     <ScreenShell horizontalPadding={24}>
       <View style={styles.masthead}>
@@ -248,36 +233,6 @@ export function ShopScreen() {
           </View>
         ))
       )}
-
-      {totalItems > 0 ? (
-        <View style={styles.orderViaWrap}>
-          <View style={styles.orderVia}>
-            <Mono size={10} color={palette.textSecondary}>
-              Order via{' '}
-            </Mono>
-            <Pressable onPress={handleInstacart} disabled={listEmpty} hitSlop={6}>
-              <Mono
-                size={10}
-                color={listEmpty ? palette.textTertiary : palette.accentDeep}
-              >
-                Instacart
-              </Mono>
-            </Pressable>
-            <Mono size={10} color={palette.textSecondary}>
-              {' '}
-              ·{' '}
-            </Mono>
-            <Pressable onPress={handleAmazonFresh} disabled={listEmpty} hitSlop={6}>
-              <Mono
-                size={10}
-                color={listEmpty ? palette.textTertiary : palette.accentDeep}
-              >
-                Amazon Fresh
-              </Mono>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
 
       <View style={{ height: spacing.lg }} />
     </ScreenShell>
@@ -440,16 +395,5 @@ const styles = StyleSheet.create({
   emptyTitle: {
     letterSpacing: -0.4,
     lineHeight: 28,
-  },
-  // Quiet ordering paths at the end of the scrolling list — no longer a
-  // floating dock, just a centered Mono line the list scrolls past.
-  orderViaWrap: {
-    marginTop: spacing.lg,
-  },
-  orderVia: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'baseline',
-    justifyContent: 'center',
   },
 });
