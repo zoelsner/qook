@@ -1,4 +1,4 @@
-import { Alert, Linking, Share } from 'react-native';
+import { Alert, Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { GroceryItem } from '@qook/shared';
 
@@ -22,35 +22,6 @@ export function formatListText(items: GroceryItem[]): string {
   if (items.length === 0) return '';
   const body = items.map(formatItem).join('\n');
   return `Tonight's grocery list — Qook\n\n${body}`;
-}
-
-// Flat comma-joined query for search-bar deep links.
-function formatSearchQuery(items: GroceryItem[]): string {
-  return items
-    .map((i) => i.name.trim())
-    .filter(Boolean)
-    .join(', ');
-}
-
-function openUrl(url: string) {
-  void Linking.openURL(url).catch(() => {
-    Alert.alert(
-      'Cannot open link',
-      'We could not hand off to the store. Copy the list instead?'
-    );
-  });
-}
-
-export function openAmazonFresh(items: GroceryItem[]) {
-  const q = formatSearchQuery(items);
-  if (!q) {
-    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
-    return;
-  }
-  const url = `https://www.amazon.com/s?k=${encodeURIComponent(
-    q
-  )}&i=amazonfresh`;
-  openUrl(url);
 }
 
 export async function copyList(items: GroceryItem[]): Promise<boolean> {
