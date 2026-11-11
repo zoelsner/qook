@@ -1,46 +1,61 @@
 # Qook
 
-iOS meal-planning app. Hybrid AI recipe generation with watercolor-illustrated decks.
+Qook is an iPhone app for deciding what to cook. You tell it your tastes, who you're cooking for and how much energy you have tonight. It deals a hand of dinner ideas as cards, each with a watercolor illustration. Keep the ones you like and Qook writes the full recipe. The app also plans your week, builds a shopping list (which you can send to Instacart) and saves recipes you like.
 
-**Target:** TestFlight via the 2026-07 revival. The original May date lapsed.
+The iOS beta is in testing. Overview: https://zachoelsner.com/projects/qook
 
-## Status
+## How it works
 
-**Phase:** Live Supabase generation + Menu restyle are working in the simulator. Real auth, account deletion UI, legal/support URLs, release plumbing, and final reliability work remain.
+- **App** (`apps/native`): Expo 54 and React Native with Expo Router and TypeScript. Tabs are Tonight, Week, Shop and More. Sign in with Apple or email and password, or start as a guest and upgrade later. Account deletion is in the More screen.
+- **Backend** (`supabase`): Supabase Postgres with row-level security, Auth, Storage and Deno Edge Functions.
+- **Edge Functions** (`supabase/functions`):
+  - `generate-proposals` deals the hand of recipe ideas.
+  - `fill-recipe` writes ingredients and steps for a dish you keep.
+  - `generate-image` paints the recipe illustration and stores it in Supabase Storage.
+  - `shopping-share` sends a shopping list to Instacart.
+  - `delete-account` deletes the account and its data.
+  - `generate-recipe` is an older streaming endpoint that the current app does not call.
+- **Models**: all model calls go through OpenRouter. Defaults are in `supabase/functions/_shared/openrouter.ts`: `openai/gpt-6-luna` for text and `google/gemini-3.1-flash-image` for images. The `OR_TEXT_MODEL` and `OR_IMAGE_MODEL` environment variables override them.
 
-## Where to start
+## Run it locally
 
-1. Read **[the finish-line plan](docs/superpowers/plans/2026-07-10-finish-line.md)** — current blockers, priorities, and Fable brief
-2. Read **[CLAUDE.md](CLAUDE.md)** — live architecture and project gotchas
-3. Use the April `docs/plan/` files only as background where the July revival docs have not superseded them
+Requires [Bun](https://bun.sh) and Xcode for the iOS simulator.
 
-## Stack
+```sh
+bun install
+cd apps/native
+bun run ios
+```
 
-- **Client:** Expo 54 + Expo Router v6 + TypeScript + Reanimated 4 + react-native-svg
-- **Backend:** Supabase (Postgres 17 + RLS + Edge Functions + Storage + Auth)
-- **AI:** OpenRouter → Haiku 4.5 (draft) + Sonnet fallback + Gemini 3.1 Flash Image (canon-locked art)
-- **Build:** EAS Build → TestFlight
+`apps/native/app.json` points the app at the hosted Supabase project. The OpenRouter key exists only as a Supabase function secret, never in the app or this repo.
 
-## Architecture
+## Tests
 
-The app uses live personalized generation: `generate-recipe` streams three structured recipes, persists signature-deduped rows, and the client requests canon-locked art through `generate-image`. Supabase Storage serves the finished image; the app polls only while image status is pending/generating and never substitutes unrelated food.
+App checks, from `apps/native`:
 
-Stay on Supabase. Convex is retained only as an old reference implementation; the current backend and security model are not migration targets.
+```sh
+bun run test
+bun run typecheck
+bun run lint
+```
 
-## Design
+Edge Function checks need [Deno](https://deno.com), from the repo root:
 
-Cream `#FBF7EE` / active well `#F1E9D9` / forest `#2A3A26` / rust `#C36A48` / prussian `#3D5469`.
-Fraunces Bold (display) · DM Sans (body) · JetBrains Mono (kickers).
-Watercolor-painted meal hero images.
+```sh
+sh scripts/qa/run-backend-tests.sh cache
+sh scripts/qa/run-backend-tests.sh check
+sh scripts/qa/run-backend-tests.sh test
+```
 
-## Docs
+CI runs both sets (`.github/workflows/ci.yml`).
 
-- `docs/superpowers/plans/2026-07-10-finish-line.md` — authoritative launch queue
-- `docs/superpowers/plans/phase2-deploy-notes.md` — live Supabase operations and incident log
-- `docs/superpowers/specs/2026-07-06-qook-revival-design.md` — revival product/architecture spec
-- `docs/plan/PLAN.md` — original April plan (historical reference)
-- `docs/plan/section-backend.md` — Supabase schema, RLS, Edge Fns, cron
-- `docs/plan/section-frontend.md` — Expo scaffold, design tokens, RN primitives
-- `docs/plan/section-domain.md` — TS types, flows, normalization
-- `docs/plan/section-ai.md` — hybrid AI, prompts, OpenRouter wrapper, cost
-- `docs/plan/section-testflight.md` — EAS, TestFlight, launch assets
+## Repo layout
+
+```
+apps/native/        Expo app (screens in app/, features and services in src/)
+packages/shared/    shared TypeScript package
+supabase/functions/ Edge Functions and their tests
+supabase/migrations/ Postgres schema and RLS
+scripts/            generation, QA and test scripts
+docs/               plans, specs and audits
+```
