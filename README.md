@@ -6,7 +6,7 @@ The iOS beta is in testing. Overview: https://zachoelsner.com/projects/qook
 
 ## How it works
 
-- **App** (`apps/native`): Expo 54 and React Native with Expo Router and TypeScript. Tabs are Tonight, Week, Shop and More. Sign in with Apple or email and password, or start as a guest and upgrade later. Account deletion is in the More screen.
+- **App** (`apps/native`): Expo 54 and React Native with Expo Router and TypeScript. Tabs are Tonight, Week, Shop and More. Sign in with Apple or email and password. Account deletion is in the More screen.
 - **Backend** (`supabase`): Supabase Postgres with row-level security, Auth, Storage and Deno Edge Functions.
 - **Edge Functions** (`supabase/functions`):
   - `generate-proposals` deals the hand of recipe ideas.
