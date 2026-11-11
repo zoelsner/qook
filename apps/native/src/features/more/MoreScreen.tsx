@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Constants from 'expo-constants';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react-native';
@@ -94,8 +94,12 @@ export function MoreScreen() {
     ]);
   };
 
-  const showPending = (what: string, detail: string) =>
-    Alert.alert(what, detail, [{ text: 'OK' }]);
+  const openLink = (url: string) => {
+    tap();
+    void Linking.openURL(url).catch(() => {
+      Alert.alert('Cannot open link', `Visit ${url.replace('https://', '')} in your browser.`);
+    });
+  };
 
   const handleAppleUpgrade = async () => {
     if (accountBusy) return;
@@ -370,42 +374,21 @@ export function MoreScreen() {
       rows: [
         {
           label: 'Privacy policy',
-          subtitle: 'Coming before TestFlight launch',
+          subtitle: 'How Qook handles your data',
           kicker: 'read',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Privacy policy',
-              "Drafting the policy alongside the first backend cut. It'll live at zachoelsner.com/qook/privacy.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/privacy'),
         },
         {
           label: 'Terms of service',
-          subtitle: 'Coming before TestFlight launch',
+          subtitle: 'The rules for using Qook',
           kicker: 'read',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Terms of service',
-              "Drafting alongside the privacy policy. Will live at zachoelsner.com/qook/terms.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/terms'),
         },
         {
-          label: 'Send feedback',
-          subtitle: 'In-app feedback coming soon',
+          label: 'Support & feedback',
+          subtitle: 'Get help or tell us what to fix',
           kicker: 'talk',
-          disabled: true,
-          onPress: () => {
-            tap();
-            showPending(
-              'Send feedback',
-              "We're wiring this to an in-app form so you can tap-and-type. For now, any feedback goes straight to the tester TestFlight note.",
-            );
-          },
+          onPress: () => openLink('https://zachoelsner.com/qook/support'),
         },
       ],
     },
