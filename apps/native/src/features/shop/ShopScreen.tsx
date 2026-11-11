@@ -15,7 +15,6 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { activeStagedRecipes, useWeekPlan } from '../../stores/weekPlan';
 import {
   copyList,
-  createInstacartShoppingList,
   openAmazonFresh,
   shareList,
 } from '../../lib/shoppingShare';
@@ -38,7 +37,7 @@ const CATEGORY_ORDER: GroceryCategory[] = [
 ];
 
 // shoppingShare helpers take the legacy GroceryItem shape. Map ShopItem onto
-// that shape with local-only ids so Instacart/copy/share continue to work
+// that shape with local-only ids so copy/share/Amazon Fresh continue to work
 // without forking those helpers.
 function toGroceryItem(item: ShopItem): GroceryItem {
   const ts = Date.now() as Timestamp;
@@ -146,11 +145,6 @@ export function ShopScreen() {
     await shareList(uncheckedGrocery);
   };
 
-  const handleInstacart = () => {
-    press();
-    void createInstacartShoppingList(uncheckedGrocery);
-  };
-
   const handleAmazonFresh = () => {
     press();
     openAmazonFresh(uncheckedGrocery);
@@ -254,18 +248,6 @@ export function ShopScreen() {
           <View style={styles.orderVia}>
             <Mono size={10} color={palette.textSecondary}>
               Order via{' '}
-            </Mono>
-            <Pressable onPress={handleInstacart} disabled={listEmpty} hitSlop={6}>
-              <Mono
-                size={10}
-                color={listEmpty ? palette.textTertiary : palette.accentDeep}
-              >
-                Instacart
-              </Mono>
-            </Pressable>
-            <Mono size={10} color={palette.textSecondary}>
-              {' '}
-              ·{' '}
             </Mono>
             <Pressable onPress={handleAmazonFresh} disabled={listEmpty} hitSlop={6}>
               <Mono

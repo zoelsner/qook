@@ -6,7 +6,6 @@ export const ERRORS = {
   VALIDATION: "validation",
   GENERATION_FAILED: "generation_failed",
   EMPTY_LIST: "empty_list",
-  INSTACART_DOWN: "instacart_down",
   IMAGE_FAILED: "image_failed",
   NOT_FOUND: "not_found",
   BAD_REQUEST: "bad_request",

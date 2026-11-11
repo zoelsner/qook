@@ -1,7 +1,6 @@
 import { Alert, Linking, Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import type { GroceryItem } from '@qook/shared';
-import { supabase } from '../services/supabase';
 
 // Format a single grocery item for a text list — favours the original
 // quantity string if the row had one, else falls back to amount/unit.
@@ -40,46 +39,6 @@ function openUrl(url: string) {
       'We could not hand off to the store. Copy the list instead?'
     );
   });
-}
-
-export function openInstacart(items: GroceryItem[]) {
-  const q = formatSearchQuery(items);
-  if (!q) {
-    Alert.alert('Nothing to shop yet', 'Check off fewer items or add a recipe to your week.');
-    return;
-  }
-  // Instacart public search URL — each item isn't deduped/quantified,
-  // but the comma-joined query lands the user on a search results page
-  // where they can add items to their cart. Real cart prefill needs
-  // the Connect Platform API (v1.1 gate).
-  const url = `https://www.instacart.com/store/s?k=${encodeURIComponent(q)}`;
-  openUrl(url);
-}
-
-export async function createInstacartShoppingList(
-  items: GroceryItem[]
-): Promise<void> {
-  if (items.length === 0) {
-    Alert.alert('Nothing to shop yet', 'Add items to your list first.');
-    return;
-  }
-  try {
-    const { data, error } = await supabase.functions.invoke('shopping-share', {
-      body: {
-        items: items.map((i) => ({
-          name: i.name,
-          quantityAmount: i.quantityAmount,
-          quantityUnit: i.quantityUnit,
-          quantityText: i.quantityText,
-        })),
-      },
-    });
-    if (error || !data?.url) throw error ?? new Error('no_url');
-    openUrl(data.url as string);
-  } catch {
-    // Edge fn unreachable → local search-URL fallback (never dead-end).
-    openInstacart(items);
-  }
 }
 
 export function openAmazonFresh(items: GroceryItem[]) {
