@@ -211,3 +211,13 @@ Deno.test("HTTP unavailable quota counts fail closed and parallel preflights rem
     assert(results.every(result => !(result instanceof Response)));
   });
 });
+
+Deno.test("HTTP preflight rejects anonymous sessions with 403 sign_in_required before any read", async () => {
+  await scenario(async ({ clock, calls, useFetch }) => {
+    useFetch(req => new URL(req.url).pathname === "/auth/v1/user" ? json({ id: user, is_anonymous: true }) : json([]));
+    const response = await route(request(), { timers: clock, timeoutMs: 100 });
+    assertEquals(response.status, 403);
+    assertEquals((await response.json()).code, "sign_in_required");
+    assertEquals(calls.length, 1);
+  });
+});

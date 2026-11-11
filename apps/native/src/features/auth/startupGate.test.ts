@@ -30,9 +30,10 @@ describe('startup recovery', () => {
     expect(await loadStartupGate(async () => ({ ...signedOut, permanentSession: true }))).toBe('signed-in');
   });
 
-  test('preserves onboarding, guest, and signed-out routing', async () => {
+  test('preserves onboarding and signed-out routing; a stored guest mode without a permanent session must sign in', async () => {
     expect(await loadStartupGate(async () => ({ ...signedOut, onboardingShown: false }))).toBe('onboarding');
-    expect(await loadStartupGate(async () => ({ ...signedOut, authMode: 'guest' }))).toBe('signed-in');
+    expect(await loadStartupGate(async () => ({ ...signedOut, authMode: 'guest' }))).toBe('signed-out');
+    expect(await loadStartupGate(async () => ({ ...signedOut, authMode: 'guest', permanentSession: true }))).toBe('signed-in');
     expect(await loadStartupGate(async () => signedOut)).toBe('signed-out');
     expect(await loadStartupGate(async () => ({ ...signedOut, authMode: 'apple' }))).toBe('signed-out');
     expect(await loadStartupGate(async () => ({ ...signedOut, authMode: 'email' }))).toBe('signed-out');

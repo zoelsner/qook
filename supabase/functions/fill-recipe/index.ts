@@ -6,6 +6,7 @@ import {
   fillSignature,
 } from "../_shared/fill-contract.ts";
 import { generateConsistentFill } from "./generate.ts";
+import { claimFillAttempt } from "./claim.ts";
 import { logFailure } from "../_shared/diagnostics.ts";
 import { requireUser, serviceClient } from "../_shared/supabase.ts";
 import { toFillUpdate } from "../_shared/recipe-map.ts";
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
 
   let userId: string;
   try {
-    const { user } = await requireUser(req);
+    const { user } = await requireUser(req, { permanent: true });
     userId = user.id;
   } catch (resp) {
     return resp as Response;
@@ -100,10 +101,11 @@ Deno.serve(async (req) => {
   }
 
   // Idempotent: a keep + a later cook-tonight both fire fill for the same card.
-  // If it's already full (or was replaced), return it as-is. Natural per-hand
-  // cap: only 5 skeletons exist per hand and each fills at most once.
-  if (String(row.content_status) === "full") {
-    if (!compatibleCachedRecipe(row, contract)) {
+  // If it's already full (or was replaced), return it as-is. A per-recipe
+  // atomic claim (below) stops concurrent requests from both paying, and caps
+  // retries of a failing fill.
+  const respondFull = (full: Record<string, unknown>) => {
+    if (!compatibleCachedRecipe(full, contract)) {
       return errorResponse(
         ERRORS.VALIDATION,
         "This saved recipe does not match its dinner idea — choose a new dinner idea.",
@@ -113,7 +115,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ recipeId, status: "full" }), {
       headers: { "Content-Type": "application/json" },
     });
-  }
+  };
+  if (String(row.content_status) === "full") return respondFull(row);
 
   // Use the immutable private brief, never current preferences or a retry's
   // free text. Repeated requests and reopen preserve the accepted requirements.
@@ -145,6 +148,29 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Claim immediately before the paid call; the adoption path above is free.
+    const claim = await claimFillAttempt(admin, recipeId);
+    if (claim === "busy") {
+      return new Response(JSON.stringify({ recipeId, status: "filling" }), {
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (claim === "done") {
+      const { data: current, error: currentError } = await admin.from("recipes")
+        .select("*").eq("id", recipeId).maybeSingle();
+      if (currentError || !current) return errorResponse(ERRORS.NOT_FOUND, "Recipe not found.", 404);
+      return respondFull(current);
+    }
+    if (claim === "exhausted") {
+      return errorResponse(
+        ERRORS.GENERATION_FAILED,
+        "This recipe has reached its retry limit — choose a new dinner idea.",
+        429,
+      );
+    }
+    if (claim === "not_found") return errorResponse(ERRORS.NOT_FOUND, "Recipe not found.", 404);
+
     const recipe = await generateConsistentFill(
       contract,
       liveCtx,
@@ -171,10 +197,9 @@ Deno.serve(async (req) => {
       if (rpcError) {
         logFailure("fill-recipe", "cache_use_count", rpcError);
       }
-      const { error: deleteError } = await admin.from("recipes").delete().eq(
-        "id",
-        recipeId,
-      );
+      const { error: deleteError } = await admin.from("recipes").delete()
+        .eq("id", recipeId)
+        .eq("content_status", "proposal");
       if (deleteError) {
         logFailure("fill-recipe", "skeleton_cleanup", deleteError);
       }
@@ -204,7 +229,8 @@ Deno.serve(async (req) => {
         if (raceTarget) {
           await adoptTarget(String(raceTarget.id));
           const { error: deleteError } = await admin.from("recipes").delete()
-            .eq("id", recipeId);
+            .eq("id", recipeId)
+            .eq("content_status", "proposal");
           if (deleteError) {
             logFailure("fill-recipe", "skeleton_cleanup", deleteError);
           }
@@ -229,7 +255,7 @@ Deno.serve(async (req) => {
     try {
       const { error } = await admin
         .from("recipes")
-        .update({ generation_error: "Recipe generation failed. Try again." })
+        .update({ generation_error: "Recipe generation failed. Try again.", fill_claimed_at: null })
         .eq("id", recipeId)
         .eq("content_status", "proposal");
       if (error) logFailure("fill-recipe", "error_persistence", error);

@@ -5,7 +5,7 @@ import {
   buildLiveUserPrompt,
 } from "../_shared/prompts/live.ts";
 import { Recipe, RecipeEnvelopeJsonSchema } from "../_shared/schema.ts";
-import { serviceClient, userClient } from "../_shared/supabase.ts";
+import { serviceClient, signInRequiredResponse, userClient } from "../_shared/supabase.ts";
 import { buildLiveContext } from "../_shared/context.ts";
 import { checkQuota } from "../_shared/rate-limit.ts";
 import { extractPartialRecipes, stripCodeFences } from "../_shared/partial-parser.ts";
@@ -76,6 +76,8 @@ Deno.serve(async (req) => {
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
   }
+
+  if (user.is_anonymous === true) return signInRequiredResponse();
 
   const admin = serviceClient();
 

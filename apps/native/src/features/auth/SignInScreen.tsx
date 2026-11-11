@@ -9,7 +9,7 @@ import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { palette, spacing, typeScale } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
-import { AuthMode, StorageKeys, writeString } from '../../lib/storage';
+import { StorageKeys, writeString } from '../../lib/storage';
 import { signInWithApple } from '../../services/supabase';
 
 const HORIZONTAL_PADDING = 32;
@@ -17,15 +17,8 @@ const HORIZONTAL_PADDING = 32;
 export function SignInScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { press, tap } = useHaptics();
+  const { press } = useHaptics();
   const [busy, setBusy] = useState(false);
-
-  const finish = async (mode: AuthMode) => {
-    if (busy) return;
-    setBusy(true);
-    await writeString(StorageKeys.authMode, mode);
-    router.replace('/(tabs)/tonight');
-  };
 
   const handleApple = async () => {
     if (busy) return;
@@ -51,11 +44,6 @@ export function SignInScreen() {
     if (busy) return;
     press();
     router.push('/(auth)/email');
-  };
-
-  const handleGuest = () => {
-    tap();
-    void finish('guest');
   };
 
   return (
@@ -136,28 +124,6 @@ export function SignInScreen() {
               color={palette.primary}
             >
               Use email instead
-            </BodyText>
-          </Pressable>
-
-          <View style={{ height: spacing.sm }} />
-
-          <Pressable
-            onPress={handleGuest}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Continue as guest"
-            hitSlop={12}
-            style={({ pressed }) => [
-              styles.ghost,
-              pressed ? { opacity: 0.6 } : null,
-            ]}
-          >
-            <BodyText
-              weight="medium"
-              size={typeScale.bodyMD}
-              color={palette.primary}
-            >
-              Continue as guest
             </BodyText>
           </Pressable>
 

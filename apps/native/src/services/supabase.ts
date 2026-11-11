@@ -19,16 +19,12 @@ export const supabase = createClient(url, anonKey, {
   },
 });
 
-// Pre-Phase-5 auth: the app has no sign-in UI yet, so live API calls ride an
-// anonymous session. Phase 5 account linking upgrades it to a real account.
+// Paid generation needs a real account (the server enforces it). Never mint an
+// anonymous session here; without a session the caller must send the user to sign in.
 export async function ensureSession(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   if (data.session?.access_token) return data.session.access_token;
-  const { data: anon, error } = await supabase.auth.signInAnonymously();
-  if (error || !anon.session?.access_token) {
-    throw new Error('no_session');
-  }
-  return anon.session.access_token;
+  throw new Error('sign_in_required');
 }
 
 export type AppleSignInResult = 'ok' | 'canceled';

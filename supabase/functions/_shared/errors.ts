@@ -3,6 +3,7 @@ export type ApiError = { code: string; message: string };
 export const ERRORS = {
   RATE_LIMITED: "rate_limited",
   UNAUTHORIZED: "unauthorized",
+  SIGN_IN_REQUIRED: "sign_in_required",
   VALIDATION: "validation",
   GENERATION_FAILED: "generation_failed",
   EMPTY_LIST: "empty_list",

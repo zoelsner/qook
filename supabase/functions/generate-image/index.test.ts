@@ -87,3 +87,15 @@ Deno.test("HTTP image publication failure is reported and releases generating st
   assertEquals(response.status, 502);
   assertEquals(patches.map(p => p.image_status), ["ready", "failed"]);
 }));
+
+Deno.test("anonymous sessions are rejected before any claim or provider call", async () => {
+  for (const [key, value] of Object.entries({ SUPABASE_URL: "http://qook.test", SUPABASE_ANON_KEY: "synthetic", SUPABASE_SERVICE_ROLE_KEY: "synthetic" })) Deno.env.set(key, value);
+  const oldFetch = globalThis.fetch; const paths: string[] = [];
+  globalThis.fetch = (input, init) => { paths.push(new URL(new Request(input, init).url).pathname); return Promise.resolve(json({ id: "33333333-3333-4333-8333-333333333333", aud: "authenticated", is_anonymous: true })); };
+  try {
+    const response = await handler(new Request("http://qook.test/generate-image", { method: "POST", headers: { Authorization: "Bearer synthetic" }, body: JSON.stringify({ recipeId: "11111111-1111-4111-8111-111111111111" }) }));
+    assertEquals(response.status, 403);
+    assertEquals((await response.json()).code, "sign_in_required");
+    assertEquals(paths, ["/auth/v1/user"]);
+  } finally { globalThis.fetch = oldFetch; }
+});
