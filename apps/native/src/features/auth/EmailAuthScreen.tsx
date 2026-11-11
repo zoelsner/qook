@@ -208,7 +208,7 @@ export function EmailAuthScreen() {
         <View style={{ height: spacing.md }} />
 
         <BodyText size={12} color={palette.textTertiary} style={styles.footnote}>
-          Password reset needs email delivery, which lands with qook.app. Sign in
+          Password reset isn&apos;t available yet. Sign in
           with Apple if you&apos;d rather not manage a password.
         </BodyText>
       </ScreenShell>
