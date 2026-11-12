@@ -52,7 +52,7 @@ function escape(str: string): string {
 
 function imageFor(recipe: Recipe): string {
   const key = recipe.localImageKey ?? 'miso-salmon';
-  return `${IMAGE_DIR_REL}/${key}.png`;
+  return `${IMAGE_DIR_REL}/${key}.webp`;
 }
 
 function renderMatrix(recipes: Recipe[]): string {
