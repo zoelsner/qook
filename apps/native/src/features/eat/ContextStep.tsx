@@ -204,7 +204,7 @@ export function ContextStep() {
                 <BodyText
                   size={13}
                   weight="medium"
-                  color={palette.textTertiary}
+                  color={palette.textSecondary}
                 >
                   Skip — surprise me
                 </BodyText>

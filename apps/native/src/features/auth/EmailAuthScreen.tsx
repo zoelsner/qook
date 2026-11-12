@@ -137,7 +137,7 @@ export function EmailAuthScreen() {
             <Mono
               size={10}
               bold
-              color={mode === 'signup' ? palette.accentDeep : palette.textTertiary}
+              color={mode === 'signup' ? palette.accentDeep : palette.textSecondary}
             >
               CREATE ACCOUNT
             </Mono>
@@ -152,7 +152,7 @@ export function EmailAuthScreen() {
             <Mono
               size={10}
               bold
-              color={mode === 'signin' ? palette.accentDeep : palette.textTertiary}
+              color={mode === 'signin' ? palette.accentDeep : palette.textSecondary}
             >
               SIGN IN
             </Mono>

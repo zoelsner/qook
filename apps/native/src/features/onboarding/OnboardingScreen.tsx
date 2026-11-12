@@ -377,7 +377,7 @@ function TasteStep({
         hitSlop={12}
         style={({ pressed }) => [styles.skipRow, pressed ? { opacity: 0.5 } : null]}
       >
-        <BodyText size={13} weight="medium" color={palette.textTertiary}>
+        <BodyText size={13} weight="medium" color={palette.textSecondary}>
           Skip — I eat everything
         </BodyText>
       </Pressable>
