@@ -822,7 +822,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titleBlock: {
-    marginTop: -18,
+    // Kicker sits below the hero, not over it: 10px accent mono is unreadable on art.
+    marginTop: spacing.md,
     paddingHorizontal: 24,
     gap: 10,
   },
