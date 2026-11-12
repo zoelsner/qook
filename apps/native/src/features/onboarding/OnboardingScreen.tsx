@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import { BrushstrokeUnderline } from '../../components/BrushstrokeUnderline';
 import { BodyText, DisplayText, Mono } from '../../components/Text';
@@ -142,7 +142,8 @@ export function OnboardingScreen() {
 
   const finish = async () => {
     await writeFlag(StorageKeys.onboardingShown, true);
-    router.replace('/(auth)/sign-in');
+    // Show what Qook does with bundled dishes before asking for an account.
+    router.replace('/(onboarding)/sample' as Href);
   };
 
   const handleSkipAll = () => {

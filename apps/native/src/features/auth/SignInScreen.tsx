@@ -74,10 +74,10 @@ export function SignInScreen() {
               color={palette.primary}
               style={styles.headline}
             >
-              Save your account.
+              {'Made just\nfor you.'}
             </DisplayText>
             <BrushstrokeUnderline
-              width={190}
+              width={160}
               strokeWidth={2.2}
               color={palette.accent}
               style={styles.underline}
@@ -92,7 +92,7 @@ export function SignInScreen() {
             weight="regular"
             style={styles.subtitle}
           >
-            Plan meals, build your grocery list, and cook with confidence.
+            Qook writes every dinner idea fresh for your taste and your night. That needs an account.
           </BodyText>
 
           <View style={styles.flexSpacer} />
@@ -193,7 +193,8 @@ const styles = StyleSheet.create({
     letterSpacing: -1.4,
     lineHeight: 50,
   },
-  // "Save your account." wraps to two lines — the accent sits under "account."
+  // The headline breaks explicitly after "Made just" so the accent always sits
+  // under the short second line, "for you." (width sized to that line).
   underline: {
     position: 'absolute',
     left: -4,

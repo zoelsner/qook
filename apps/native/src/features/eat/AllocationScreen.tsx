@@ -11,19 +11,13 @@ import { palette, spacing } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
-import { allocateKeeps, tierMismatch, dayChipState, type DayChipState } from './allocation';
+import { allocateKeeps, benchNoticeCopy, tierMismatch, dayChipState, type DayChipState } from './allocation';
 import { TIER_MAX_MINUTES } from './weekReset';
 import { api } from '../../services/api';
 import { addDaysISO, todayISO, type ISODate } from '../week/weekDates';
 import type { SeedMealKey } from '../../lib/assets';
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function benchNoticeCopy(count: number): string {
-  return count === 1
-    ? '1 extra saved to your bench — tap a night to use it.'
-    : `${count} extras saved to your bench — tap a night to use them.`;
-}
 
 function dayOptions(): { date: ISODate; label: string }[] {
   const today = todayISO();
