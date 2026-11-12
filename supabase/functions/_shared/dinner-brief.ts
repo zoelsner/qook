@@ -31,6 +31,16 @@ const allergens: Record<string, RegExp> = {
   fish: /\b(?:fish|salmon|tuna|cod|anchov\w*|sardines?|fish sauce)\b/i,
 };
 const meat = /\b(?:chicken|beef|pork|lamb|turkey|bacon|ham|sausage|gelatin|gelatine)\b/i;
+// Onboarding diet chips (OnboardingScreen DIETARY_OPTIONS) are saved inside
+// avoid_ingredients by shipped clients. Read them as the requirements they are.
+const dietLabels: Record<string, { diet?: string; exclude?: string }> = {
+  "vegetarian": { diet: "vegetarian" },
+  "vegan": { diet: "vegan" },
+  "gluten free": { diet: "gluten-free" },
+  "dairy free": { diet: "dairy-free" },
+  "no pork": { exclude: "pork" },
+  "no shellfish": { exclude: "shellfish" },
+};
 const toolNames: Record<string, string> = { microwave: "microwave", kettle: "kettle", skillet: "stovetop", stovetop: "stovetop", oven: "oven", toaster: "toaster", "air fryer": "airFryer", grill: "grill" };
 
 export function dinnerBrief(ctx: LiveContext): DinnerBrief {
@@ -38,6 +48,13 @@ export function dinnerBrief(ctx: LiveContext): DinnerBrief {
   const allergies = new Set<string>();
   const excluded = new Set<string>();
   const diets = new Set<string>();
+  const avoidIngredients: string[] = [];
+  for (const item of ctx.avoidIngredients) {
+    const label = dietLabels[item.trim().toLowerCase().replace(/[\s-]+/g, " ")];
+    if (label?.diet) diets.add(label.diet);
+    else if (label?.exclude) excluded.add(label.exclude);
+    else avoidIngredients.push(item);
+  }
   for (const clause of context.split(/[.;!\n]|\b(?:but|however)\b/i)) {
     if (/\b(?:not|no|never)\s+(?:actually\s+)?allergic\b|\bno\s+(?:food\s+)?allergies\b/i.test(clause)) continue;
     if (/\ballerg(?:ic|y|ies)\b/i.test(clause)) {
@@ -55,6 +72,7 @@ export function dinnerBrief(ctx: LiveContext): DinnerBrief {
       for (const name of m[1].split(/\s+(?:and|or)\s+/i)) excluded.add(name.trim());
     }
   }
+  if (diets.has("vegan")) diets.delete("vegetarian");
   let onlyMethods: string[] = [];
   for (const clause of context.split(/[.;!\n]/)) {
     if (!/\bonly\b/i.test(clause)) continue;
@@ -67,7 +85,7 @@ export function dinnerBrief(ctx: LiveContext): DinnerBrief {
   const count = /\b(?:serves?|for)\s+(\d+|one|two|three|four|five|six)\b(?!\s*(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|am|pm)\b)|\b(\d+|one|two|three|four|five|six)\s+(?:people|servings?)\b/i.exec(context);
   const counts: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
   const n = count ? counts[(count[1] ?? count[2]).toLowerCase()] ?? Number(count[1] ?? count[2]) : ctx.householdSize;
-  return { version: 1, context, avoidIngredients: [...ctx.avoidIngredients], kitchenTools: [...ctx.kitchenTools], householdSize: Math.min(12, Math.max(1, n)), lovedCuisines: [...ctx.lovedCuisines], preferredProteins: [...ctx.preferredProteins], allergies: [...allergies], diets: [...diets], excludedIngredients: [...excluded], onlyMethods, conflicts, ...(time ? { maxMinutes: Number(time[1]) } : {}) };
+  return { version: 1, context, avoidIngredients, kitchenTools: [...ctx.kitchenTools], householdSize: Math.min(12, Math.max(1, n)), lovedCuisines: [...ctx.lovedCuisines], preferredProteins: [...ctx.preferredProteins], allergies: [...allergies], diets: [...diets], excludedIngredients: [...excluded], onlyMethods, conflicts, ...(time ? { maxMinutes: Number(time[1]) } : {}) };
 }
 
 export function briefContext(brief: DinnerBrief, tier: LiveContext["tier"]): LiveContext {

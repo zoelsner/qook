@@ -7,6 +7,7 @@ import {
 import { Recipe, RecipeEnvelopeJsonSchema } from "../_shared/schema.ts";
 import { serviceClient, signInRequiredResponse, userClient } from "../_shared/supabase.ts";
 import { buildLiveContext } from "../_shared/context.ts";
+import { briefContext, briefDirective, dinnerBrief } from "../_shared/dinner-brief.ts";
 import { checkQuota } from "../_shared/rate-limit.ts";
 import { extractPartialRecipes, stripCodeFences } from "../_shared/partial-parser.ts";
 import {
@@ -138,7 +139,9 @@ Deno.serve(async (req) => {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const liveCtx = buildLiveContext(tier, prefs ?? null, context);
+  // Same brief as generate-proposals, so saved diet chips become diets.
+  const brief = dinnerBrief(buildLiveContext(tier, prefs ?? null, context));
+  const liveCtx = briefContext(brief, tier);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -158,7 +161,7 @@ Deno.serve(async (req) => {
         const full = await chatStream(
           [
             { role: "system", content: buildLiveSystemPrompt() },
-            { role: "user", content: buildLiveUserPrompt(liveCtx) },
+            { role: "user", content: buildLiveUserPrompt(liveCtx) + "\n" + briefDirective(brief) },
           ],
           {
             onPartial: (buf) => {
