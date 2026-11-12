@@ -16,7 +16,9 @@ describe('generation error guidance', () => {
   test('preserves server quota guidance and provides a fallback for raw codes', () => {
     const guidance = 'You’ve reached today’s limit. Try again tomorrow.';
     expect(generationErrorMessage(new Error(guidance))).toBe(guidance);
-    for (const error of [new Error('no_recipes'), new Error(''), undefined]) {
+    for (const error of [new Error('no_recipes'), new Error(''), undefined,
+      new Error('Edge Function returned a non-2xx status code'),
+      new Error('Relay Error invoking the Edge Function')]) {
       expect(generationErrorMessage(error)).toBe(
         'The kitchen couldn’t deal this hand. Try again in a moment.',
       );
