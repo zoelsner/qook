@@ -456,6 +456,7 @@ function MoreRowView({
   return (
     <Pressable
       onPress={row.onPress}
+      disabled={row.disabled}
       style={({ pressed }) => [
         styles.row,
         showDivider ? styles.rowDivider : null,
