@@ -21,6 +21,13 @@ export function allocationWrites(choices: AllocationChoice[]): AllocationWrite[]
     .map((c) => ({ recipe: c.recipe, date: c.date }));
 }
 
+// One-shot Plan-tab notice after unplaced keeps land on the bench.
+export function benchNoticeCopy(count: number): string {
+  return count === 1
+    ? '1 extra saved to your bench — tap a night to use it.'
+    : `${count} extras saved to your bench — tap a night to use them.`;
+}
+
 // A keep placed on a night whose tier ceiling is shorter than the dish's time
 // is a soft mismatch: the UI warns but never blocks (spec D5).
 export function tierMismatch(cardMinutes: number, nightTier: EnergyTier): boolean {

@@ -27,6 +27,8 @@ import { focusedRecipe, isExhausted, swipeSummary, sessionExcludeTitles } from '
 import { shouldPrefetchNextHand } from './handPrefetch';
 import { buildRedealContext } from './redealContext';
 import { unfilledResetNights } from './weekReset';
+import { benchNoticeCopy } from './allocation';
+import { todayISO } from '../week/weekDates';
 import { artIndicesToRequest, urlsToPrefetch } from './imagePrefetch';
 import { CardArt } from './CardArt';
 import { useSwipeGesture } from '../swipe-night/useSwipeGesture';
@@ -91,7 +93,8 @@ export function DeckScreen() {
   const deckKeep = useGenerationSession((s) => s.deckKeep);
   const deckPass = useGenerationSession((s) => s.deckPass);
   const dealHand = useGenerationSession((s) => s.dealHand);
-  const setCookTonight = useGenerationSession((s) => s.setCookTonight);
+  const addToBench = useGenerationSession((s) => s.addToBench);
+  const setBenchNotice = useGenerationSession((s) => s.setBenchNotice);
   const reset = useGenerationSession((s) => s.reset);
   const mode = useGenerationSession((s) => s.mode);
   const resetNights = useGenerationSession((s) => s.resetNights);
@@ -100,11 +103,16 @@ export function DeckScreen() {
   const plan = useWeekPlan((s) => s.plan);
   const savedRecipeIds = useWeekPlan((s) => s.savedRecipeIds);
   const toggleSavedRecipe = useWeekPlan((s) => s.toggleSavedRecipe);
+  const appendRecipeAndSelect = useWeekPlan((s) => s.appendRecipeAndSelect);
   const [dealing, setDealing] = useState(false);
+
+  // Set when Cook this tonight clears tonight's session on the way out, so the
+  // no-deck bounce below can't override that navigation.
+  const leavingRef = useRef(false);
 
   // Guard: no deck means the user landed here without a hand — bounce to energy.
   useEffect(() => {
-    if (!deck) router.replace('/(eat)/energy');
+    if (!deck && !leavingRef.current) router.replace('/(eat)/energy');
   }, [deck, router]);
 
   // Cleared explicitly when a fresh hand is dealt (handleFreshHand) — a
@@ -248,15 +256,30 @@ export function DeckScreen() {
     deckPass();
   }, [deckPass]);
 
+  // Cook this tonight skips allocation: the card becomes tonight's spotlight
+  // and the user lands on it. appendRecipeAndSelect is non-destructive — a
+  // dinner already planned for tonight stays as an alternate under "more
+  // picks" (same as Cook tonight in recipe detail). Earlier keeps this session
+  // stay saved; in week mode they also go to the bench for other nights.
   const handleCookTonight = useCallback(() => {
-    if (!focused) return;
+    if (!focused || !deck || leavingRef.current) return;
+    leavingRef.current = true;
     press();
     saveIfNew(focused.id);
+    // Write before the fill starts so its reconcile upgrades this plan entry.
+    appendRecipeAndSelect(todayISO(), focused);
     runFill(focused);
-    deckKeep(); // ensure it's in the kept set for allocation
-    setCookTonight(focused.id);
-    router.replace(ALLOCATE_ROUTE);
-  }, [focused, press, saveIfNew, runFill, deckKeep, setCookTonight, router]);
+    const otherKeeps = deck.kept.filter((r) => r.id !== focused.id);
+    if (mode === 'week') {
+      if (otherKeeps.length) {
+        addToBench(otherKeeps);
+        setBenchNotice(benchNoticeCopy(otherKeeps.length));
+      }
+    } else {
+      reset();
+    }
+    router.replace({ pathname: '/(modals)/recipe/[id]', params: { id: focused.id } });
+  }, [focused, deck, press, saveIfNew, appendRecipeAndSelect, runFill, mode, addToBench, setBenchNotice, reset, router]);
 
   const goAllocateOrHome = useCallback(() => {
     press();
@@ -615,7 +638,7 @@ export function DeckCard({
       {onCookTonight ? (
         <>
           <View style={{ height: spacing.sm }} />
-          <PolishedButton label="Cook this tonight →" tone="forest" onPress={onCookTonight} />
+          <PolishedButton label="Cook this tonight →" tone="cream" onPress={onCookTonight} />
         </>
       ) : null}
     </View>

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Recipe } from '@qook/shared';
 import type { ISODate } from '../week/weekDates';
-import { allocationWrites, tierMismatch, allocateKeeps, shortTitle, dayChipState } from './allocation';
+import { allocationWrites, benchNoticeCopy, tierMismatch, allocateKeeps, shortTitle, dayChipState } from './allocation';
 
 function r(id: string): Recipe {
   return { id, title: `Dish ${id}` } as Recipe;
@@ -134,5 +134,12 @@ describe('dayChipState', () => {
       expect(state.claimedIndex).toBe(0);
       expect(state.claimedTitle).toBe('Big Batch Chili');
     }
+  });
+});
+
+describe('benchNoticeCopy', () => {
+  test('singular and plural', () => {
+    expect(benchNoticeCopy(1)).toBe('1 extra saved to your bench — tap a night to use it.');
+    expect(benchNoticeCopy(3)).toBe('3 extras saved to your bench — tap a night to use them.');
   });
 });
