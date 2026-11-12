@@ -243,7 +243,7 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
   return (
     <View style={styles.empty}>
       <Mono size={10} bold color={palette.accentDeep}>
-        nothing slotted
+        nothing planned
       </Mono>
       <View style={{ height: spacing.xs }} />
       <DisplayText size={24} color={palette.ink} style={styles.emptyTitle}>
@@ -251,8 +251,7 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
       </DisplayText>
       <View style={{ height: spacing.sm }} />
       <BodyText size={14} color={palette.textSecondary} weight="medium">
-        Tag a few nights in Week and draft dinners — we&rsquo;ll aggregate everything
-        you need into one list here.
+        Plan a few dinners and everything you need lands here in one list.
       </BodyText>
       <View style={{ height: spacing.md }} />
       <PolishedButton

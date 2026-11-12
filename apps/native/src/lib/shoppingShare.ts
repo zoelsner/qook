@@ -21,7 +21,7 @@ function formatItem(item: GroceryItem): string {
 export function formatListText(items: GroceryItem[]): string {
   if (items.length === 0) return '';
   const body = items.map(formatItem).join('\n');
-  return `Tonight's grocery list — Qook\n\n${body}`;
+  return `Grocery list — Qook\n\n${body}`;
 }
 
 export async function copyList(items: GroceryItem[]): Promise<boolean> {

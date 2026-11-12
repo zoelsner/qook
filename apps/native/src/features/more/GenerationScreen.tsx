@@ -40,7 +40,7 @@ export function GenerationScreen() {
       <SettingsGroup kicker={`default tier · ${tierLabel.toLowerCase()}`}>
         <BodyText size={13} color={palette.textSecondary} weight="medium" style={styles.hint}>
           Skip the energy picker on Tonight if you almost always pick the same
-          tier. You can still change it per-day from Week.
+          tier. You can still change it per night from Plan.
         </BodyText>
         <View style={{ height: spacing.sm }} />
         <PillGroup>
