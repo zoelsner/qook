@@ -45,7 +45,7 @@ export function EnergyPickerScreen() {
 
       <View style={{ height: spacing.md + 2 }} />
       <Mono size={10} bold color={palette.accentDeep}>
-        tonight · {WEEKDAY[new Date().getDay()]}
+        step 1 of 2 · tonight · {WEEKDAY[new Date().getDay()]}
       </Mono>
       <View style={{ height: 6 }} />
       <DisplayText size={34} color={palette.primary} style={styles.displayTitle}>

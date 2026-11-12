@@ -429,7 +429,8 @@ export function MoreScreen() {
 
       <View style={styles.footer}>
         <Mono size={10} color={palette.textTertiary}>
-          qook · v{version} · {apiMode}
+          qook · v{version}
+          {__DEV__ ? ` · ${apiMode}` : null}
         </Mono>
       </View>
 
@@ -455,6 +456,7 @@ function MoreRowView({
   return (
     <Pressable
       onPress={row.onPress}
+      disabled={row.disabled}
       style={({ pressed }) => [
         styles.row,
         showDivider ? styles.rowDivider : null,

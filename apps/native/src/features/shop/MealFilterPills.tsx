@@ -56,7 +56,7 @@ export function MealFilterPills({
             <BodyText
               size={13}
               weight="medium"
-              color={on ? palette.ink : palette.textTertiary}
+              color={on ? palette.ink : palette.textSecondary}
               numberOfLines={1}
               style={styles.pillTitle}
             >

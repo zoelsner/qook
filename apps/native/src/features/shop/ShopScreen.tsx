@@ -70,9 +70,9 @@ export function ShopScreen() {
     [plan, today, staged, hasHydrated],
   );
 
-  // Pill exclusions — ephemeral, same lifetime as `checked` (spec
-  // 2026-07-13-shop-meal-pills-design.md). A meal leaving the plan takes its
-  // stale exclusion with it (excludeIds intersects with live meal ids).
+  // Pill exclusions — ephemeral (spec 2026-07-13-shop-meal-pills-design.md).
+  // A meal leaving the plan takes its stale exclusion with it (excludeIds
+  // intersects with live meal ids).
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
   const excludeIds = useMemo(
     () => new Set(meals.filter((m) => excluded[m.id]).map((m) => m.id)),
@@ -84,7 +84,22 @@ export function ShopScreen() {
     [plan, staged, today, hasHydrated, excludeIds],
   );
 
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  // Check-offs persist (iOS can evict the app mid-shop). Prune against the
+  // unfiltered list so hiding a meal behind a pill doesn't drop its checks.
+  const checked = useWeekPlan((s) => s.shopChecked);
+  const toggleShopChecked = useWeekPlan((s) => s.toggleShopChecked);
+  const pruneShopChecked = useWeekPlan((s) => s.pruneShopChecked);
+  const allItemKeys = useMemo(
+    () =>
+      hasHydrated
+        ? (excludeIds.size ? aggregateIngredients(plan, today, staged) : items).map((i) => i.key)
+        : null,
+    [plan, today, staged, hasHydrated, excludeIds, items],
+  );
+  useEffect(() => {
+    if (allItemKeys) pruneShopChecked(allItemKeys);
+  }, [allItemKeys, pruneShopChecked]);
+
   const [copied, setCopied] = useState(false);
 
   const grouped = useMemo(() => {
@@ -114,7 +129,7 @@ export function ShopScreen() {
 
   const handleToggle = (key: string) => {
     select();
-    setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+    toggleShopChecked(key);
   };
 
   const handleTogglePill = (id: string) => {
@@ -243,7 +258,7 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
   return (
     <View style={styles.empty}>
       <Mono size={10} bold color={palette.accentDeep}>
-        nothing slotted
+        nothing planned
       </Mono>
       <View style={{ height: spacing.xs }} />
       <DisplayText size={24} color={palette.ink} style={styles.emptyTitle}>
@@ -251,8 +266,7 @@ function EmptyShop({ onOpenWeek }: { onOpenWeek: () => void }) {
       </DisplayText>
       <View style={{ height: spacing.sm }} />
       <BodyText size={14} color={palette.textSecondary} weight="medium">
-        Tag a few nights in Week and draft dinners — we&rsquo;ll aggregate everything
-        you need into one list here.
+        Plan a few dinners and everything you need lands here in one list.
       </BodyText>
       <View style={{ height: spacing.md }} />
       <PolishedButton

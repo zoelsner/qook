@@ -5,8 +5,12 @@ export function generationErrorMessage(error: unknown): string {
       /failed to send a request to the edge function/i.test(message)) {
     return 'We couldn’t connect to the kitchen. Check your connection and try again.';
   }
-  // Keep useful server messages (including quota guidance); hide raw codes.
-  if (!message || /^[a-z]+(?:_[a-z]+)+$/.test(message)) {
+  // Keep useful server messages (including quota guidance); hide raw codes and
+  // supabase-js's generic wrapper strings.
+  if (!message || /^[a-z]+(?:_[a-z]+)+$/.test(message) ||
+      /^edge function returned a non-2xx status code$|relay error invoking the edge function/i.test(message) ||
+      // Server replies written for developers, not diners.
+      /^(bad request body|request cancelled)\.?$/i.test(message)) {
     return 'The kitchen couldn’t deal this hand. Try again in a moment.';
   }
   return message;

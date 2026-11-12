@@ -39,6 +39,7 @@ export function IconPill({
         disabled={disabled || !onPress}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
+        accessibilityState={{ disabled }}
         hitSlop={6}
         style={({ pressed }) => [
           styles.pill,

@@ -14,6 +14,7 @@ import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
 import { markRecipeArtRequested, unmarkRecipeArtRequested } from '../hooks/recipeArtState';
 import { syncUserPreferences } from './userPreferences';
+import { readFunctionError, shouldRetryFunctionError } from './functionError';
 
 type ApiMode = 'mock' | 'live';
 
@@ -246,14 +247,6 @@ export async function requestRecipeImage(recipeId: string): Promise<void> {
   }
 }
 
-// The server rejects anonymous sessions on paid routes with code sign_in_required.
-async function isSignInRequired(error: unknown): Promise<boolean> {
-  const response = (error as { context?: Response }).context;
-  if (!response || typeof response.clone !== 'function') return false;
-  const details = await response.clone().json().catch(() => null);
-  return details?.code === 'sign_in_required';
-}
-
 // Phase-1 (spec 2026-07-10): deal a hand of 5 proposals — one cheap Luna call.
 // The edge already maps rows to client shape; we only normalize the ISO
 // createdAt/updatedAt strings to the branded Timestamp number. Mock mode returns
@@ -277,15 +270,20 @@ export async function generateProposals(
   // clamps model drift and re-rolls the model once, but a cold start or a
   // transient hop still lands as a non-2xx — and a plain retry nearly always
   // deals (2026-07-28 TestFlight 422). Failed hands don't count against quota.
+  // Auth and rate-limit rejections skip the re-ask (see shouldRetryFunctionError).
   let { data, error } = await supabase.functions.invoke('generate-proposals', { body });
-  if (error && (await isSignInRequired(error))) throw new Error('sign_in_required');
-  if (error) {
+  let details = error ? await readFunctionError(error) : {};
+  if (error && details.code !== 'sign_in_required' && shouldRetryFunctionError(details)) {
     await lag(1000);
     ({ data, error } = await supabase.functions.invoke('generate-proposals', { body }));
+    details = error ? await readFunctionError(error) : {};
   }
   if (error) {
-    const msg = (error as { message?: string }).message ?? 'Something went wrong.';
-    throw new Error(msg);
+    // The server rejects anonymous sessions on paid routes with code sign_in_required.
+    if (details.code === 'sign_in_required') throw new Error('sign_in_required');
+    // Prefer the server's own message (quota/rate-limit guidance); otherwise
+    // pass supabase-js's message through for generationErrorMessage to map.
+    throw new Error(details.message ?? (error as { message?: string }).message ?? '');
   }
   const proposals = ((data as { proposals?: unknown[] })?.proposals ?? []) as Record<
     string,
@@ -320,13 +318,8 @@ export async function fillRecipe(
       body: { recipeId, generationSessionId, context: context?.trim() || undefined },
     });
     if (error) {
-      let msg = 'Couldn’t finish this recipe. Check your connection and try again.';
-      const response = (error as { context?: Response }).context;
-      if (response && typeof response.json === 'function') {
-        const details = await response.clone().json().catch(() => null);
-        if (typeof details?.message === 'string') msg = details.message;
-      }
-      throw new Error(msg);
+      const { message } = await readFunctionError(error);
+      throw new Error(message ?? 'Couldn’t finish this recipe. Check your connection and try again.');
     }
     const out = data as { recipeId?: string; status?: string };
     return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };

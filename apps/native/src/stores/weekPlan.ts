@@ -8,6 +8,7 @@ import { addDaysISO, todayISO, type ISODate } from '../features/week/weekDates';
 
 import { reconcileRecipeSnapshots } from './reconcileRecipeSnapshots';
 import { selectDayRecipe } from './dayPlanSelection';
+import { pruneShopChecks, toggleShopCheck, type ShopChecked } from './shopChecked';
 export { activePickFor } from './dayPlanSelection';
 
 const STAGING_TTL_DAYS = 7;
@@ -31,6 +32,8 @@ interface WeekPlanState {
   plan: Record<ISODate, DayPlan>;
   savedRecipeIds: string[];
   shopStaging: StagedShopRecipe[];
+  // Shop check-offs keyed by ShopItem.key; only checked keys are stored.
+  shopChecked: ShopChecked;
   hasHydrated: boolean;
 
   setEnergy: (date: ISODate, tier: EnergyTier) => void;
@@ -44,6 +47,8 @@ interface WeekPlanState {
   stageRecipeForShop: (recipe: Recipe, servings?: number) => void;
   reconcileRecipe: (oldId: string, recipe: Recipe) => void;
   toggleSavedRecipe: (id: string) => void;
+  toggleShopChecked: (key: string) => void;
+  pruneShopChecked: (liveKeys: readonly string[]) => void;
   remapSavedRecipe: (oldId: string, newId: string) => void;
   clearDay: (date: ISODate) => void;
   clearFuture: () => void;
@@ -58,6 +63,7 @@ export const useWeekPlan = create<WeekPlanState>()(
       plan: {},
       savedRecipeIds: [],
       shopStaging: [],
+      shopChecked: {},
       hasHydrated: false,
 
       setEnergy: (date, energy) =>
@@ -198,6 +204,15 @@ export const useWeekPlan = create<WeekPlanState>()(
             : [...state.savedRecipeIds, id],
         })),
 
+      toggleShopChecked: (key) =>
+        set((state) => ({ shopChecked: toggleShopCheck(state.shopChecked, key) })),
+
+      pruneShopChecked: (liveKeys) =>
+        set((state) => {
+          const shopChecked = pruneShopChecks(state.shopChecked, liveKeys);
+          return shopChecked === state.shopChecked ? state : { shopChecked };
+        }),
+
       // A phase-2 fill can cache-hit the signature dedup and hand back a
       // different recipe id than the skeleton the user saved. Follow the swap
       // so the heart doesn't point at a dead id.
@@ -230,7 +245,7 @@ export const useWeekPlan = create<WeekPlanState>()(
         });
       },
 
-      clearAll: () => set({ plan: {}, shopStaging: [], savedRecipeIds: [] }),
+      clearAll: () => set({ plan: {}, shopStaging: [], savedRecipeIds: [], shopChecked: {} }),
 
       _setHydrated: () => set({ hasHydrated: true }),
     }),
@@ -239,12 +254,14 @@ export const useWeekPlan = create<WeekPlanState>()(
       storage: createJSONStorage(() => AsyncStorage),
       // v3 (2026-07-06): added savedRecipeIds. Bumping discards v2 caches so
       // rehydration starts with an empty saved list rather than an undefined
-      // field. Safe to bump any time the persisted shape changes.
+      // field. Bumping discards existing plans, so additive fields (shopChecked)
+      // default in merge instead.
       version: 3,
       partialize: (state) => ({
         plan: state.plan,
         savedRecipeIds: state.savedRecipeIds,
         shopStaging: state.shopStaging,
+        shopChecked: state.shopChecked,
       }),
       merge: (persistedState, currentState) => {
         const persistedPlan = (persistedState as Partial<WeekPlanState> | undefined)?.plan ?? {};
@@ -260,12 +277,16 @@ export const useWeekPlan = create<WeekPlanState>()(
         const persistedStaging =
           (persistedState as Partial<WeekPlanState> | undefined)?.shopStaging ?? [];
 
+        const persistedChecked =
+          (persistedState as Partial<WeekPlanState> | undefined)?.shopChecked ?? {};
+
         return {
           ...currentState,
           ...(persistedState as object),
           plan: mergedPlan,
           savedRecipeIds: persistedSaved,
           shopStaging: persistedStaging,
+          shopChecked: persistedChecked,
         };
       },
       onRehydrateStorage: () => (state) => {

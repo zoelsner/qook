@@ -241,7 +241,7 @@ export function AllocationScreen() {
       <PolishedButton label="Done" tone="forest" disabled={finishing} onPress={() => void finish()} />
       <View style={{ height: spacing.sm }} />
       <Pressable onPress={skipAll} accessibilityRole="button" hitSlop={12} style={styles.skipRow}>
-        <BodyText size={13} weight="medium" color={palette.textTertiary}>
+        <BodyText size={13} weight="medium" color={palette.textSecondary}>
           Skip — just save them
         </BodyText>
       </Pressable>

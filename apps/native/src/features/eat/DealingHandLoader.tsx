@@ -124,7 +124,7 @@ export function DealingHandLoader({ phase }: { phase: 'thinking' | 'coming-up' }
       </Mono>
       <View style={{ height: spacing.sm }} />
       <DisplayText size={30} color={palette.primary} style={styles.copy}>
-        {phase === 'thinking' ? 'The kitchen is thinking' : 'Five proposals, coming up'}
+        {phase === 'thinking' ? 'The kitchen is thinking' : 'Five dinner ideas, coming up'}
       </DisplayText>
     </View>
   );

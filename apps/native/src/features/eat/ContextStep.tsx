@@ -120,7 +120,7 @@ export function ContextStep() {
               >
                 {mode === 'week'
                   ? 'Tired nights, busy stretches, anything you’re craving — tell us and we’ll steer the hand. Or skip it.'
-                  : 'Tell us what you’re in the mood for, what’s already in the fridge, or nothing at all. We’ll tune the drafts.'}
+                  : 'Tell us what you’re in the mood for, what’s already in the fridge, or nothing at all. We’ll tune the ideas.'}
               </BodyText>
 
               <View style={{ height: spacing.lg }} />
@@ -204,7 +204,7 @@ export function ContextStep() {
                 <BodyText
                   size={13}
                   weight="medium"
-                  color={palette.textTertiary}
+                  color={palette.textSecondary}
                 >
                   Skip — surprise me
                 </BodyText>

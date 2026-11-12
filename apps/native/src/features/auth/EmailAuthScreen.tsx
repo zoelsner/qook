@@ -36,16 +36,20 @@ export function EmailAuthScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Informational (not an error) — e.g. "check your email to confirm".
+  const [notice, setNotice] = useState<string | null>(null);
 
   const switchMode = (next: Mode) => {
     if (next === mode) return;
     tap();
     setMode(next);
     setError(null);
+    setNotice(null);
   };
 
   const submit = async () => {
     if (busy) return;
+    setNotice(null);
     const trimmed = email.trim();
     if (!EMAIL_RE.test(trimmed)) {
       setError("That doesn't look like a valid email.");
@@ -62,7 +66,7 @@ export function EmailAuthScreen() {
       if (mode === 'signup') {
         const result = await signUpWithEmail(trimmed, password);
         if (result === 'confirmation_required') {
-          setError('Check your email to confirm your account, then sign in.');
+          setNotice('Check your email to confirm your account, then sign in.');
           setMode('signin');
           setBusy(false);
           return;
@@ -133,7 +137,7 @@ export function EmailAuthScreen() {
             <Mono
               size={10}
               bold
-              color={mode === 'signup' ? palette.accentDeep : palette.textTertiary}
+              color={mode === 'signup' ? palette.accentDeep : palette.textSecondary}
             >
               CREATE ACCOUNT
             </Mono>
@@ -148,7 +152,7 @@ export function EmailAuthScreen() {
             <Mono
               size={10}
               bold
-              color={mode === 'signin' ? palette.accentDeep : palette.textTertiary}
+              color={mode === 'signin' ? palette.accentDeep : palette.textSecondary}
             >
               SIGN IN
             </Mono>
@@ -187,11 +191,11 @@ export function EmailAuthScreen() {
           accessibilityLabel="Password"
         />
 
-        {error ? (
+        {error || notice ? (
           <>
             <View style={{ height: spacing.sm }} />
-            <BodyText size={13} color={palette.destructive}>
-              {error}
+            <BodyText size={13} color={error ? palette.destructive : palette.textSecondary}>
+              {error ?? notice}
             </BodyText>
           </>
         ) : null}
