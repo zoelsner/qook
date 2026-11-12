@@ -401,7 +401,7 @@ export function DeckScreen() {
   );
 }
 
-function DeckCard({
+export function DeckCard({
   recipe,
   isEncore,
   onKeep,
@@ -412,7 +412,8 @@ function DeckCard({
   isEncore?: boolean;
   onKeep: () => void;
   onPass: () => void;
-  onCookTonight: () => void;
+  // Omitted by the signed-out sample hand, which has no plan to write to.
+  onCookTonight?: () => void;
 }) {
   const { pan, cardStyle, likeOverlayStyle, passOverlayStyle } = useSwipeGesture({
     onLike: onKeep,
@@ -611,8 +612,12 @@ function DeckCard({
           <PolishedButton label="Keep" tone="forest" onPress={onKeep} />
         </View>
       </View>
-      <View style={{ height: spacing.sm }} />
-      <PolishedButton label="Cook this tonight →" tone="forest" onPress={onCookTonight} />
+      {onCookTonight ? (
+        <>
+          <View style={{ height: spacing.sm }} />
+          <PolishedButton label="Cook this tonight →" tone="forest" onPress={onCookTonight} />
+        </>
+      ) : null}
     </View>
   );
 }
