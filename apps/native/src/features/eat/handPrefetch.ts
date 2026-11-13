@@ -1,3 +1,5 @@
+import { FunctionCallError, shouldRetryFunctionError } from '../../services/functionError';
+
 // When to kick off a background generate-proposals for the NEXT hand. Mirrors
 // imagePrefetch.ts's "stay ahead of the swiper" idea, but keyed on the hand
 // rather than art: fire once the swiper is within PREFETCH_THRESHOLD cards of
@@ -16,4 +18,16 @@ export function shouldPrefetchNextHand(args: {
   if (unfilledNights <= 0) return false;
   if (prefetchInFlight || nextHandReady) return false;
   return position >= handSize - PREFETCH_THRESHOLD;
+}
+
+// The deck's one silent retry (spec §1.1.5). A rate-limit or auth rejection
+// answers the same way twice, so it skips the re-ask (generateProposals has
+// already applied the same rule to its own retry).
+export async function retryOnce<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof FunctionCallError && !shouldRetryFunctionError(error)) throw error;
+    return call();
+  }
 }

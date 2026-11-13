@@ -8,7 +8,8 @@ import { addDaysISO, todayISO, type ISODate } from '../features/week/weekDates';
 
 import { reconcileRecipeSnapshots } from './reconcileRecipeSnapshots';
 import { selectDayRecipe } from './dayPlanSelection';
-import { pruneShopChecks, toggleShopCheck, type ShopChecked } from './shopChecked';
+import { pruneShopChecks, reconcileShopChecks, toggleShopCheck, type ShopChecked } from './shopChecked';
+import { aggregateIngredients } from '../features/shop/aggregateIngredients';
 export { activePickFor } from './dayPlanSelection';
 
 const STAGING_TTL_DAYS = 7;
@@ -295,6 +296,19 @@ export const useWeekPlan = create<WeekPlanState>()(
     },
   ),
 );
+
+// Reconcile Shop check-offs on every plan or staging change, not only while
+// Shop is mounted. Skips rehydration (prev is not hydrated yet), which would
+// otherwise compare against an empty plan and wipe every check.
+useWeekPlan.subscribe((state, prev) => {
+  if (!prev.hasHydrated) return;
+  if (state.plan === prev.plan && state.shopStaging === prev.shopStaging) return;
+  const today = todayISO();
+  const keys = (s: WeekPlanState) =>
+    aggregateIngredients(s.plan, today, activeStagedRecipes(s.shopStaging, today)).map((i) => i.key);
+  const shopChecked = reconcileShopChecks(state.shopChecked, keys(prev), keys(state));
+  if (shopChecked !== state.shopChecked) useWeekPlan.setState({ shopChecked });
+});
 
 export function taggedFutureOrTodayDays(
   plan: Record<ISODate, DayPlan>,

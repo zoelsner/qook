@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
         const raw = JSON.parse(stripCodeFences(full));
         if (raw && typeof raw === "object" && typeof raw.refusal === "string" && raw.refusal) {
           await finishSession(admin, sessionId, "failed");
-          send("error", { code: ERRORS.VALIDATION, message: raw.refusal });
+          send("error", { code: ERRORS.VALIDATION, message: "The kitchen can’t make dinners from that request. Try describing it differently." });
           controller.close();
           return;
         }

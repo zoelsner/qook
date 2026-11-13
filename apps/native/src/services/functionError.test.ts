@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { readFunctionError, shouldRetryFunctionError } from './functionError';
+import { ownFunctionMessage, readFunctionError, shouldRetryFunctionError } from './functionError';
 
 function httpError(body: string, status: number) {
   return Object.assign(new Error('Edge Function returned a non-2xx status code'), {
@@ -39,5 +39,15 @@ describe('shouldRetryFunctionError', () => {
   test('skips the re-ask for auth and rate-limit rejections only', () => {
     for (const status of [401, 403, 429]) expect(shouldRetryFunctionError({ status })).toBe(false);
     for (const status of [422, 500, 503, undefined]) expect(shouldRetryFunctionError({ status })).toBe(true);
+  });
+});
+
+describe('ownFunctionMessage', () => {
+  test('keeps messages only under codes our functions send', () => {
+    const fresh = 'This dinner card is incomplete — choose a new dinner idea.';
+    expect(ownFunctionMessage({ code: 'validation', message: fresh })).toBe(fresh);
+    expect(ownFunctionMessage({ code: 'WORKER_LIMIT', message: 'Function failed due to not having enough compute resources' }))
+      .toBeUndefined();
+    expect(ownFunctionMessage({ message: 'free text' })).toBeUndefined();
   });
 });

@@ -24,3 +24,24 @@ export async function readFunctionError(error: unknown): Promise<FunctionErrorDe
 export function shouldRetryFunctionError(details: FunctionErrorDetails): boolean {
   return details.status !== 401 && details.status !== 403 && details.status !== 429;
 }
+
+// A rejected Edge Function call. Keeps the server's code and HTTP status so
+// callers can choose copy (generationErrorMessage) and skip retries.
+export class FunctionCallError extends Error {
+  code?: string;
+  status?: number;
+  constructor(message: string, details: FunctionErrorDetails = {}) {
+    super(message);
+    this.code = details.code;
+    this.status = details.status;
+  }
+}
+
+// Codes our functions send (supabase/functions/_shared/errors.ts). Anything
+// else with a JSON `message` (a gateway or platform reply) is not our copy.
+const OWN_CODES = new Set(['rate_limited', 'unauthorized', 'sign_in_required', 'validation',
+  'generation_failed', 'empty_list', 'image_failed', 'not_found', 'bad_request']);
+
+export function ownFunctionMessage(details: FunctionErrorDetails): string | undefined {
+  return details.code && OWN_CODES.has(details.code) ? details.message : undefined;
+}

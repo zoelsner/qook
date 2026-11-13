@@ -18,3 +18,15 @@ export function pruneShopChecks(checked: ShopChecked, liveKeys: readonly string[
   if (kept.length === Object.keys(checked).length) return checked;
   return Object.fromEntries(kept.map((key) => [key, true as const]));
 }
+
+// A check survives a plan or staging change only if its item was on the list
+// both before and after (both read with today's date). Pruning against the new
+// list alone misses a check whose item left while Shop was closed, or whose
+// day passed, and lets it come back when the ingredient is planned again.
+export function reconcileShopChecks(
+  checked: ShopChecked,
+  keysBefore: readonly string[],
+  keysAfter: readonly string[],
+): ShopChecked {
+  return pruneShopChecks(pruneShopChecks(checked, keysBefore), keysAfter);
+}

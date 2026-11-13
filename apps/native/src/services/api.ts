@@ -14,7 +14,7 @@ import { mockDeck } from './fixtures/decks';
 import { mockGroceries } from './fixtures/groceries';
 import { markRecipeArtRequested, unmarkRecipeArtRequested } from '../hooks/recipeArtState';
 import { syncUserPreferences } from './userPreferences';
-import { readFunctionError, shouldRetryFunctionError } from './functionError';
+import { FunctionCallError, ownFunctionMessage, readFunctionError, shouldRetryFunctionError } from './functionError';
 
 type ApiMode = 'mock' | 'live';
 
@@ -280,10 +280,10 @@ export async function generateProposals(
   }
   if (error) {
     // The server rejects anonymous sessions on paid routes with code sign_in_required.
-    if (details.code === 'sign_in_required') throw new Error('sign_in_required');
-    // Prefer the server's own message (quota/rate-limit guidance); otherwise
-    // pass supabase-js's message through for generationErrorMessage to map.
-    throw new Error(details.message ?? (error as { message?: string }).message ?? '');
+    if (details.code === 'sign_in_required') throw new FunctionCallError('sign_in_required', details);
+    // Carry code + status: generationErrorMessage picks the copy from them, and
+    // the deck skips its own retry on a rate limit.
+    throw new FunctionCallError(details.message ?? (error as { message?: string }).message ?? '', details);
   }
   const proposals = ((data as { proposals?: unknown[] })?.proposals ?? []) as Record<
     string,
@@ -318,8 +318,8 @@ export async function fillRecipe(
       body: { recipeId, generationSessionId, context: context?.trim() || undefined },
     });
     if (error) {
-      const { message } = await readFunctionError(error);
-      throw new Error(message ?? 'Couldn’t finish this recipe. Check your connection and try again.');
+      throw new Error(ownFunctionMessage(await readFunctionError(error)) ??
+        'Couldn’t finish this recipe. Check your connection and try again.');
     }
     const out = data as { recipeId?: string; status?: string };
     return { recipeId: out?.recipeId ?? recipeId, status: out?.status ?? 'full' };
