@@ -15,9 +15,9 @@ git fetch -q origin
 bun install --frozen-lockfile
 
 cd apps/native
-field='s/.*"runtimeVersion": *"\([^"]*\)".*/\1/p'
-want=$(npx expo-updates runtimeversion:resolve --platform ios | sed -n "$field" | head -1)
-have=$(npx eas-cli@latest build:list --platform ios --build-profile production --status finished --limit 1 --json --non-interactive | sed -n "$field" | head -1)
+json() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(eval("JSON.parse(s)"+process.argv[1])??""))' "$1"; }
+want=$(npx expo-updates runtimeversion:resolve --platform ios | json '.runtimeVersion')
+have=$(npx eas-cli@latest build:list --platform ios --build-profile production --status finished --limit 1 --json --non-interactive | json '[0]?.runtime?.version')
 [ -n "$want" ] && [ "$want" = "$have" ] || {
   echo "Not published: this code's runtime ($want) is not the latest production build's ($have). It needs a new build." >&2
   exit 1
