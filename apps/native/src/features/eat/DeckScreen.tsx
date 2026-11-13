@@ -24,7 +24,7 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { useGenerationSession } from '../../stores/generationSession';
 import { useWeekPlan, activePickFor } from '../../stores/weekPlan';
 import { focusedRecipe, isExhausted, swipeSummary, sessionExcludeTitles } from './deckState';
-import { shouldPrefetchNextHand } from './handPrefetch';
+import { retryOnce, shouldPrefetchNextHand } from './handPrefetch';
 import { buildRedealContext } from './redealContext';
 import { unfilledResetNights } from './weekReset';
 import { benchNoticeCopy } from './allocation';
@@ -184,16 +184,11 @@ export function DeckScreen() {
     const redealContext = buildRedealContext({ voiceContext: context, summary: sum, excludeTitles });
     void (async () => {
       try {
-        try {
-          stageNextHand(await api.generateProposals(tier, redealContext));
-        } catch {
-          // One silent retry (spec §1.1.5) — inline, inside the same
-          // invocation, so the in-flight ref stays true until BOTH attempts
-          // settle (a recursive call would let the outer finally clear the
-          // ref while the retry is still pending, opening a duplicate-call
-          // window mid-flight).
-          stageNextHand(await api.generateProposals(tier, redealContext));
-        }
+        // One silent retry, awaited inside this invocation so the in-flight
+        // ref stays true until BOTH attempts settle (a recursive call would
+        // let the finally below clear the ref while the retry is still
+        // pending, opening a duplicate-call window mid-flight).
+        stageNextHand(await retryOnce(() => api.generateProposals(tier, redealContext)));
       } catch {
         setPrefetchFailed(true);
       } finally {
