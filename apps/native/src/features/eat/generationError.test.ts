@@ -30,10 +30,13 @@ describe('generation error guidance', () => {
       );
     }
   });
-  test('never shows model refusals or other free text', () => {
+  test('shows the server\'s own validation guidance', () => {
+    const conflict = 'Your requested crisp/roasted method conflicts with microwave/kettle-only equipment.';
+    expect(generationErrorMessage(new FunctionCallError(conflict, { code: 'validation', status: 422 }))).toBe(conflict);
+  });
+  test('never shows free text or replies from outside our functions', () => {
     const refusal = 'I’m sorry, but I can’t help with that request.';
     for (const error of [
-      new FunctionCallError(refusal, { code: 'validation', status: 422 }),
       new FunctionCallError('Function failed due to not having enough compute resources', { code: 'WORKER_LIMIT', status: 546 }),
       new FunctionCallError('The kitchen is busy — try again in a minute.', { code: 'generation_failed', status: 500 }),
       new Error(refusal),
