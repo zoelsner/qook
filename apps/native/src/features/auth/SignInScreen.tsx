@@ -131,7 +131,7 @@ export function SignInScreen() {
 
           <BodyText
             size={12}
-            color={palette.textTertiary}
+            color={palette.textSecondary}
             weight="medium"
             style={styles.finePrint}
           >
