@@ -23,6 +23,13 @@ import {
   SettingsGroup,
 } from './SettingsPrimitives';
 
+// Onboarding stores its diet chips in the avoid list; the server reads these
+// four as diets (supabase/functions/_shared/dinner-brief.ts `dietLabels`), so
+// list them as such instead of "avoid: Vegetarian". Same normalisation.
+const DIET_KEYS = new Set(['vegetarian', 'vegan', 'gluten free', 'dairy free']);
+const isDiet = (term: string) =>
+  DIET_KEYS.has(term.trim().toLowerCase().replace(/[\s-]+/g, ' '));
+
 export function PreferencesScreen() {
   const cuisineGroups = usePrefs((s) => s.cuisineGroups);
   const proteins = usePrefs((s) => s.proteins);
@@ -32,6 +39,8 @@ export function PreferencesScreen() {
   const addAvoid = usePrefs((s) => s.addAvoid);
   const removeAvoid = usePrefs((s) => s.removeAvoid);
   const { tap } = useHaptics();
+  const diets = avoidList.filter(isDiet);
+  const avoided = avoidList.filter((term) => !isDiet(term));
 
   const [avoidDraft, setAvoidDraft] = useState('');
 
@@ -95,8 +104,18 @@ export function PreferencesScreen() {
         </PillGroup>
       </SettingsGroup>
 
+      {diets.length > 0 ? (
+        <SettingsGroup kicker="diet">
+          <View style={styles.avoidChips}>
+            {diets.map((term) => (
+              <RemovableChip key={term} term={term} onRemove={() => { tap(); removeAvoid(term); }} />
+            ))}
+          </View>
+        </SettingsGroup>
+      ) : null}
+
       <SettingsGroup
-        kicker={`avoid · ${avoidList.length} item${avoidList.length === 1 ? '' : 's'}`}
+        kicker={`avoid · ${avoided.length} item${avoided.length === 1 ? '' : 's'}`}
       >
         <BodyText size={13} color={palette.textSecondary} weight="medium" style={styles.hint}>
           Steers every generated hand away from these ingredients. Qook cannot
@@ -134,29 +153,12 @@ export function PreferencesScreen() {
           </Pressable>
         </View>
 
-        {avoidList.length > 0 ? (
+        {avoided.length > 0 ? (
           <>
             <View style={{ height: spacing.sm }} />
             <View style={styles.avoidChips}>
-              {avoidList.map((term) => (
-                <Pressable
-                  key={term}
-                  onPress={() => {
-                    tap();
-                    removeAvoid(term);
-                  }}
-                  style={({ pressed }) => [
-                    styles.avoidChip,
-                    pressed ? { opacity: 0.85 } : null,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${term}`}
-                >
-                  <BodyText size={12} weight="semi" color={palette.accentDeep}>
-                    {term}
-                  </BodyText>
-                  <X size={12} color={palette.accentDeep} strokeWidth={2.2} />
-                </Pressable>
+              {avoided.map((term) => (
+                <RemovableChip key={term} term={term} onRemove={() => { tap(); removeAvoid(term); }} />
               ))}
             </View>
           </>
@@ -165,6 +167,22 @@ export function PreferencesScreen() {
 
       <View style={{ height: 120 }} />
     </ScreenShell>
+  );
+}
+
+function RemovableChip({ term, onRemove }: { term: string; onRemove: () => void }) {
+  return (
+    <Pressable
+      onPress={onRemove}
+      style={({ pressed }) => [styles.avoidChip, pressed ? { opacity: 0.85 } : null]}
+      accessibilityRole="button"
+      accessibilityLabel={`Remove ${term}`}
+    >
+      <BodyText size={12} weight="semi" color={palette.accentDeep}>
+        {term}
+      </BodyText>
+      <X size={12} color={palette.accentDeep} strokeWidth={2.2} />
+    </Pressable>
   );
 }
 
