@@ -109,7 +109,8 @@ export async function handleProposals(req: Request, options: PreflightOptions = 
       const refusal = (raw as { refusal?: unknown } | null)?.refusal;
       if (typeof refusal === "string" && refusal) {
         await failProposalSession(admin, sessionId);
-        return errorResponse(ERRORS.VALIDATION, refusal, 422);
+        // The model's own words stay on the server; the app shows ours.
+        return errorResponse(ERRORS.VALIDATION, "The kitchen can’t make dinners from that request. Try describing it differently.", 422);
       }
       const result = ProposalsEnvelope.safeParse(raw);
       if (!result.success) {
