@@ -29,6 +29,31 @@ export async function ensureSession(): Promise<string> {
 
 export type AppleSignInResult = 'ok' | 'canceled';
 
+export type AppleAuthorizationCodeResult =
+  | { status: 'ok'; authorizationCode: string }
+  | { status: 'canceled' };
+
+/**
+ * Re-authenticates with Apple to obtain a fresh, single-use authorization code
+ * for revoking Sign in with Apple tokens during account deletion (5.1.1(v)).
+ */
+export async function requestAppleAuthorizationCode(): Promise<AppleAuthorizationCodeResult> {
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [],
+    });
+    if (!credential.authorizationCode) {
+      throw new Error('apple_no_authorization_code');
+    }
+    return { status: 'ok', authorizationCode: credential.authorizationCode };
+  } catch (e) {
+    if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
+      return { status: 'canceled' };
+    }
+    throw e;
+  }
+}
+
 // Apple gets the SHA-256 hex digest of the raw nonce; Supabase gets the raw
 // nonce and hashes it the same way to compare against the id token's claim.
 async function makeNonce(): Promise<{ raw: string; hashed: string }> {
