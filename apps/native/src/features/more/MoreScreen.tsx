@@ -14,7 +14,12 @@ import { usePrefs } from '../../stores/prefs';
 import { useCookSession } from '../../stores/cookSession';
 import { useGenerationSession } from '../../stores/generationSession';
 import { todayISO } from '../week/weekDates';
-import { supabase, signInWithApple } from '../../services/supabase';
+import {
+  supabase,
+  signInWithApple,
+  requestAppleAuthorizationCode,
+} from '../../services/supabase';
+import { hasAppleIdentity } from '../../services/appleIdentity';
 import { StorageKeys, clearAuthFlags, writeString } from '../../lib/storage';
 
 interface MoreRow {
@@ -158,7 +163,18 @@ export function MoreScreen() {
               const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
               if (sessionError) throw sessionError;
               if (!sessionData.session) throw new Error('no_session');
-              const { error } = await supabase.functions.invoke('delete-account');
+              let appleAuthorizationCode: string | undefined;
+              if (hasAppleIdentity(sessionData.session.user)) {
+                const appleConfirm = await requestAppleAuthorizationCode();
+                if (appleConfirm.status === 'canceled') {
+                  setAccountBusy(false);
+                  return;
+                }
+                appleAuthorizationCode = appleConfirm.authorizationCode;
+              }
+              const { error } = await supabase.functions.invoke('delete-account', {
+                body: appleAuthorizationCode ? { appleAuthorizationCode } : undefined,
+              });
               if (error) throw error;
             } catch (e) {
               setAccountBusy(false);
