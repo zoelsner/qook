@@ -15,28 +15,11 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { DealingHandLoader } from './DealingHandLoader';
 import { generationErrorMessage } from './generationError';
 
-// The measured plate-spec + image chain runs ~5-12s on the lite model, so a 6s
-// gate revealed the deck before any art existed. Owner accepted the extra wait.
-const FIRST_ART_TIMEOUT_MS = 10000;
-const POLL_INTERVAL_MS = 1200;
 const PREFETCH_AT_DEAL = 3;
 
 // Same stale-typed-routes workaround as DeckScreen's ALLOCATE_ROUTE (Task 10):
 // app/(eat)/deck.tsx exists on disk, but the generated router.d.ts predates it.
 const DECK_ROUTE = '/(eat)/deck' as Href;
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Reveal gate: proposal text is already resolved; wait for card-1 art up to a
-// timeout, then reveal (art timeout → deck shows the monogram anyway).
-async function waitForFirstArt(id: string): Promise<void> {
-  const start = Date.now();
-  while (Date.now() - start < FIRST_ART_TIMEOUT_MS) {
-    const r = await api.getRecipeById(id).catch(() => null);
-    if (r && (r.imageStatus === 'ready' || r.heroImageUrl)) return;
-    await sleep(POLL_INTERVAL_MS);
-  }
-}
 
 export function GenerationLoadingScreen() {
   const router = useRouter();
@@ -116,12 +99,11 @@ export function GenerationLoadingScreen() {
         setProposals(proposals);
         void maybeAttachEncore(proposals.map((p) => p.id));
         setPhase('coming-up');
-        // Warm the first 3 hero images in parallel (spec: pre-fire first 3).
+        // Warm the first 3 hero images in parallel while the deck opens right
+        // away; each card fades its watercolor in as soon as it lands.
         proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
           if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);
         });
-        if (proposals[0]) await waitForFirstArt(proposals[0].id);
-        if (cancelled || myRun !== runId.current) return;
         success();
         router.replace(DECK_ROUTE);
       } catch (e) {
@@ -161,8 +143,6 @@ export function GenerationLoadingScreen() {
         proposals.slice(0, PREFETCH_AT_DEAL).forEach((p) => {
           if (p.imageStatus !== 'ready' && !p.heroImageUrl) void api.requestRecipeImage(p.id);
         });
-        if (proposals[0]) await waitForFirstArt(proposals[0].id);
-        if (!mountedRef.current || myRun !== runId.current) return;
         success();
         router.replace(DECK_ROUTE);
       } catch (e) {
@@ -189,7 +169,13 @@ export function GenerationLoadingScreen() {
           <View style={{ height: spacing.lg }} />
           <PolishedButton label="Try again" tone="rust" onPress={retry} />
           <View style={{ height: spacing.sm }} />
-          <PolishedButton label="Back" tone="ghost" onPress={() => router.replace('/(eat)/energy')} />
+          <PolishedButton
+            label="Back"
+            tone="ghost"
+            onPress={() =>
+              router.replace(mode === 'week' ? '/(eat)/context' : '/(eat)/energy')
+            }
+          />
         </View>
       </ScreenShell>
     );

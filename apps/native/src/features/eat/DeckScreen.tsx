@@ -33,6 +33,7 @@ import { artIndicesToRequest, urlsToPrefetch } from './imagePrefetch';
 import { CardArt } from './CardArt';
 import { useSwipeGesture } from '../swipe-night/useSwipeGesture';
 import { api } from '../../services/api';
+import { hasRequestedRecipeArt } from '../../hooks/recipeArtState';
 import { recipeCompletion } from '../../services/completeRecipe';
 import type { SeedMealKey } from '../../lib/assets';
 
@@ -54,7 +55,7 @@ function deriveCardBack(recipe: Recipe): {
     return {
       ingredients: recipe.proposalIngredients ?? [],
       plan: recipe.proposalSteps ?? [],
-      microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU KEEP IT',
+      microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU PICK IT',
     };
   }
   const isFull = recipe.contentStatus !== 'proposal' || recipe.ingredients.length > 0;
@@ -71,7 +72,7 @@ function deriveCardBack(recipe: Recipe): {
       return { ingredients, plan, microcopy: 'FULL RECIPE READY' };
     }
   }
-  return { ingredients: [], plan: [], microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU KEEP IT' };
+  return { ingredients: [], plan: [], microcopy: 'FULL RECIPE IS WRITTEN WHEN YOU PICK IT' };
 }
 
 function truncateLine(text: string, maxLen = 40): string {
@@ -137,7 +138,12 @@ export function DeckScreen() {
     );
     for (const i of indices) {
       const rec = deck.proposals[i];
-      if (rec && rec.imageStatus !== 'ready' && !rec.heroImageUrl) {
+      if (
+        rec &&
+        rec.imageStatus !== 'ready' &&
+        !rec.heroImageUrl &&
+        !hasRequestedRecipeArt(rec.id)
+      ) {
         void api.requestRecipeImage(rec.id);
       }
       requestedRef.current.push(i);
@@ -363,13 +369,21 @@ export function DeckScreen() {
           </Mono>
           <View style={{ height: spacing.sm }} />
           <DisplayText size={26} color={palette.primary} style={{ textAlign: 'center' }}>
-            {prefetchFailed ? 'Deal again?' : 'Nothing grabbed you?'}
+            {prefetchFailed
+              ? 'Deal again?'
+              : keptCount > 0
+                ? keptCount === 1
+                  ? '1 dinner saved'
+                  : `${keptCount} dinners saved`
+                : 'Nothing grabbed you?'}
           </DisplayText>
           <View style={{ height: spacing.md }} />
           {keptCount > 0 ? (
             <>
               <ItalicText size={14} style={{ textAlign: 'center' }}>
-                {keptCount === 1 ? '1 keep waiting to be placed.' : `${keptCount} keeps waiting to be placed.`}
+                {keptCount === 1
+                  ? 'Ready to put it on your plan, or deal another hand?'
+                  : 'Ready to place them on your week, or deal another hand?'}
               </ItalicText>
               <View style={{ height: spacing.md }} />
               <PolishedButton label="Continue to planning" tone="forest" onPress={goAllocateOrHome} />
@@ -385,6 +399,7 @@ export function DeckScreen() {
           key={`${focused.id}-${deck.position}`}
           recipe={focused}
           isEncore={focused.id === deck.encoreId}
+          primaryCookTonight={mode === 'tonight'}
           onKeep={handleKeep}
           onPass={handlePass}
           onCookTonight={handleCookTonight}
@@ -408,7 +423,7 @@ export function DeckScreen() {
               ))}
             </View>
             <Mono size={11} bold color={palette.accentDeep}>
-              {keptCount === 1 ? 'review 1 keep →' : `review ${keptCount} keeps →`}
+              {keptCount === 1 ? 'plan 1 saved →' : `plan ${keptCount} saved →`}
             </Mono>
           </Pressable>
         ) : (
@@ -422,15 +437,21 @@ export function DeckScreen() {
 export function DeckCard({
   recipe,
   isEncore,
+  primaryCookTonight = false,
+  cookLabel = 'Cook this tonight →',
+  keepLabel = 'Save for later',
   onKeep,
   onPass,
   onCookTonight,
 }: {
   recipe: Recipe;
   isEncore?: boolean;
+  primaryCookTonight?: boolean;
+  cookLabel?: string;
+  keepLabel?: string;
   onKeep: () => void;
   onPass: () => void;
-  // Omitted by the signed-out sample hand, which has no plan to write to.
+  // Omitted when there is no immediate cook/preview action.
   onCookTonight?: () => void;
 }) {
   const { pan, cardStyle, likeOverlayStyle, passOverlayStyle } = useSwipeGesture({
@@ -621,21 +642,39 @@ export function DeckCard({
 
       <SwipeHints />
 
-      <View style={styles.actionRow}>
-        <View style={styles.actionHalf}>
-          <PolishedButton label="Toss" tone="ghost" onPress={onPass} />
-        </View>
-        <View style={{ width: spacing.sm }} />
-        <View style={styles.actionHalf}>
-          <PolishedButton label="Keep" tone="forest" onPress={onKeep} />
-        </View>
-      </View>
-      {onCookTonight ? (
+      {onCookTonight && primaryCookTonight ? (
         <>
+          <PolishedButton label={cookLabel} tone="forest" onPress={onCookTonight} />
           <View style={{ height: spacing.sm }} />
-          <PolishedButton label="Cook this tonight →" tone="cream" onPress={onCookTonight} />
+          <View style={styles.actionRow}>
+            <View style={styles.actionHalf}>
+              <PolishedButton label="Toss" tone="ghost" onPress={onPass} />
+            </View>
+            <View style={{ width: spacing.sm }} />
+            <View style={styles.actionHalf}>
+              <PolishedButton label={keepLabel} tone="cream" onPress={onKeep} />
+            </View>
+          </View>
         </>
-      ) : null}
+      ) : (
+        <>
+          <View style={styles.actionRow}>
+            <View style={styles.actionHalf}>
+              <PolishedButton label="Toss" tone="ghost" onPress={onPass} />
+            </View>
+            <View style={{ width: spacing.sm }} />
+            <View style={styles.actionHalf}>
+              <PolishedButton label={keepLabel} tone="forest" onPress={onKeep} />
+            </View>
+          </View>
+          {onCookTonight ? (
+            <>
+              <View style={{ height: spacing.sm }} />
+              <PolishedButton label={cookLabel} tone="cream" onPress={onCookTonight} />
+            </>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }

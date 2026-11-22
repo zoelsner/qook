@@ -1,5 +1,5 @@
 import { useToday } from '../../hooks/useToday';
-import React, { useEffect } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Recipe } from '@qook/shared';
@@ -18,6 +18,9 @@ import { useHaptics } from '../../hooks/useHaptics';
 import { useRecipeArt } from '../../hooks/useRecipeArt';
 import { hasRequestedRecipeArt, isRecipeArtMissing } from '../../hooks/recipeArtState';
 import { api } from '../../services/api';
+import { recipeCompletion } from '../../services/completeRecipe';
+import { IDLE_COMPLETION } from '../recipe/completionCoordinator';
+import { getRecipeReadiness } from '../recipe/recipeReadiness';
 import {
   useWeekPlan,
   activePickFor,
@@ -213,10 +216,53 @@ function HeroPopulated({
   onOpen: () => void;
 }) {
   const art = useRecipeArt(pick);
+  const completion = useSyncExternalStore(
+    recipeCompletion.subscribe,
+    () => recipeCompletion.get(pick.id),
+    () => IDLE_COMPLETION,
+  );
+  const readiness = getRecipeReadiness(pick, completion);
   const protein = pick.nutritionalEstimate?.proteinG;
   const words = pick.title.trim().split(/\s+/);
   const lastWord = words[words.length - 1];
   const leadWords = words.slice(0, -1).join(' ');
+  const heroKicker =
+    readiness === 'fresh-idea'
+      ? 'NEEDS A NEW IDEA'
+      : readiness === 'retry'
+        ? 'NEEDS RETRY'
+        : readiness === 'unfinished'
+          ? 'RECIPE UNFINISHED'
+          : readiness === 'finishing'
+            ? 'FINISHING RECIPE'
+            : "TONIGHT\u2019S TABLE";
+  const ctaLabel =
+    readiness === 'fresh-idea'
+      ? 'Open to replace'
+      : readiness === 'retry'
+        ? 'Open to retry'
+        : readiness === 'unfinished'
+          ? 'Finish recipe'
+          : readiness === 'finishing'
+            ? 'Open recipe'
+            : 'Cook tonight';
+  const asideCopy =
+    readiness === 'fresh-idea'
+      ? 'This idea couldn\u2019t be finished \u2014 open it to pick a fresh dinner.'
+      : readiness === 'retry'
+        ? 'Couldn\u2019t finish writing this recipe yet \u2014 tap to retry.'
+        : readiness === 'unfinished'
+          ? 'Open this dish to finish writing its ingredients and steps.'
+          : readiness === 'finishing'
+            ? 'Writing your full ingredients and steps now \u2014 tap to check in.'
+            : 'Tonight\u2019s pick \u2014 you\u2019re one tap from the stove.';
+  const isErrorState = readiness === 'retry' || readiness === 'fresh-idea';
+  const ctaTone = isErrorState
+    ? 'rust'
+    : readiness === 'unfinished'
+      ? 'forest'
+      : 'ghost';
+  const ctaIconColor = ctaTone === 'ghost' ? palette.primary : palette.surface;
   return (
     <View>
       {/* The dish itself is tappable — title or plate opens the recipe. */}
@@ -227,8 +273,12 @@ function HeroPopulated({
         style={({ pressed }) => [styles.heroArtRow, pressed ? { opacity: 0.88 } : null]}
       >
         <View style={styles.heroTitleCol}>
-          <Mono size={10} bold color={palette.accentDeep}>
-            TONIGHT&rsquo;S TABLE
+          <Mono
+            size={10}
+            bold
+            color={isErrorState ? palette.destructive : palette.accentDeep}
+          >
+            {heroKicker}
           </Mono>
           <View style={{ height: 6 }} />
           <View style={styles.titleWrap}>
@@ -285,14 +335,14 @@ function HeroPopulated({
 
       <View style={{ height: spacing.md }} />
       <PolishedButton
-        label="Cook tonight"
-        tone="ghost"
+        label={ctaLabel}
+        tone={ctaTone}
         onPress={onOpen}
-        trailingIcon={<ArrowRight size={14} color={palette.primary} />}
+        trailingIcon={<ArrowRight size={14} color={ctaIconColor} />}
       />
       <View style={{ height: spacing.sm }} />
       <ItalicText size={14} style={styles.heroAside}>
-        Tonight&rsquo;s pick — you&rsquo;re one tap from the stove.
+        {asideCopy}
       </ItalicText>
     </View>
   );

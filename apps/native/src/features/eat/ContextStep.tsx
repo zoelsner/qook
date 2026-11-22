@@ -93,7 +93,7 @@ export function ContextStep() {
               <View style={{ height: spacing.md + 2 }} />
 
               <Mono size={10} bold color={palette.accentDeep}>
-                {mode === 'week' ? 'weekly reset · optional' : 'step 2 of 2 · optional'}
+                {mode === 'week' ? 'weekly reset · optional' : 'tonight · optional'}
               </Mono>
               <View style={{ height: 6 }} />
               <DisplayText
