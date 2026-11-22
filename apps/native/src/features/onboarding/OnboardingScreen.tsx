@@ -208,7 +208,7 @@ export function OnboardingScreen() {
       <View style={{ height: spacing.lg }} />
 
       {step === 0 ? (
-        <WelcomeStep onNext={handleWelcomeNext} />
+        <WelcomeStep onNext={handleWelcomeNext} onTrySample={handleSkipAll} />
       ) : step === 1 ? (
         <TasteStep
           selectedKeys={selectedDishKeys}
@@ -256,7 +256,13 @@ function Masthead({ onSkip }: { onSkip: () => void }) {
   );
 }
 
-function WelcomeStep({ onNext }: { onNext: () => void }) {
+function WelcomeStep({
+  onNext,
+  onTrySample,
+}: {
+  onNext: () => void;
+  onTrySample: () => void;
+}) {
   return (
     <View>
       <View style={styles.headlineWrap}>
@@ -285,6 +291,12 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         tone="forest"
         trailingIcon={<ArrowRight size={14} color={palette.surface} />}
         onPress={onNext}
+      />
+      <View style={{ height: spacing.sm }} />
+      <PolishedButton
+        label="Try a sample dinner"
+        tone="cream"
+        onPress={onTrySample}
       />
     </View>
   );

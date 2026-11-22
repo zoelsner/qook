@@ -9,11 +9,16 @@ import { BodyText, DisplayText, Mono } from '../../components/Text';
 import { SquareCheckbox } from '../../components/SquareCheckbox';
 import { PolishedButton } from '../../components/PolishedButton';
 import { IconPill } from '../../components/painted';
-import { ArrowRight, Check, Copy, Share as ShareIcon } from 'lucide-react-native';
+import { ArrowRight, Check, ChevronRight, Copy, Share as ShareIcon } from 'lucide-react-native';
 import { palette, spacing, fontFamily } from '../../design';
 import { useHaptics } from '../../hooks/useHaptics';
 import { activeStagedRecipes, useWeekPlan } from '../../stores/weekPlan';
 import { copyList, shareList } from '../../lib/shoppingShare';
+import { recipeCompletion } from '../../services/completeRecipe';
+import {
+  collectIncompleteShopMeals,
+  type IncompleteShopMeal,
+} from '../recipe/recipeReadiness';
 import {
   aggregateIngredients,
   collectShopMeals,
@@ -101,6 +106,29 @@ export function ShopScreen() {
   }, [allItemKeys, pruneShopChecked]);
 
   const [copied, setCopied] = useState(false);
+  const [completionTick, setCompletionTick] = useState(0);
+
+  useEffect(
+    () => recipeCompletion.subscribe(() => setCompletionTick((n) => n + 1)),
+    [],
+  );
+
+  const visibleMeals = useMemo(
+    () => meals.filter((m) => !excludeIds.has(m.id)),
+    [meals, excludeIds],
+  );
+  const incompleteMeals = useMemo(
+    () => collectIncompleteShopMeals(visibleMeals, (id) => recipeCompletion.get(id)),
+    // completionTick invalidates memo when recipeCompletion transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleMeals, completionTick],
+  );
+  const allMealsHidden = meals.length > 0 && visibleMeals.length === 0;
+
+  const onOpenRecipe = (id: string) => {
+    press();
+    router.push({ pathname: '/(modals)/recipe/[id]', params: { id } });
+  };
 
   const grouped = useMemo(() => {
     const map = new Map<GroceryCategory, ShopItem[]>();
@@ -214,12 +242,17 @@ export function ShopScreen() {
         </>
       ) : null}
 
-      {!hasHydrated ? null : totalItems === 0 && excludeIds.size > 0 ? (
+      {!hasHydrated ? null : allMealsHidden ? (
         <View style={styles.filteredEmpty}>
           <BodyText size={14} color={palette.textSecondary} weight="medium">
             Every meal is hidden — tap a pill to bring its ingredients back.
           </BodyText>
         </View>
+      ) : totalItems === 0 && incompleteMeals.length > 0 ? (
+        <PendingShop
+          incompleteMeals={incompleteMeals}
+          onOpenRecipe={onOpenRecipe}
+        />
       ) : totalItems === 0 ? (
         <EmptyShop
           onOpenWeek={() => {
@@ -228,29 +261,159 @@ export function ShopScreen() {
           }}
         />
       ) : (
-        grouped.map(({ category, items: groupItems }, idx) => (
-          <View key={category} style={idx > 0 ? { marginTop: spacing.md } : null}>
-            <View style={styles.sectionDivider}>
-              <View style={styles.sectionRule} />
-              <Mono size={10} bold color={palette.accentDeep}>
-                {category}
-              </Mono>
-              <View style={styles.sectionRule} />
+        <>
+          {incompleteMeals.length > 0 ? (
+            <PendingNotice
+              incompleteMeals={incompleteMeals}
+              onOpenRecipe={onOpenRecipe}
+            />
+          ) : null}
+          {grouped.map(({ category, items: groupItems }, idx) => (
+            <View key={category} style={idx > 0 ? { marginTop: spacing.md } : null}>
+              <View style={styles.sectionDivider}>
+                <View style={styles.sectionRule} />
+                <Mono size={10} bold color={palette.accentDeep}>
+                  {category}
+                </Mono>
+                <View style={styles.sectionRule} />
+              </View>
+              {groupItems.map((item) => (
+                <ShopRow
+                  key={item.key}
+                  item={item}
+                  checked={!!checked[item.key]}
+                  onToggle={() => handleToggle(item.key)}
+                />
+              ))}
             </View>
-            {groupItems.map((item) => (
-              <ShopRow
-                key={item.key}
-                item={item}
-                checked={!!checked[item.key]}
-                onToggle={() => handleToggle(item.key)}
-              />
-            ))}
-          </View>
-        ))
+          ))}
+        </>
       )}
 
       <View style={{ height: spacing.lg }} />
     </ScreenShell>
+  );
+}
+
+function incompleteStatusCopy(readiness: IncompleteShopMeal['readiness']): {
+  kicker: string;
+  action: string;
+  isError: boolean;
+} {
+  if (readiness === 'fresh-idea') {
+    return { kicker: 'needs a new idea', action: 'Open to replace', isError: true };
+  }
+  if (readiness === 'retry') {
+    return { kicker: 'needs retry', action: 'Open to retry', isError: true };
+  }
+  if (readiness === 'unfinished') {
+    return { kicker: 'unfinished', action: 'Open to finish', isError: false };
+  }
+  return { kicker: 'finishing now', action: 'Open recipe', isError: false };
+}
+
+function PendingShop({
+  incompleteMeals,
+  onOpenRecipe,
+}: {
+  incompleteMeals: IncompleteShopMeal[];
+  onOpenRecipe: (id: string) => void;
+}) {
+  const allFinishing = incompleteMeals.every((m) => m.readiness === 'finishing');
+  const hasError = incompleteMeals.some(
+    (m) => m.readiness === 'retry' || m.readiness === 'fresh-idea',
+  );
+
+  return (
+    <View style={styles.empty}>
+      <Mono
+        size={10}
+        bold
+        color={hasError ? palette.destructive : palette.accentDeep}
+      >
+        {allFinishing ? 'finishing recipes' : hasError ? 'needs attention' : 'unfinished recipes'}
+      </Mono>
+      <View style={{ height: spacing.xs }} />
+      <DisplayText size={24} color={palette.ink} style={styles.emptyTitle}>
+        {allFinishing ? 'Writing your ingredients\u2026' : 'Ingredients aren\u2019t ready yet.'}
+      </DisplayText>
+      <View style={{ height: spacing.sm }} />
+      <BodyText size={14} color={palette.textSecondary} weight="medium">
+        {allFinishing
+          ? 'Your planned recipes are being written now. Ingredients will appear here automatically once ready.'
+          : 'Open a dish below to finish writing or retry it so its ingredients land here.'}
+      </BodyText>
+      <View style={{ height: spacing.md }} />
+      <IncompleteMealRows meals={incompleteMeals} onOpenRecipe={onOpenRecipe} />
+    </View>
+  );
+}
+
+function PendingNotice({
+  incompleteMeals,
+  onOpenRecipe,
+}: {
+  incompleteMeals: IncompleteShopMeal[];
+  onOpenRecipe: (id: string) => void;
+}) {
+  const hasError = incompleteMeals.some(
+    (m) => m.readiness === 'retry' || m.readiness === 'fresh-idea',
+  );
+  return (
+    <View style={styles.pendingBanner}>
+      <Mono
+        size={9}
+        bold
+        color={hasError ? palette.destructive : palette.accentDeep}
+      >
+        {hasError ? 'some ingredients missing' : 'still finishing'}
+      </Mono>
+      <View style={{ height: spacing.xs }} />
+      <IncompleteMealRows meals={incompleteMeals} onOpenRecipe={onOpenRecipe} />
+    </View>
+  );
+}
+
+function IncompleteMealRows({
+  meals,
+  onOpenRecipe,
+}: {
+  meals: IncompleteShopMeal[];
+  onOpenRecipe: (id: string) => void;
+}) {
+  return (
+    <View>
+      {meals.map(({ recipe, readiness }, idx) => {
+        const copy = incompleteStatusCopy(readiness);
+        return (
+          <Pressable
+            key={recipe.id}
+            onPress={() => onOpenRecipe(recipe.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`${recipe.title}: ${copy.action}`}
+            style={({ pressed }) => [
+              styles.incompleteRow,
+              idx === meals.length - 1 ? styles.incompleteRowLast : null,
+              pressed ? { opacity: 0.75 } : null,
+            ]}
+          >
+            <View style={styles.incompleteRowBody}>
+              <BodyText size={14} weight="semi" color={palette.ink} numberOfLines={1}>
+                {recipe.title}
+              </BodyText>
+              <Mono
+                size={9}
+                bold
+                color={copy.isError ? palette.destructive : palette.textSecondary}
+              >
+                {copy.kicker} · {copy.action}
+              </Mono>
+            </View>
+            <ChevronRight size={16} color={palette.textTertiary} strokeWidth={2} />
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -405,6 +568,28 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.glassBorder,
+  },
+  pendingBanner: {
+    borderRadius: 14,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: palette.well,
+    marginBottom: spacing.md,
+  },
+  incompleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs + 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(42, 58, 38, 0.1)',
+  },
+  incompleteRowLast: {
+    borderBottomWidth: 0,
+  },
+  incompleteRowBody: {
+    flex: 1,
+    gap: 2,
   },
   emptyTitle: {
     letterSpacing: -0.4,
